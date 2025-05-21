@@ -79,7 +79,7 @@ https://psappdeploytoolkit.com
 #>
 
 
-[CmdletBinding()]
+[CmdletBinding(DefaultParameterSetName = 'AdminMode')]
 Param (
     [Parameter(Mandatory = $false)]
     [ValidateSet('Install', 'Uninstall', 'Repair')]
@@ -96,10 +96,486 @@ Param (
 	[Parameter(Mandatory = $false)]
     [ValidateSet('Admin', 'User')]
     [String]$Mode = 'Admin',
-	[String]$WingetScope  = '',
-	[String]$WingetID = '',
-	[String]$WingetCM = '',
-	[String]$WingetOverride = ''
+	[Parameter( Mandatory = $false, HelpMessage = 'Specifies if you need to install, uninstall, upgrade or import.',ParameterSetName = 'AdminMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Specifies if you need to install, uninstall, upgrade or import.',ParameterSetName = 'UserMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Specifies if you need to install, uninstall, upgrade or import.',ParameterSetName = 'Action')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Specifies if you need to install, uninstall, upgrade or import.',ParameterSetName = 'Interactive')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Specifies if you need to install, uninstall, upgrade or import.',ParameterSetName = 'Silent')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Specifies if you need to install, uninstall, upgrade or import.',ParameterSetName = 'Override')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Specifies if you need to install, uninstall, upgrade or import.',ParameterSetName = 'Proxy')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Specifies if you need to install, uninstall, upgrade or import.',ParameterSetName = 'Manifest')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Specifies if you need to install, uninstall, upgrade or import.',ParameterSetName = 'ID')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Specifies if you need to install, uninstall, upgrade or import.',ParameterSetName = 'Name')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Specifies if you need to install, uninstall, upgrade or import.',ParameterSetName = 'Moniker')]
+	[ValidateSet('Install', 'Uninstall', 'upgrade', 'import')]
+	[String]$Action,
+	
+	[Parameter( Mandatory = $false, HelpMessage = 'Must be followed by the path to the manifest (YAML) file. You can use the manifest to run the install experience from a local YAML file.',ParameterSetName = 'AdminMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Must be followed by the path to the manifest (YAML) file. You can use the manifest to run the install experience from a local YAML file.',ParameterSetName = 'UserMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Must be followed by the path to the manifest (YAML) file. You can use the manifest to run the install experience from a local YAML file.',ParameterSetName = 'Action')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Must be followed by the path to the manifest (YAML) file. You can use the manifest to run the install experience from a local YAML file.',ParameterSetName = 'Interactive')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Must be followed by the path to the manifest (YAML) file. You can use the manifest to run the install experience from a local YAML file.',ParameterSetName = 'Silent')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Must be followed by the path to the manifest (YAML) file. You can use the manifest to run the install experience from a local YAML file.',ParameterSetName = 'Override')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Must be followed by the path to the manifest (YAML) file. You can use the manifest to run the install experience from a local YAML file.',ParameterSetName = 'Proxy')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Must be followed by the path to the manifest (YAML) file. You can use the manifest to run the install experience from a local YAML file.',ParameterSetName = 'Manifest')]
+	[String]$wingetmanifest,
+	
+	[Parameter( Mandatory = $false, HelpMessage = 'Limits the install to the ID of the application.',ParameterSetName = 'AdminMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Limits the install to the ID of the application.',ParameterSetName = 'UserMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Limits the install to the ID of the application.',ParameterSetName = 'Action')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Limits the install to the ID of the application.',ParameterSetName = 'Interactive')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Limits the install to the ID of the application.',ParameterSetName = 'Silent')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Limits the install to the ID of the application.',ParameterSetName = 'Override')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Limits the install to the ID of the application.',ParameterSetName = 'Proxy')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Limits the install to the ID of the application.',ParameterSetName = 'ID')]
+	[String]$id,
+	
+	[Parameter( Mandatory = $false, HelpMessage = 'Limits the search to the name of the application.',ParameterSetName = 'AdminMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Limits the search to the name of the application.',ParameterSetName = 'UserMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Limits the search to the name of the application.',ParameterSetName = 'Action')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Limits the search to the name of the application.',ParameterSetName = 'Interactive')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Limits the search to the name of the application.',ParameterSetName = 'Silent')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Limits the search to the name of the application.',ParameterSetName = 'Override')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Limits the search to the name of the application.',ParameterSetName = 'Proxy')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Limits the search to the name of the application.',ParameterSetName = 'Name')]
+	[String]$name,
+	
+	[Parameter( Mandatory = $false, HelpMessage = 'Limits the search to the moniker listed for the application.',ParameterSetName = 'AdminMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Limits the search to the moniker listed for the application.',ParameterSetName = 'UserMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Limits the search to the moniker listed for the application.',ParameterSetName = 'Action')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Limits the search to the moniker listed for the application.',ParameterSetName = 'Interactive')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Limits the search to the moniker listed for the application.',ParameterSetName = 'Silent')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Limits the search to the moniker listed for the application.',ParameterSetName = 'Override')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Limits the search to the moniker listed for the application.',ParameterSetName = 'Proxy')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Limits the search to the moniker listed for the application.',ParameterSetName = 'Moniker')]
+	[String]$moniker,
+	
+	[Parameter( Mandatory = $false, HelpMessage = 'Enables you to specify an exact version to install. If not specified, latest will install the highest versioned application.',ParameterSetName = 'AdminMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Enables you to specify an exact version to install. If not specified, latest will install the highest versioned application.',ParameterSetName = 'UserMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Enables you to specify an exact version to install. If not specified, latest will install the highest versioned application.',ParameterSetName = 'Action')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Enables you to specify an exact version to install. If not specified, latest will install the highest versioned application.',ParameterSetName = 'Interactive')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Enables you to specify an exact version to install. If not specified, latest will install the highest versioned application.',ParameterSetName = 'Silent')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Enables you to specify an exact version to install. If not specified, latest will install the highest versioned application.',ParameterSetName = 'Override')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Enables you to specify an exact version to install. If not specified, latest will install the highest versioned application.',ParameterSetName = 'Proxy')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Enables you to specify an exact version to install. If not specified, latest will install the highest versioned application.',ParameterSetName = 'Manifest')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Enables you to specify an exact version to install. If not specified, latest will install the highest versioned application.',ParameterSetName = 'ID')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Enables you to specify an exact version to install. If not specified, latest will install the highest versioned application.',ParameterSetName = 'Name')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Enables you to specify an exact version to install. If not specified, latest will install the highest versioned application.',ParameterSetName = 'Moniker')]
+	[String]$version,
+	
+	[Parameter( Mandatory = $false, HelpMessage = 'Restricts the search to the source name provided. Must be followed by the source name.',ParameterSetName = 'AdminMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Restricts the search to the source name provided. Must be followed by the source name.',ParameterSetName = 'UserMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Restricts the search to the source name provided. Must be followed by the source name.',ParameterSetName = 'Action')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Restricts the search to the source name provided. Must be followed by the source name.',ParameterSetName = 'Interactive')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Restricts the search to the source name provided. Must be followed by the source name.',ParameterSetName = 'Silent')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Restricts the search to the source name provided. Must be followed by the source name.',ParameterSetName = 'Override')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Restricts the search to the source name provided. Must be followed by the source name.',ParameterSetName = 'Proxy')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Restricts the search to the source name provided. Must be followed by the source name.',ParameterSetName = 'Manifest')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Restricts the search to the source name provided. Must be followed by the source name.',ParameterSetName = 'ID')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Restricts the search to the source name provided. Must be followed by the source name.',ParameterSetName = 'Name')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Restricts the search to the source name provided. Must be followed by the source name.',ParameterSetName = 'Moniker')]
+	[String]$source,
+	
+	[Parameter( Mandatory = $false, HelpMessage = 'Allows you to specify if the installer should target user or machine scope. See known issues relating to package installation scope.',ParameterSetName = 'AdminMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Allows you to specify if the installer should target user or machine scope. See known issues relating to package installation scope.',ParameterSetName = 'UserMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Allows you to specify if the installer should target user or machine scope. See known issues relating to package installation scope.',ParameterSetName = 'Action')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Allows you to specify if the installer should target user or machine scope. See known issues relating to package installation scope.',ParameterSetName = 'Interactive')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Allows you to specify if the installer should target user or machine scope. See known issues relating to package installation scope.',ParameterSetName = 'Silent')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Allows you to specify if the installer should target user or machine scope. See known issues relating to package installation scope.',ParameterSetName = 'Override')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Allows you to specify if the installer should target user or machine scope. See known issues relating to package installation scope.',ParameterSetName = 'Proxy')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Allows you to specify if the installer should target user or machine scope. See known issues relating to package installation scope.',ParameterSetName = 'Manifest')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Allows you to specify if the installer should target user or machine scope. See known issues relating to package installation scope.',ParameterSetName = 'ID')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Allows you to specify if the installer should target user or machine scope. See known issues relating to package installation scope.',ParameterSetName = 'Name')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Allows you to specify if the installer should target user or machine scope. See known issues relating to package installation scope.',ParameterSetName = 'Moniker')]
+	[ValidateSet('Any', 'User', 'Machine', 'UserOrUnknown', 'SystemOrUnknown')]
+	[String]$scope,
+	
+	[Parameter( Mandatory = $false, HelpMessage = 'Select the architecture to install.',ParameterSetName = 'AdminMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Select the architecture to install.',ParameterSetName = 'UserMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Select the architecture to install.',ParameterSetName = 'Action')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Select the architecture to install.',ParameterSetName = 'Interactive')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Select the architecture to install.',ParameterSetName = 'Silent')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Select the architecture to install.',ParameterSetName = 'Override')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Select the architecture to install.',ParameterSetName = 'Proxy')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Select the architecture to install.',ParameterSetName = 'Manifest')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Select the architecture to install.',ParameterSetName = 'ID')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Select the architecture to install.',ParameterSetName = 'Name')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Select the architecture to install.',ParameterSetName = 'Moniker')]
+	[ValidateSet('Default', 'X86', 'Arm', 'X64', 'Arm64')]
+	[String]$architecture,
+	
+	[Parameter( Mandatory = $false, HelpMessage = 'Select the installer type to install. See supported installer types for WinGet client.',ParameterSetName = 'AdminMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Select the installer type to install. See supported installer types for WinGet client.',ParameterSetName = 'UserMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Select the installer type to install. See supported installer types for WinGet client.',ParameterSetName = 'Action')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Select the installer type to install. See supported installer types for WinGet client.',ParameterSetName = 'Interactive')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Select the installer type to install. See supported installer types for WinGet client.',ParameterSetName = 'Silent')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Select the installer type to install. See supported installer types for WinGet client.',ParameterSetName = 'Override')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Select the installer type to install. See supported installer types for WinGet client.',ParameterSetName = 'Proxy')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Select the installer type to install. See supported installer types for WinGet client.',ParameterSetName = 'Manifest')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Select the installer type to install. See supported installer types for WinGet client.',ParameterSetName = 'ID')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Select the installer type to install. See supported installer types for WinGet client.',ParameterSetName = 'Name')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Select the installer type to install. See supported installer types for WinGet client.',ParameterSetName = 'Moniker')]
+	[ValidateSet('Default', 'Inno', 'Wix', 'Msi', 'Nullsoft', 'Zip', 'Msix', 'Exe', 'Burn', 'MSStore', 'Portable')]
+	[String]$installertype,
+	
+	[Parameter( Mandatory = $false, HelpMessage = 'Uses the exact string in the query, including checking for case-sensitivity. It will not use the default behavior of a substring.',ParameterSetName = 'AdminMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Uses the exact string in the query, including checking for case-sensitivity. It will not use the default behavior of a substring.',ParameterSetName = 'UserMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Uses the exact string in the query, including checking for case-sensitivity. It will not use the default behavior of a substring.',ParameterSetName = 'Action')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Uses the exact string in the query, including checking for case-sensitivity. It will not use the default behavior of a substring.',ParameterSetName = 'Interactive')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Uses the exact string in the query, including checking for case-sensitivity. It will not use the default behavior of a substring.',ParameterSetName = 'Silent')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Uses the exact string in the query, including checking for case-sensitivity. It will not use the default behavior of a substring.',ParameterSetName = 'Override')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Uses the exact string in the query, including checking for case-sensitivity. It will not use the default behavior of a substring.',ParameterSetName = 'Proxy')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Uses the exact string in the query, including checking for case-sensitivity. It will not use the default behavior of a substring.',ParameterSetName = 'Manifest')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Uses the exact string in the query, including checking for case-sensitivity. It will not use the default behavior of a substring.',ParameterSetName = 'ID')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Uses the exact string in the query, including checking for case-sensitivity. It will not use the default behavior of a substring.',ParameterSetName = 'Name')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Uses the exact string in the query, including checking for case-sensitivity. It will not use the default behavior of a substring.',ParameterSetName = 'Moniker')]
+	[Switch]$exact,
+	
+	[Parameter( Mandatory = $false, HelpMessage = 'Runs the installer in interactive mode. The default experience shows installer progress.',ParameterSetName = 'AdminMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Runs the installer in interactive mode. The default experience shows installer progress.',ParameterSetName = 'UserMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Runs the installer in interactive mode. The default experience shows installer progress.',ParameterSetName = 'Action')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Runs the installer in interactive mode. The default experience shows installer progress.',ParameterSetName = 'Interactive')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Runs the installer in interactive mode. The default experience shows installer progress.',ParameterSetName = 'Proxy')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Runs the installer in interactive mode. The default experience shows installer progress.',ParameterSetName = 'Manifest')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Runs the installer in interactive mode. The default experience shows installer progress.',ParameterSetName = 'ID')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Runs the installer in interactive mode. The default experience shows installer progress.',ParameterSetName = 'Name')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Runs the installer in interactive mode. The default experience shows installer progress.',ParameterSetName = 'Moniker')]
+	[Switch]$interactive,
+	
+	[Parameter( Mandatory = $false, HelpMessage = 'Runs the installer in silent mode. This suppresses all UI. The default experience shows installer progress.',ParameterSetName = 'AdminMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Runs the installer in silent mode. This suppresses all UI. The default experience shows installer progress.',ParameterSetName = 'UserMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Runs the installer in silent mode. This suppresses all UI. The default experience shows installer progress.',ParameterSetName = 'Action')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Runs the installer in silent mode. This suppresses all UI. The default experience shows installer progress.',ParameterSetName = 'Silent')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Runs the installer in silent mode. This suppresses all UI. The default experience shows installer progress.',ParameterSetName = 'Proxy')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Runs the installer in silent mode. This suppresses all UI. The default experience shows installer progress.',ParameterSetName = 'Manifest')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Runs the installer in silent mode. This suppresses all UI. The default experience shows installer progress.',ParameterSetName = 'ID')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Runs the installer in silent mode. This suppresses all UI. The default experience shows installer progress.',ParameterSetName = 'Name')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Runs the installer in silent mode. This suppresses all UI. The default experience shows installer progress.',ParameterSetName = 'Moniker')]
+	[Switch]$silent,
+	
+	[Parameter( Mandatory = $false, HelpMessage = 'Specifies which locale to use (BCP47 format).',ParameterSetName = 'AdminMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Specifies which locale to use (BCP47 format).',ParameterSetName = 'UserMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Specifies which locale to use (BCP47 format).',ParameterSetName = 'Action')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Specifies which locale to use (BCP47 format).',ParameterSetName = 'Interactive')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Specifies which locale to use (BCP47 format).',ParameterSetName = 'Silent')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Specifies which locale to use (BCP47 format).',ParameterSetName = 'Override')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Specifies which locale to use (BCP47 format).',ParameterSetName = 'Proxy')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Specifies which locale to use (BCP47 format).',ParameterSetName = 'Manifest')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Specifies which locale to use (BCP47 format).',ParameterSetName = 'ID')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Specifies which locale to use (BCP47 format).',ParameterSetName = 'Name')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Specifies which locale to use (BCP47 format).',ParameterSetName = 'Moniker')]
+	[String]$locale,
+	
+	[Parameter( Mandatory = $false, HelpMessage = 'Directs the logging to a log file. You must provide a path to a file that you have the write rights to.',ParameterSetName = 'AdminMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Directs the logging to a log file. You must provide a path to a file that you have the write rights to.',ParameterSetName = 'UserMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Directs the logging to a log file. You must provide a path to a file that you have the write rights to.',ParameterSetName = 'Action')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Directs the logging to a log file. You must provide a path to a file that you have the write rights to.',ParameterSetName = 'Interactive')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Directs the logging to a log file. You must provide a path to a file that you have the write rights to.',ParameterSetName = 'Silent')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Directs the logging to a log file. You must provide a path to a file that you have the write rights to.',ParameterSetName = 'Override')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Directs the logging to a log file. You must provide a path to a file that you have the write rights to.',ParameterSetName = 'Proxy')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Directs the logging to a log file. You must provide a path to a file that you have the write rights to.',ParameterSetName = 'Manifest')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Directs the logging to a log file. You must provide a path to a file that you have the write rights to.',ParameterSetName = 'ID')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Directs the logging to a log file. You must provide a path to a file that you have the write rights to.',ParameterSetName = 'Name')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Directs the logging to a log file. You must provide a path to a file that you have the write rights to.',ParameterSetName = 'Moniker')]
+	[String]$log,
+	
+	[Parameter( Mandatory = $false, HelpMessage = 'Arguments to be passed on to the installer in addition to the defaults.',ParameterSetName = 'AdminMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Arguments to be passed on to the installer in addition to the defaults.',ParameterSetName = 'UserMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Arguments to be passed on to the installer in addition to the defaults.',ParameterSetName = 'Action')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Arguments to be passed on to the installer in addition to the defaults.',ParameterSetName = 'Interactive')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Arguments to be passed on to the installer in addition to the defaults.',ParameterSetName = 'Silent')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Arguments to be passed on to the installer in addition to the defaults.',ParameterSetName = 'Override')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Arguments to be passed on to the installer in addition to the defaults.',ParameterSetName = 'Proxy')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Arguments to be passed on to the installer in addition to the defaults.',ParameterSetName = 'Manifest')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Arguments to be passed on to the installer in addition to the defaults.',ParameterSetName = 'ID')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Arguments to be passed on to the installer in addition to the defaults.',ParameterSetName = 'Name')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Arguments to be passed on to the installer in addition to the defaults.',ParameterSetName = 'Moniker')]
+	[String]$custom,
+	
+	[Parameter( Mandatory = $false, HelpMessage = 'A string that will be passed directly to the installer.',ParameterSetName = 'AdminMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'A string that will be passed directly to the installer.',ParameterSetName = 'UserMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'A string that will be passed directly to the installer.',ParameterSetName = 'Action')]
+	[Parameter( Mandatory = $false, HelpMessage = 'A string that will be passed directly to the installer.',ParameterSetName = 'Override')]
+	[Parameter( Mandatory = $false, HelpMessage = 'A string that will be passed directly to the installer.',ParameterSetName = 'Proxy')]
+	[Parameter( Mandatory = $false, HelpMessage = 'A string that will be passed directly to the installer.',ParameterSetName = 'Manifest')]
+	[Parameter( Mandatory = $false, HelpMessage = 'A string that will be passed directly to the installer.',ParameterSetName = 'ID')]
+	[Parameter( Mandatory = $false, HelpMessage = 'A string that will be passed directly to the installer.',ParameterSetName = 'Name')]
+	[Parameter( Mandatory = $false, HelpMessage = 'A string that will be passed directly to the installer.',ParameterSetName = 'Moniker')]
+	[String]$override,
+	
+	[Parameter( Mandatory = $false, HelpMessage = 'Location to install to (if supported).',ParameterSetName = 'AdminMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Location to install to (if supported).',ParameterSetName = 'UserMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Location to install to (if supported).',ParameterSetName = 'Action')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Location to install to (if supported).',ParameterSetName = 'Interactive')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Location to install to (if supported).',ParameterSetName = 'Silent')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Location to install to (if supported).',ParameterSetName = 'Override')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Location to install to (if supported).',ParameterSetName = 'Proxy')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Location to install to (if supported).',ParameterSetName = 'Manifest')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Location to install to (if supported).',ParameterSetName = 'ID')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Location to install to (if supported).',ParameterSetName = 'Name')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Location to install to (if supported).',ParameterSetName = 'Moniker')]
+	[String]$location,
+	
+	[Parameter( Mandatory = $false, HelpMessage = 'Ignore the installer hash check failure. Not recommended.',ParameterSetName = 'AdminMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Ignore the installer hash check failure. Not recommended.',ParameterSetName = 'UserMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Ignore the installer hash check failure. Not recommended.',ParameterSetName = 'Action')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Ignore the installer hash check failure. Not recommended.',ParameterSetName = 'Interactive')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Ignore the installer hash check failure. Not recommended.',ParameterSetName = 'Silent')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Ignore the installer hash check failure. Not recommended.',ParameterSetName = 'Override')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Ignore the installer hash check failure. Not recommended.',ParameterSetName = 'Proxy')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Ignore the installer hash check failure. Not recommended.',ParameterSetName = 'Manifest')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Ignore the installer hash check failure. Not recommended.',ParameterSetName = 'ID')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Ignore the installer hash check failure. Not recommended.',ParameterSetName = 'Name')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Ignore the installer hash check failure. Not recommended.',ParameterSetName = 'Moniker')]
+	[Switch]$ignoresecurityhash,
+	
+	[Parameter( Mandatory = $false, HelpMessage = 'Allows a reboot if applicable.',ParameterSetName = 'AdminMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Allows a reboot if applicable.',ParameterSetName = 'UserMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Allows a reboot if applicable.',ParameterSetName = 'Action')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Allows a reboot if applicable.',ParameterSetName = 'Interactive')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Allows a reboot if applicable.',ParameterSetName = 'Silent')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Allows a reboot if applicable.',ParameterSetName = 'Override')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Allows a reboot if applicable.',ParameterSetName = 'Proxy')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Allows a reboot if applicable.',ParameterSetName = 'Manifest')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Allows a reboot if applicable.',ParameterSetName = 'ID')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Allows a reboot if applicable.',ParameterSetName = 'Name')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Allows a reboot if applicable.',ParameterSetName = 'Moniker')]
+	[Switch]$allowreboot,
+	
+	[Parameter( Mandatory = $false, HelpMessage = 'Skips processing package dependencies and Windows features.',ParameterSetName = 'AdminMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Skips processing package dependencies and Windows features.',ParameterSetName = 'UserMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Skips processing package dependencies and Windows features.',ParameterSetName = 'Action')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Skips processing package dependencies and Windows features.',ParameterSetName = 'Interactive')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Skips processing package dependencies and Windows features.',ParameterSetName = 'Silent')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Skips processing package dependencies and Windows features.',ParameterSetName = 'Override')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Skips processing package dependencies and Windows features.',ParameterSetName = 'Proxy')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Skips processing package dependencies and Windows features.',ParameterSetName = 'Manifest')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Skips processing package dependencies and Windows features.',ParameterSetName = 'ID')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Skips processing package dependencies and Windows features.',ParameterSetName = 'Name')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Skips processing package dependencies and Windows features.',ParameterSetName = 'Moniker')]
+	[Switch]$skipdependencies,
+	
+	[Parameter( Mandatory = $false, HelpMessage = 'Ignore the malware scan performed as part of installing an archive type package from local manifest.',ParameterSetName = 'AdminMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Ignore the malware scan performed as part of installing an archive type package from local manifest.',ParameterSetName = 'UserMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Ignore the malware scan performed as part of installing an archive type package from local manifest.',ParameterSetName = 'Action')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Ignore the malware scan performed as part of installing an archive type package from local manifest.',ParameterSetName = 'Interactive')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Ignore the malware scan performed as part of installing an archive type package from local manifest.',ParameterSetName = 'Silent')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Ignore the malware scan performed as part of installing an archive type package from local manifest.',ParameterSetName = 'Override')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Ignore the malware scan performed as part of installing an archive type package from local manifest.',ParameterSetName = 'Proxy')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Ignore the malware scan performed as part of installing an archive type package from local manifest.',ParameterSetName = 'Manifest')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Ignore the malware scan performed as part of installing an archive type package from local manifest.',ParameterSetName = 'ID')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Ignore the malware scan performed as part of installing an archive type package from local manifest.',ParameterSetName = 'Name')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Ignore the malware scan performed as part of installing an archive type package from local manifest.',ParameterSetName = 'Moniker')]
+	[Switch]$ignorelocalarchivemalwarescan,
+	
+	[Parameter( Mandatory = $false, HelpMessage = 'Find package dependencies using the specified source.',ParameterSetName = 'AdminMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Find package dependencies using the specified source.',ParameterSetName = 'UserMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Find package dependencies using the specified source.',ParameterSetName = 'Action')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Find package dependencies using the specified source.',ParameterSetName = 'Interactive')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Find package dependencies using the specified source.',ParameterSetName = 'Silent')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Find package dependencies using the specified source.',ParameterSetName = 'Override')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Find package dependencies using the specified source.',ParameterSetName = 'Proxy')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Find package dependencies using the specified source.',ParameterSetName = 'Manifest')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Find package dependencies using the specified source.',ParameterSetName = 'ID')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Find package dependencies using the specified source.',ParameterSetName = 'Name')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Find package dependencies using the specified source.',ParameterSetName = 'Moniker')]
+	[String]$dependencysource,
+	
+	[Parameter( Mandatory = $false, HelpMessage = 'Used to accept the license agreement, and avoid the prompt.',ParameterSetName = 'AdminMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Used to accept the license agreement, and avoid the prompt.',ParameterSetName = 'UserMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Used to accept the license agreement, and avoid the prompt.',ParameterSetName = 'Action')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Used to accept the license agreement, and avoid the prompt.',ParameterSetName = 'Interactive')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Used to accept the license agreement, and avoid the prompt.',ParameterSetName = 'Silent')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Used to accept the license agreement, and avoid the prompt.',ParameterSetName = 'Override')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Used to accept the license agreement, and avoid the prompt.',ParameterSetName = 'Proxy')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Used to accept the license agreement, and avoid the prompt.',ParameterSetName = 'Manifest')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Used to accept the license agreement, and avoid the prompt.',ParameterSetName = 'ID')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Used to accept the license agreement, and avoid the prompt.',ParameterSetName = 'Name')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Used to accept the license agreement, and avoid the prompt.',ParameterSetName = 'Moniker')]
+	[Switch]$acceptpackageagreements,
+	
+	[Parameter( Mandatory = $false, HelpMessage = 'Skips upgrade if an installed version already exists.',ParameterSetName = 'AdminMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Skips upgrade if an installed version already exists.',ParameterSetName = 'UserMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Skips upgrade if an installed version already exists.',ParameterSetName = 'Action')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Skips upgrade if an installed version already exists.',ParameterSetName = 'Interactive')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Skips upgrade if an installed version already exists.',ParameterSetName = 'Silent')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Skips upgrade if an installed version already exists.',ParameterSetName = 'Override')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Skips upgrade if an installed version already exists.',ParameterSetName = 'Proxy')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Skips upgrade if an installed version already exists.',ParameterSetName = 'Manifest')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Skips upgrade if an installed version already exists.',ParameterSetName = 'ID')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Skips upgrade if an installed version already exists.',ParameterSetName = 'Name')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Skips upgrade if an installed version already exists.',ParameterSetName = 'Moniker')]
+	[Switch]$noupgrade,
+	
+	[Parameter( Mandatory = $false, HelpMessage = 'Optional Windows-Package-Manager REST source HTTP header.',ParameterSetName = 'AdminMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Optional Windows-Package-Manager REST source HTTP header.',ParameterSetName = 'UserMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Optional Windows-Package-Manager REST source HTTP header.',ParameterSetName = 'Action')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Optional Windows-Package-Manager REST source HTTP header.',ParameterSetName = 'Interactive')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Optional Windows-Package-Manager REST source HTTP header.',ParameterSetName = 'Silent')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Optional Windows-Package-Manager REST source HTTP header.',ParameterSetName = 'Override')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Optional Windows-Package-Manager REST source HTTP header.',ParameterSetName = 'Proxy')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Optional Windows-Package-Manager REST source HTTP header.',ParameterSetName = 'Manifest')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Optional Windows-Package-Manager REST source HTTP header.',ParameterSetName = 'ID')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Optional Windows-Package-Manager REST source HTTP header.',ParameterSetName = 'Name')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Optional Windows-Package-Manager REST source HTTP header.',ParameterSetName = 'Moniker')]
+	[String]$header,
+	
+	[Parameter( Mandatory = $false, HelpMessage = 'Specify authentication window preference (silent, silentPreferred or interactive).',ParameterSetName = 'AdminMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Specify authentication window preference (silent, silentPreferred or interactive).',ParameterSetName = 'UserMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Specify authentication window preference (silent, silentPreferred or interactive).',ParameterSetName = 'Action')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Specify authentication window preference (silent, silentPreferred or interactive).',ParameterSetName = 'Interactive')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Specify authentication window preference (silent, silentPreferred or interactive).',ParameterSetName = 'Silent')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Specify authentication window preference (silent, silentPreferred or interactive).',ParameterSetName = 'Override')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Specify authentication window preference (silent, silentPreferred or interactive).',ParameterSetName = 'Proxy')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Specify authentication window preference (silent, silentPreferred or interactive).',ParameterSetName = 'Manifest')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Specify authentication window preference (silent, silentPreferred or interactive).',ParameterSetName = 'ID')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Specify authentication window preference (silent, silentPreferred or interactive).',ParameterSetName = 'Name')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Specify authentication window preference (silent, silentPreferred or interactive).',ParameterSetName = 'Moniker')]
+	[ValidateSet('silent', 'silentPreferred', 'interactive')]
+	[String]$authenticationmode,
+	
+	[Parameter( Mandatory = $false, HelpMessage = 'Specify the account to be used for authentication.',ParameterSetName = 'AdminMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Specify the account to be used for authentication.',ParameterSetName = 'UserMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Specify the account to be used for authentication.',ParameterSetName = 'Action')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Specify the account to be used for authentication.',ParameterSetName = 'Interactive')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Specify the account to be used for authentication.',ParameterSetName = 'Silent')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Specify the account to be used for authentication.',ParameterSetName = 'Override')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Specify the account to be used for authentication.',ParameterSetName = 'Proxy')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Specify the account to be used for authentication.',ParameterSetName = 'Manifest')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Specify the account to be used for authentication.',ParameterSetName = 'ID')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Specify the account to be used for authentication.',ParameterSetName = 'Name')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Specify the account to be used for authentication.',ParameterSetName = 'Moniker')]
+	[String]$authenticationaccount,
+	
+	[Parameter( Mandatory = $false, HelpMessage = 'Used to accept the source license agreement, and avoid the prompt.',ParameterSetName = 'AdminMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Used to accept the source license agreement, and avoid the prompt.',ParameterSetName = 'UserMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Used to accept the source license agreement, and avoid the prompt.',ParameterSetName = 'Action')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Used to accept the source license agreement, and avoid the prompt.',ParameterSetName = 'Interactive')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Used to accept the source license agreement, and avoid the prompt.',ParameterSetName = 'Silent')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Used to accept the source license agreement, and avoid the prompt.',ParameterSetName = 'Override')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Used to accept the source license agreement, and avoid the prompt.',ParameterSetName = 'Proxy')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Used to accept the source license agreement, and avoid the prompt.',ParameterSetName = 'Manifest')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Used to accept the source license agreement, and avoid the prompt.',ParameterSetName = 'ID')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Used to accept the source license agreement, and avoid the prompt.',ParameterSetName = 'Name')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Used to accept the source license agreement, and avoid the prompt.',ParameterSetName = 'Moniker')]
+	[Switch]$acceptsourceagreements,
+	
+	[Parameter( Mandatory = $false, HelpMessage = 'The value to rename the executable file (portable).',ParameterSetName = 'AdminMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'The value to rename the executable file (portable).',ParameterSetName = 'UserMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'The value to rename the executable file (portable).',ParameterSetName = 'Action')]
+	[Parameter( Mandatory = $false, HelpMessage = 'The value to rename the executable file (portable).',ParameterSetName = 'Interactive')]
+	[Parameter( Mandatory = $false, HelpMessage = 'The value to rename the executable file (portable).',ParameterSetName = 'Silent')]
+	[Parameter( Mandatory = $false, HelpMessage = 'The value to rename the executable file (portable).',ParameterSetName = 'Override')]
+	[Parameter( Mandatory = $false, HelpMessage = 'The value to rename the executable file (portable).',ParameterSetName = 'Proxy')]
+	[Parameter( Mandatory = $false, HelpMessage = 'The value to rename the executable file (portable).',ParameterSetName = 'Manifest')]
+	[Parameter( Mandatory = $false, HelpMessage = 'The value to rename the executable file (portable).',ParameterSetName = 'ID')]
+	[Parameter( Mandatory = $false, HelpMessage = 'The value to rename the executable file (portable).',ParameterSetName = 'Name')]
+	[Parameter( Mandatory = $false, HelpMessage = 'The value to rename the executable file (portable).',ParameterSetName = 'Moniker')]
+	[String]$rename,
+	
+	[Parameter( Mandatory = $false, HelpMessage = 'Uninstall the previous version of the package during upgrade.',ParameterSetName = 'AdminMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Uninstall the previous version of the package during upgrade.',ParameterSetName = 'UserMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Uninstall the previous version of the package during upgrade.',ParameterSetName = 'Action')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Uninstall the previous version of the package during upgrade.',ParameterSetName = 'Interactive')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Uninstall the previous version of the package during upgrade.',ParameterSetName = 'Silent')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Uninstall the previous version of the package during upgrade.',ParameterSetName = 'Override')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Uninstall the previous version of the package during upgrade.',ParameterSetName = 'Proxy')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Uninstall the previous version of the package during upgrade.',ParameterSetName = 'Manifest')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Uninstall the previous version of the package during upgrade.',ParameterSetName = 'ID')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Uninstall the previous version of the package during upgrade.',ParameterSetName = 'Name')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Uninstall the previous version of the package during upgrade.',ParameterSetName = 'Moniker')]
+	[Switch]$uninstallprevious,
+	
+	[Parameter( Mandatory = $false, HelpMessage = 'Direct run the command and continue with non security related issues.',ParameterSetName = 'AdminMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Direct run the command and continue with non security related issues.',ParameterSetName = 'UserMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Direct run the command and continue with non security related issues.',ParameterSetName = 'Action')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Direct run the command and continue with non security related issues.',ParameterSetName = 'Interactive')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Direct run the command and continue with non security related issues.',ParameterSetName = 'Silent')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Direct run the command and continue with non security related issues.',ParameterSetName = 'Override')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Direct run the command and continue with non security related issues.',ParameterSetName = 'Proxy')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Direct run the command and continue with non security related issues.',ParameterSetName = 'Manifest')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Direct run the command and continue with non security related issues.',ParameterSetName = 'ID')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Direct run the command and continue with non security related issues.',ParameterSetName = 'Name')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Direct run the command and continue with non security related issues.',ParameterSetName = 'Moniker')]
+	[Switch]$force,
+	
+	[Parameter( Mandatory = $false, HelpMessage = 'Prompts the user to press any key before exiting.',ParameterSetName = 'AdminMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Prompts the user to press any key before exiting.',ParameterSetName = 'UserMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Prompts the user to press any key before exiting.',ParameterSetName = 'Action')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Prompts the user to press any key before exiting.',ParameterSetName = 'Interactive')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Prompts the user to press any key before exiting.',ParameterSetName = 'Silent')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Prompts the user to press any key before exiting.',ParameterSetName = 'Override')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Prompts the user to press any key before exiting.',ParameterSetName = 'Proxy')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Prompts the user to press any key before exiting.',ParameterSetName = 'Manifest')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Prompts the user to press any key before exiting.',ParameterSetName = 'ID')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Prompts the user to press any key before exiting.',ParameterSetName = 'Name')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Prompts the user to press any key before exiting.',ParameterSetName = 'Moniker')]
+	[Switch]$wait,
+	
+	[Parameter( Mandatory = $false, HelpMessage = 'Used to override the logging setting and create a verbose log.',ParameterSetName = 'AdminMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Used to override the logging setting and create a verbose log.',ParameterSetName = 'UserMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Used to override the logging setting and create a verbose log.',ParameterSetName = 'Action')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Used to override the logging setting and create a verbose log.',ParameterSetName = 'Interactive')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Used to override the logging setting and create a verbose log.',ParameterSetName = 'Silent')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Used to override the logging setting and create a verbose log.',ParameterSetName = 'Override')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Used to override the logging setting and create a verbose log.',ParameterSetName = 'Proxy')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Used to override the logging setting and create a verbose log.',ParameterSetName = 'Manifest')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Used to override the logging setting and create a verbose log.',ParameterSetName = 'ID')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Used to override the logging setting and create a verbose log.',ParameterSetName = 'Name')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Used to override the logging setting and create a verbose log.',ParameterSetName = 'Moniker')]
+	[Switch]$testverbose,
+	
+	[Parameter( Mandatory = $false, HelpMessage = 'Suppresses warning outputs.',ParameterSetName = 'AdminMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Suppresses warning outputs.',ParameterSetName = 'UserMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Suppresses warning outputs.',ParameterSetName = 'Action')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Suppresses warning outputs.',ParameterSetName = 'Interactive')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Suppresses warning outputs.',ParameterSetName = 'Silent')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Suppresses warning outputs.',ParameterSetName = 'Override')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Suppresses warning outputs.',ParameterSetName = 'Proxy')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Suppresses warning outputs.',ParameterSetName = 'Manifest')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Suppresses warning outputs.',ParameterSetName = 'ID')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Suppresses warning outputs.',ParameterSetName = 'Name')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Suppresses warning outputs.',ParameterSetName = 'Moniker')]
+	[Switch]$ignorewarnings,
+	
+	[Parameter( Mandatory = $false, HelpMessage = 'Disable interactive prompts.',ParameterSetName = 'AdminMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Disable interactive prompts.',ParameterSetName = 'UserMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Disable interactive prompts.',ParameterSetName = 'Action')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Disable interactive prompts.',ParameterSetName = 'Interactive')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Disable interactive prompts.',ParameterSetName = 'Silent')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Disable interactive prompts.',ParameterSetName = 'Override')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Disable interactive prompts.',ParameterSetName = 'Proxy')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Disable interactive prompts.',ParameterSetName = 'Manifest')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Disable interactive prompts.',ParameterSetName = 'ID')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Disable interactive prompts.',ParameterSetName = 'Name')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Disable interactive prompts.',ParameterSetName = 'Moniker')]
+	[Switch]$disableinteractivity,
+	
+	[Parameter( Mandatory = $false, HelpMessage = 'Set a proxy to use for this execution.',ParameterSetName = 'AdminMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Set a proxy to use for this execution.',ParameterSetName = 'UserMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Set a proxy to use for this execution.',ParameterSetName = 'Action')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Set a proxy to use for this execution.',ParameterSetName = 'Interactive')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Set a proxy to use for this execution.',ParameterSetName = 'Silent')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Set a proxy to use for this execution.',ParameterSetName = 'Override')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Set a proxy to use for this execution.',ParameterSetName = 'Proxy')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Set a proxy to use for this execution.',ParameterSetName = 'Manifest')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Set a proxy to use for this execution.',ParameterSetName = 'ID')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Set a proxy to use for this execution.',ParameterSetName = 'Name')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Set a proxy to use for this execution.',ParameterSetName = 'Moniker')]
+	[String]$proxy,
+	
+	[Parameter( Mandatory = $false, HelpMessage = 'Disable the use of proxy for this execution.',ParameterSetName = 'AdminMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Disable the use of proxy for this execution.',ParameterSetName = 'UserMode')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Disable the use of proxy for this execution.',ParameterSetName = 'Action')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Disable the use of proxy for this execution.',ParameterSetName = 'Interactive')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Disable the use of proxy for this execution.',ParameterSetName = 'Silent')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Disable the use of proxy for this execution.',ParameterSetName = 'Override')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Disable the use of proxy for this execution.',ParameterSetName = 'Manifest')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Disable the use of proxy for this execution.',ParameterSetName = 'ID')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Disable the use of proxy for this execution.',ParameterSetName = 'Name')]
+	[Parameter( Mandatory = $false, HelpMessage = 'Disable the use of proxy for this execution.',ParameterSetName = 'Moniker')]
+	[Switch]$noproxy
+	
 )
 
 Try {
@@ -114,14 +590,14 @@ Try {
     ##* VARIABLE DECLARATION
     ##*===============================================
     ## Variables: Application
-    [String]$appVendor = "$WingetID"
+    [String]$appVendor = "$id"
     [String]$appName = 'WingetFW'
-    [String]$appVersion = '3.0.2'
+    [String]$appVersion = '4.0.0'
     [String]$appArch = ''
     [String]$appLang = 'EN'
     [String]$appRevision = '01'
     [String]$appScriptVersion = '1.0.0'
-    [String]$appScriptDate = '01/10/2024'
+    [String]$appScriptDate = '21/05/2025'
     [String]$appScriptAuthor = 'Kris Spangenberg'
     ##*===============================================
     ## Variables: Install Titles (Only set here to override defaults set by the toolkit)
@@ -175,7 +651,197 @@ Try {
             Exit $mainExitCode
         }
     }
+	[String]$moduleAppDeployToolkitExtensions = "$scriptDirectory\AppDeployToolkit\AppDeployToolkitExtensions.ps1"
+	If ((Test-Path -LiteralPath $moduleAppDeployToolkitExtensions -PathType 'Leaf')) {
+		. $moduleAppDeployToolkitExtensions
+	}
 	Write-Log -Message "Mode $Mode" -Source 'Mode-Check' -LogType 'CMTrace'
+	$parWinGet = $null
+	$parWinGet = @{}
+	Switch ($scope) {
+		'Any' {
+			
+		}
+		'User' {
+			$parWinGet.Add("scope", "user")
+		}
+		'Machine' {
+			$parWinGet.Add("scope", "machine")
+		}
+		'UserOrUnknown' {
+			
+		}
+		'SystemOrUnknown' {
+			
+		}
+	}
+	
+	Switch ($architecture) {
+		'Default' {
+			
+		}
+		'X86' {
+			$parWinGet.Add("architecture", "x86")
+		}
+		'Arm' {
+			$parWinGet.Add("architecture", "arm")
+		}
+		'X64' {
+			$parWinGet.Add("architecture", "x64")
+		}
+		'Arm64' {
+			$parWinGet.Add("architecture", "arm64")
+		}
+	}
+	
+	Switch ($installertype) {
+		'Default' {
+			
+		}
+		'Inno' {
+			$parWinGet.Add("installertype", "inno")
+		}
+		'Wix' {
+			$parWinGet.Add("installertype", "wix")
+		}
+		'Msi' {
+			$parWinGet.Add("installertype", "msi")
+		}
+		'Nullsoft' {
+			$parWinGet.Add("installertype", "nullsoft")
+		}
+		'Zip' {
+			$parWinGet.Add("installertype", "zip")
+		}
+		'Msix' {
+			$parWinGet.Add("installertype", "msix")
+		}
+		'Exe' {
+			$parWinGet.Add("installertype", "exe")
+		}
+		'Burn' {
+			$parWinGet.Add("installertype", "burn")
+		}
+		'MSStore' {
+			$parWinGet.Add("installertype", "msstore")
+		}
+		'Portable' {
+			$parWinGet.Add("installertype", "portable")
+		}
+	}
+	
+	Switch ($authenticationmode) {
+		'silent' {
+			$parWinGet.Add("authenticationmode", "silent")
+		}
+		'silentPreferred' {
+			$parWinGet.Add("authenticationmode", "silentPreferred")
+		}
+		'interactive' {
+			$parWinGet.Add("authenticationmode", "interactive")
+		}
+	}
+	
+	If ($wingetmanifest) {
+		$parWinGet.Add("manifest", $wingetmanifest)
+	}
+	If ($id) {
+		$parWinGet.Add("id", $id)
+	}
+	If ($name) {
+		$parWinGet.Add("name", $name)
+	}
+	If ($moniker) {
+		$parWinGet.Add("moniker", $moniker)
+	}
+	If ($version) {
+		$parWinGet.Add("version", $version)
+	}
+	If ($source) {
+		$parWinGet.Add("source", $source)
+	}
+	If ($exact) {
+		$parWinGet.Add("exact", $true)
+	}
+	If ($interactive) {
+		$parWinGet.Add("interactive", $true)
+	}
+	If ($silent) {
+		$parWinGet.Add("silent", $true)
+	}
+	If ($locale) {
+		$parWinGet.Add("locale", $locale)
+	}
+	If ($log) {
+		$parWinGet.Add("log", $log)
+	}
+	If ($custom) {
+		$parWinGet.Add("custom", $custom)
+	}
+	If ($override) {
+		$parWinGet.Add("override", $override)
+	}
+	If ($location) {
+		$parWinGet.Add("location", $location)
+	}
+	If ($ignoresecurityhash) {
+		$parWinGet.Add("ignoresecurityhash", $true)
+	}
+	If ($allowreboot) {
+		$parWinGet.Add("allowreboot", $true)
+	}
+	If ($skipdependencies) {
+		$parWinGet.Add("skipdependencies", $true)
+	}
+	If ($ignorelocalarchivemalwarescan) {
+		$parWinGet.Add("ignorelocalarchivemalwarescan", $true)
+	}
+	If ($dependencysource) {
+		$parWinGet.Add("dependencysource", $true)
+	}
+	If ($acceptpackageagreements) {
+		$parWinGet.Add("acceptpackageagreements", $true)
+	}
+	If ($noupgrade) {
+		$parWinGet.Add("noupgrade", $true)
+	}
+	If ($header) {
+		$parWinGet.Add("header", $header)
+	}
+	If ($authenticationaccount) {
+		$parWinGet.Add("authenticationaccount", $authenticationaccount)
+	}
+	If ($acceptsourceagreements) {
+		$parWinGet.Add("acceptsourceagreements", $true)
+	}
+	If ($rename) {
+		$parWinGet.Add("rename", $rename)
+	}
+	If ($uninstallprevious) {
+		$parWinGet.Add("uninstallprevious", $true)
+	}
+	If ($force) {
+		$parWinGet.Add("force", $true)
+	}
+	If ($wait) {
+		$parWinGet.Add("wait", $true)
+	}
+	If ($enableverbose) {
+		$parWinGet.Add("enableverbose", $true)
+	}
+	If ($ignorewarnings) {
+		$parWinGet.Add("ignorewarnings", $true)
+	}
+	If ($disableinteractivity) {
+		$parWinGet.Add("disableinteractivity", $true)
+	}
+	If ($proxy) {
+		$parWinGet.Add("proxy", $proxy)
+	}
+	If ($noproxy) {
+		$parWinGet.Add("noproxy", $true)
+	}
+	Write-Log -Message "parWinGet $parWinGet" -Source 'parWinGet-Check' -LogType 'CMTrace'
 
     #endregion
     ##* Do not modify section above
@@ -198,62 +864,13 @@ Try {
         ## <Perform Pre-Installation tasks here>
 		If($Mode -eq "Admin"){
 			Write-Log -Message "Mode $Mode" -Source 'Mode' -LogType 'CMTrace'
+			Install-WinGetFM -UserMode 'Admin' -InstallMethod 'Online' -MinimumVersion '2023.1005.18.0'
 			$AppInstaller = Get-AppxProvisionedPackage -Online | Where-Object DisplayName -eq Microsoft.DesktopAppInstaller
-			If($AppInstaller.Version -lt "2023.1005.18.0") {
-				
-				Write-Log -Message "Winget is not installed, trying to install latest version from Github" -Source 'PRE-INSTALLATION-WINGET' -LogType 'CMTrace'
-				
-				Try {
-					
-					Write-Log -Message "Creating Winget Packages Folder" -Source 'PRE-INSTALLATION-WINGET' -LogType 'CMTrace'
-					
-					if (!(Test-Path -Path C:\ProgramData\WinGetPackages)) {
-						New-Item -Path C:\ProgramData\WinGetPackages -Force -ItemType Directory
-					}
-					
-					#Set-Location C:\ProgramData\WinGetPackages
-					
-					#Downloading Packagefiles
-					Write-Log -Message "Setting ProgressPreference to SilentlyContinue" -Source 'PRE-INSTALLATION-WINGET' -LogType 'CMTrace'
-					$ProgressPreference = 'SilentlyContinue'
-					#Microsoft.UI.Xaml - newest
-					Write-Log -Message "Downloading microsoft.ui.xaml.newest.zip from https://www.nuget.org/api/v2/package/Microsoft.UI.Xaml/" -Source 'PRE-INSTALLATION-WINGET' -LogType 'CMTrace'
-					Invoke-WebRequest -Uri "https://www.nuget.org/api/v2/package/Microsoft.UI.Xaml/" -OutFile "C:\ProgramData\WinGetPackages\microsoft.ui.xaml.newest.zip"
-					Write-Log -Message "Exstract C:\ProgramData\WinGetPackages\microsoft.ui.xaml.newest.zip" -Source 'PRE-INSTALLATION-WINGET' -LogType 'CMTrace'
-					Expand-Archive -LiteralPath "C:\ProgramData\WinGetPackages\microsoft.ui.xaml.newest.zip" -DestinationPath "C:\ProgramData\WinGetPackages\microsoft.ui.xaml.newest" -Force
-					#Microsoft.VCLibs.140.00.UWPDesktop
-					Write-Log -Message "Downloading Microsoft.VCLibs.x64.14.00.Desktop.appx from https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx" -Source 'PRE-INSTALLATION-WINGET' -LogType 'CMTrace'
-					Invoke-WebRequest -Uri "https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx" -OutFile "C:\ProgramData\WinGetPackages\Microsoft.VCLibs.x64.14.00.Desktop.appx"
-					#Winget
-					Write-Log -Message "Downloading Winget.msixbundle from https://github.com/microsoft/winget-cli/releases/latest/download/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle" -Source 'PRE-INSTALLATION-WINGET' -LogType 'CMTrace'
-					Invoke-WebRequest -Uri "https://github.com/microsoft/winget-cli/releases/latest/download/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle" -OutFile "C:\ProgramData\WinGetPackages\Winget.msixbundle"
-					Write-Log -Message 'Finding the MicrosoftUIXaml Version and shave the it to $MicrosoftUIXamlVersion' -Source 'PRE-INSTALLATION-WINGET' -LogType 'CMTrace'
-					$MicrosoftUIXamlVersion = Get-ChildItem C:\ProgramData\WinGetPackages\microsoft.ui.xaml.newest\tools\AppX\x64\Release -recurse | where {$_.name -like "Microsoft.UI.Xaml.*"} | select name
-					#Installing dependencies + Winget
-					Write-Log -Message "Installing winget and Dependency Package" -Source 'PRE-INSTALLATION-WINGET' -LogType 'CMTrace'
-					Add-ProvisionedAppxPackage -online -PackagePath:C:\ProgramData\WinGetPackages\Winget.msixbundle -DependencyPackagePath C:\ProgramData\WinGetPackages\Microsoft.VCLibs.x64.14.00.Desktop.appx,C:\ProgramData\WinGetPackages\microsoft.ui.xaml.newest\tools\AppX\x64\Release\$($MicrosoftUIXamlVersion.name) -SkipLicense
-					
-					Write-Log -Message "Starting sleep for Winget to initiate" -Source 'PRE-INSTALLATION-WINGET' -LogType 'CMTrace'
-					Start-Sleep 2
-				}
-				Catch {
-					Throw "Failed to install Winget"
-					Write-Log -Message "$Error[0].Exception" -Source 'Failed-PRE-INSTALLATION-WINGET' -LogType 'CMTrace'
-					Break
-				}
 			
-			}Else{
-				Write-Log -Message "Winget already installed, moving on" -Source 'PRE-INSTALLATION-WINGET' -LogType 'CMTrace'
-			}
         }
 		If($Mode -eq "User"){
 			Write-Log -Message "Mode $Mode" -Source 'Mode' -LogType 'CMTrace'
-            $AppInstaller = Get-AppxPackage | Where-Object Name -eq Microsoft.DesktopAppInstaller
-			If($AppInstaller.Version -lt "1.22.10582.0") {
-				Write-Log -Message "Winget is not installed" -Source 'PRE-INSTALLATION-WINGET' -LogType 'CMTrace'
-			}Else{
-				Write-Log -Message "Winget already installed, moving on" -Source 'PRE-INSTALLATION-WINGET' -LogType 'CMTrace'
-			}
+            Install-WinGetFM -UserMode 'User' -MinimumVersion '1.22.10582.0'
         }
 		
         ##*===============================================
@@ -262,63 +879,15 @@ Try {
         [String]$installPhase = 'Installation'
 		
         ## <Perform Installation tasks here>
-		If($Mode -eq "Admin"){
-			Write-Log -Message "Mode $Mode" -Source 'Mode' -LogType 'CMTrace'
-			IF ($WingetID){
-				try {
-					Write-Log -Message "Installing $($WingetID) via Winget" -Source 'INSTALLATION' -LogType 'CMTrace'
-					
-					$ResolveWingetPath = Resolve-Path "C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.21*_x64__8wekyb3d8bbwe"
-					if($ResolveWingetPath -EQ $null){
-						$ResolveWingetPath = Resolve-Path "C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_*_x64__8wekyb3d8bbwe"
-					}
-					if($ResolveWingetPath){
-						$WingetPath = $ResolveWingetPath[-1].Path
-					}
-					If(($WingetOverride -eq "") -or ($WingetOverride -eq $null)){
-						Execute-Process -Path "$wingetpath\winget.exe" -Parameters "install $WingetID --silent --accept-source-agreements --accept-package-agreements $WingetCM $WingetScope" -WindowStyle 'Hidden'
-					}Else{
-						Write-Log -Message "override string $($WingetOverride)" -Source 'INSTALLATION' -LogType 'CMTrace'
-						write-Host $WingetOverride
-						Execute-Process -Path "$wingetpath\winget.exe" -Parameters "install $WingetID --silent --accept-source-agreements --accept-package-agreements $WingetCM --override `"$($WingetOverride)`"  $WingetScope" -WindowStyle 'Hidden'
-					}
-					
-				}
-				Catch {
-					Throw "Failed to install package $($_)"
-				}
-			}Else{
-				Write-Log -Message "Package $($WingetID) not available" -Source 'INSTALLATION' -LogType 'CMTrace'
-			}
+		Write-Log -Message "Mode $Mode" -Source 'Mode' -LogType 'CMTrace'
+		IF ($id){
+				Write-Log -Message "Start-WinGetPackageFM -UserMode $($Mode) -Action $($Action) $($parWinGet)" -Source 'Start-WinGetPackageFM' -LogType 'CMTrace'
+				Start-WinGetPackageFM -UserMode $Mode -Action $Action @parWinGet
+
+		}Else{
+			Write-Log -Message "Package $($WingetID) not available" -Source 'INSTALLATION' -LogType 'CMTrace'
 		}
-		If($Mode -eq "User"){
-			Write-Log -Message "Mode $Mode" -Source 'Mode' -LogType 'CMTrace'
-			IF ($WingetID){
-				try {
-					Write-Log -Message "Installing $($WingetID) via Winget" -Source 'INSTALLATION' -LogType 'CMTrace'
-					
-					$ResolveWingetPath = Resolve-Path "$env:LOCALAPPDATA\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller*\"
-					if($ResolveWingetPath -EQ $null){
-						$ResolveWingetPath = Resolve-Path "$env:LOCALAPPDATA\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\"
-					}
-					if($ResolveWingetPath){
-						$WingetPath = $ResolveWingetPath[-1].Path
-					}
-					
-					If(($WingetOverride -eq "") -or ($WingetOverride -eq $null)){
-						Execute-Process -Path "$wingetpath\winget.exe" -Parameters "install $WingetID --silent --accept-source-agreements --accept-package-agreements $WingetCM $WingetScope" -WindowStyle 'Hidden'
-					}Else{
-						Execute-Process -Path "$wingetpath\winget.exe" -Parameters "install $WingetID --silent --accept-source-agreements --accept-package-agreements $WingetCM --override `"$($WingetOverride)`"  $WingetScope" -WindowStyle 'Hidden'
-					}
-					
-				}
-				Catch {
-					Throw "Failed to install package $($_)"
-				}
-			}Else{
-				Write-Log -Message "Package $($WingetID) not available" -Source 'INSTALLATION' -LogType 'CMTrace'
-			}
-		}
+		
 		
         ##*===============================================
         ##* POST-INSTALLATION
@@ -344,63 +913,14 @@ Try {
         ## <Perform Pre-Uninstallation tasks here>
 		If($Mode -eq "Admin"){
 			Write-Log -Message "Mode $Mode" -Source 'Mode' -LogType 'CMTrace'
+			Install-WinGetFM -UserMode 'Admin' -InstallMethod 'Online' -MinimumVersion '2023.1005.18.0'
 			$AppInstaller = Get-AppxProvisionedPackage -Online | Where-Object DisplayName -eq Microsoft.DesktopAppInstaller
-			If($AppInstaller.Version -lt "2023.1005.18.0") {
-				
-				Write-Log -Message "Winget is not installed, trying to install latest version from Github" -Source 'PRE-INSTALLATION-WINGET' -LogType 'CMTrace'
-				
-				Try {
-					
-					Write-Log -Message "Creating Winget Packages Folder" -Source 'PRE-INSTALLATION-WINGET' -LogType 'CMTrace'
-					
-					if (!(Test-Path -Path C:\ProgramData\WinGetPackages)) {
-						New-Item -Path C:\ProgramData\WinGetPackages -Force -ItemType Directory
-					}
-					
-					#Set-Location C:\ProgramData\WinGetPackages
-					
-					#Downloading Packagefiles
-					Write-Log -Message "Setting ProgressPreference to SilentlyContinue" -Source 'PRE-INSTALLATION-WINGET' -LogType 'CMTrace'
-					$ProgressPreference = 'SilentlyContinue'
-					#Microsoft.UI.Xaml - newest
-					Write-Log -Message "Downloading microsoft.ui.xaml.newest.zip from https://www.nuget.org/api/v2/package/Microsoft.UI.Xaml/" -Source 'PRE-INSTALLATION-WINGET' -LogType 'CMTrace'
-					Invoke-WebRequest -Uri "https://www.nuget.org/api/v2/package/Microsoft.UI.Xaml/" -OutFile "C:\ProgramData\WinGetPackages\microsoft.ui.xaml.newest.zip"
-					Write-Log -Message "Exstract C:\ProgramData\WinGetPackages\microsoft.ui.xaml.newest.zip" -Source 'PRE-INSTALLATION-WINGET' -LogType 'CMTrace'
-					Expand-Archive -LiteralPath "C:\ProgramData\WinGetPackages\microsoft.ui.xaml.newest.zip" -DestinationPath "C:\ProgramData\WinGetPackages\microsoft.ui.xaml.newest" -Force
-					#Microsoft.VCLibs.140.00.UWPDesktop
-					Write-Log -Message "Downloading Microsoft.VCLibs.x64.14.00.Desktop.appx from https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx" -Source 'PRE-INSTALLATION-WINGET' -LogType 'CMTrace'
-					Invoke-WebRequest -Uri "https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx" -OutFile "C:\ProgramData\WinGetPackages\Microsoft.VCLibs.x64.14.00.Desktop.appx"
-					#Winget
-					Write-Log -Message "Downloading Winget.msixbundle from https://github.com/microsoft/winget-cli/releases/latest/download/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle" -Source 'PRE-INSTALLATION-WINGET' -LogType 'CMTrace'
-					Invoke-WebRequest -Uri "https://github.com/microsoft/winget-cli/releases/latest/download/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle" -OutFile "C:\ProgramData\WinGetPackages\Winget.msixbundle"
-					Write-Log -Message 'Finding the MicrosoftUIXaml Version and shave the it to $MicrosoftUIXamlVersion' -Source 'PRE-INSTALLATION-WINGET' -LogType 'CMTrace'
-					$MicrosoftUIXamlVersion = Get-ChildItem C:\ProgramData\WinGetPackages\microsoft.ui.xaml.newest\tools\AppX\x64\Release -recurse | where {$_.name -like "Microsoft.UI.Xaml.*"} | select name
-					#Installing dependencies + Winget
-					Write-Log -Message "Installing winget and Dependency Package" -Source 'PRE-INSTALLATION-WINGET' -LogType 'CMTrace'
-					Add-ProvisionedAppxPackage -online -PackagePath:C:\ProgramData\WinGetPackages\Winget.msixbundle -DependencyPackagePath C:\ProgramData\WinGetPackages\Microsoft.VCLibs.x64.14.00.Desktop.appx,C:\ProgramData\WinGetPackages\microsoft.ui.xaml.newest\tools\AppX\x64\Release\$($MicrosoftUIXamlVersion.name) -SkipLicense
-					
-					Write-Log -Message "Starting sleep for Winget to initiate" -Source 'PRE-INSTALLATION-WINGET' -LogType 'CMTrace'
-					Start-Sleep 2
-				}
-				Catch {
-					Write-Log -Message "$_.ScriptStackTrace" -Source 'Failed-PRE-INSTALLATION-WINGET' -LogType 'CMTrace'
-					Throw "Failed to install Winget"
-					Break
-				}
 			
-			}Else{
-				Write-Log -Message "Winget already installed, moving on" -Source 'PRE-INSTALLATION-WINGET' -LogType 'CMTrace'
-			}
-		}
+        }
 		If($Mode -eq "User"){
 			Write-Log -Message "Mode $Mode" -Source 'Mode' -LogType 'CMTrace'
-			$AppInstaller = Get-AppxPackage | Where-Object Name -eq Microsoft.DesktopAppInstaller
-			If($AppInstaller.Version -lt "1.22.10582.0") {
-				Write-Log -Message "Winget is not installed" -Source 'PRE-INSTALLATION-WINGET' -LogType 'CMTrace'
-			}Else{
-				Write-Log -Message "Winget already installed, moving on" -Source 'PRE-INSTALLATION-WINGET' -LogType 'CMTrace'
-			}
-		}
+            Install-WinGetFM -UserMode 'User' -MinimumVersion '1.22.10582.0'
+        }
 		
         ##*===============================================
         ##* UNINSTALLATION
@@ -408,59 +928,15 @@ Try {
         [String]$installPhase = 'Uninstallation'
 		
         ## <Perform Uninstallation tasks here>
-		If($Mode -eq "Admin"){
-			Write-Log -Message "Mode $Mode" -Source 'Mode' -LogType 'CMTrace'
-			IF ($WingetID){
-				try {
-					Write-Log -Message "Uninstalling $($WingetID) via Winget" -Source 'UNINSTALLATION' -LogType 'CMTrace'
-					
-					$ResolveWingetPath = Resolve-Path "C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_*_x64__8wekyb3d8bbwe"
-					if ($ResolveWingetPath){
-						   $WingetPath = $ResolveWingetPath[-1].Path
-					}
-					
-					If(($WingetOverride -eq "") -or ($WingetOverride -eq $null)){
-						Execute-Process -Path "$wingetpath\winget.exe" -Parameters "uninstall $WingetID --silent $WingetCM" -WindowStyle 'Hidden' -ContinueOnError $True
-					}Else{
-						Execute-Process -Path "$wingetpath\winget.exe" -Parameters "uninstall $WingetID --silent $WingetCM --override `"$($WingetOverride)`"" -WindowStyle 'Hidden' -ContinueOnError $True
-					}
-					
-				}
-				Catch {
-					Throw "Failed to uninstall package $($_)"
-				}
-			}Else{
-				Write-Log -Message "Package $($WingetID) not available" -Source 'UNINSTALLATION' -LogType 'CMTrace'
-			}
+		Write-Log -Message "Mode $Mode" -Source 'Mode' -LogType 'CMTrace'
+		IF ($id){
+			Write-Log -Message "Start-WinGetPackageFM -UserMode $($Mode) -Action $($Action) $($parWinGet)" -Source 'Start-WinGetPackageFM' -LogType 'CMTrace'
+			Start-WinGetPackageFM -UserMode $Mode -Action $Action @parWinGet
+
+		}Else{
+			Write-Log -Message "Package $($WingetID) not available" -Source 'UNINSTALLATION' -LogType 'CMTrace'
 		}
-		If($Mode -eq "User"){
-			Write-Log -Message "Mode $Mode" -Source 'Mode' -LogType 'CMTrace'
-			IF ($WingetID){
-				try {
-					Write-Log -Message "Uninstalling $($WingetID) via Winget" -Source 'UNINSTALLATION' -LogType 'CMTrace'
-					
-					$ResolveWingetPath = Resolve-Path "$env:LOCALAPPDATA\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller*\"
-					if($ResolveWingetPath -EQ $null){
-						$ResolveWingetPath = Resolve-Path "$env:LOCALAPPDATA\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\"
-					}
-					if ($ResolveWingetPath){
-						   $WingetPath = $ResolveWingetPath[-1].Path
-					}
-					
-					If(($WingetOverride -eq "") -or ($WingetOverride -eq $null)){
-						Execute-Process -Path "$wingetpath\winget.exe" -Parameters "install $WingetID --silent --accept-source-agreements --accept-package-agreements $WingetCM $WingetScope" -WindowStyle 'Hidden'
-					}Else{
-						Execute-Process -Path "$wingetpath\winget.exe" -Parameters "install $WingetID --silent --accept-source-agreements --accept-package-agreements $WingetCM --override `"$($WingetOverride)`"  $WingetScope" -WindowStyle 'Hidden'
-					}
-					
-				}
-				Catch {
-					Throw "Failed to uninstall package $($_)"
-				}
-			}Else{
-				Write-Log -Message "Package $($WingetID) not available" -Source 'UNINSTALLATION' -LogType 'CMTrace'
-			}
-		}
+
 		
         ##*===============================================
         ##* POST-UNINSTALLATION
