@@ -108,7 +108,7 @@ Param (
 	[Parameter( Mandatory = $false, HelpMessage = 'Specifies if you need to install, uninstall, upgrade or import.',ParameterSetName = 'Name')]
 	[Parameter( Mandatory = $false, HelpMessage = 'Specifies if you need to install, uninstall, upgrade or import.',ParameterSetName = 'Moniker')]
 	[ValidateSet('Install', 'Uninstall', 'upgrade', 'import')]
-	[String]$Action,
+	[String]$Action = $DeploymentType,
 	
 	[Parameter( Mandatory = $false, HelpMessage = 'Must be followed by the path to the manifest (YAML) file. You can use the manifest to run the install experience from a local YAML file.',ParameterSetName = 'AdminMode')]
 	[Parameter( Mandatory = $false, HelpMessage = 'Must be followed by the path to the manifest (YAML) file. You can use the manifest to run the install experience from a local YAML file.',ParameterSetName = 'UserMode')]
@@ -953,13 +953,15 @@ Try {
         ##*===============================================
         [String]$installPhase = 'Pre-Repair'
 		
-        ## Show Welcome Message, close Internet Explorer with a 60 second countdown before automatically closing
-        #Show-InstallationWelcome -CloseApps 'iexplore' -CloseAppsCountdown 60
-		
-        ## Show Progress Message (with the default message)
-        #Show-InstallationProgress
-		
-        ## <Perform Pre-Repair tasks here>
+        ## <Perform Installation tasks here>
+		Write-Log -Message "Mode $Mode" -Source 'Mode' -LogType 'CMTrace'
+		IF ($id){
+				Write-Log -Message "Start-WinGetPackageFM -UserMode $($Mode) -Action $($Action) $($parWinGet)" -Source 'Start-WinGetPackageFM' -LogType 'CMTrace'
+				Start-WinGetPackageFM -UserMode $Mode -Action $Action @parWinGet
+
+		}Else{
+			Write-Log -Message "Package $($WingetID) not available" -Source 'INSTALLATION' -LogType 'CMTrace'
+		}
 		
         ##*===============================================
         ##* REPAIR
@@ -967,6 +969,16 @@ Try {
         [String]$installPhase = 'Repair'
 		
         ## <Perform Repair tasks here>
+		Write-Log -Message "Mode $Mode" -Source 'Mode' -LogType 'CMTrace'
+		IF ($id){
+			Write-Log -Message "Start-WinGetPackageFM -UserMode $($Mode) -Action uninstall $($parWinGet)" -Source 'Start-WinGetPackageFM' -LogType 'CMTrace'
+			Start-WinGetPackageFM -UserMode $Mode -Action 'uninstall' @parWinGet
+			Write-Log -Message "Start-WinGetPackageFM -UserMode $($Mode) -Action install $($parWinGet)" -Source 'Start-WinGetPackageFM' -LogType 'CMTrace'
+			Start-WinGetPackageFM -UserMode $Mode -Action 'install' @parWinGet
+
+		}Else{
+			Write-Log -Message "Package $($WingetID) not available" -Source 'UNINSTALLATION' -LogType 'CMTrace'
+		}
 		
         ##*===============================================
         ##* POST-REPAIR
