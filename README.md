@@ -13,7 +13,7 @@ PSADT-WingetFW is framework for using Winget with PSADT without havning to creat
 Deploy-Application.exe -DeploymentType 'Install' -id 'Postman.Postman' -Mode 'User'
 ```
 
-![alt text](https://github.com/kriskristensen3/PSADT-WingetFW/blob/main/Images/exampleInstallCommand01.png?raw=true)
+![alt text](https://github.com/kriskristensen3/PSADT-WingetFW/blob/main/Images/exampleInstallCommand03.png?raw=true)
 ### EXAMPLE 2
 ```
 ServiceUI.exe -process:explorer.exe Deploy-Application.exe -DeploymentType 'Install' -id 'Neovim.Neovim' -Scope 'machine'
