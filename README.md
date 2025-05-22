@@ -43,17 +43,6 @@ Required: False
 Default value: Admin
 ```
 
-### -UserMode
-The action to perform. Options: Admin, User.
-```
-Type: String
-Parameter Sets: (Admin, User)
-Aliases:
-
-Required: False
-Default value: $Mode
-```
-
 ### -Action
 The action to perform. Options: install, uninstall, upgrade or import.
 ```
