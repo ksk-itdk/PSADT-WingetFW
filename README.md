@@ -197,6 +197,7 @@ Default value: None
 
 ### -custom
 Arguments to be passed on to the installer in addition to the defaults, like: '"/QN"'. Or '"REBOOT=ReallySuppress"'
+For MSI file when using path with space in: '"INSTALL_ROOT=''''C:\Program Files (x86)\JMeter''''"'
 ```
 Type: String
 Parameter Sets: (All)
@@ -208,6 +209,7 @@ Default value: None
 
 ### -override
 A string that will be passed directly to the installer, like: '"/QN"'. Or '"/VERYSILENT /NOREBOOT /DIR=''C:\Program Files\nvm''"'
+For MSI file when using path with space in: '"INSTALL_ROOT=''''C:\Program Files (x86)\JMeter''''"'
 ```
 Type: String
 Parameter Sets: (All)
