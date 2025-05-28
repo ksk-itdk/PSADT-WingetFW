@@ -392,7 +392,7 @@ Param (
 	[Parameter( Mandatory = $false, HelpMessage = 'Used to accept the license agreement, and avoid the prompt.',ParameterSetName = 'ID')]
 	[Parameter( Mandatory = $false, HelpMessage = 'Used to accept the license agreement, and avoid the prompt.',ParameterSetName = 'Name')]
 	[Parameter( Mandatory = $false, HelpMessage = 'Used to accept the license agreement, and avoid the prompt.',ParameterSetName = 'Moniker')]
-	[Switch]$acceptpackageagreements,
+	[Switch]$acceptpackageagreements = $true,
 	
 	[Parameter( Mandatory = $false, HelpMessage = 'Skips upgrade if an installed version already exists.',ParameterSetName = 'AdminMode')]
 	[Parameter( Mandatory = $false, HelpMessage = 'Skips upgrade if an installed version already exists.',ParameterSetName = 'UserMode')]
@@ -458,7 +458,7 @@ Param (
 	[Parameter( Mandatory = $false, HelpMessage = 'Used to accept the source license agreement, and avoid the prompt.',ParameterSetName = 'ID')]
 	[Parameter( Mandatory = $false, HelpMessage = 'Used to accept the source license agreement, and avoid the prompt.',ParameterSetName = 'Name')]
 	[Parameter( Mandatory = $false, HelpMessage = 'Used to accept the source license agreement, and avoid the prompt.',ParameterSetName = 'Moniker')]
-	[Switch]$acceptsourceagreements,
+	[Switch]$acceptsourceagreements = $true,
 	
 	[Parameter( Mandatory = $false, HelpMessage = 'The value to rename the executable file (portable).',ParameterSetName = 'AdminMode')]
 	[Parameter( Mandatory = $false, HelpMessage = 'The value to rename the executable file (portable).',ParameterSetName = 'UserMode')]
@@ -592,12 +592,12 @@ Try {
     ## Variables: Application
     [String]$appVendor = "$id"
     [String]$appName = 'WingetFW'
-    [String]$appVersion = '4.0.0'
+    [String]$appVersion = '4.0.1'
     [String]$appArch = ''
     [String]$appLang = 'EN'
     [String]$appRevision = '01'
     [String]$appScriptVersion = '1.0.0'
-    [String]$appScriptDate = '21/05/2025'
+    [String]$appScriptDate = '28/05/2025'
     [String]$appScriptAuthor = 'Kris Spangenberg'
     ##*===============================================
     ## Variables: Install Titles (Only set here to override defaults set by the toolkit)
@@ -762,12 +762,18 @@ Try {
 	}
 	If ($exact) {
 		$parWinGet.Add("exact", $true)
+	}else{
+		$parWinGet.Add("exact", $false)
 	}
 	If ($interactive) {
 		$parWinGet.Add("interactive", $true)
+	}else{
+		$parWinGet.Add("interactive", $false)
 	}
 	If ($silent) {
 		$parWinGet.Add("silent", $true)
+	}else{
+		$parWinGet.Add("silent", $false)
 	}
 	If ($locale) {
 		$parWinGet.Add("locale", $locale)
@@ -786,24 +792,36 @@ Try {
 	}
 	If ($ignoresecurityhash) {
 		$parWinGet.Add("ignoresecurityhash", $true)
+	}else{
+		$parWinGet.Add("ignoresecurityhash", $false)
 	}
 	If ($allowreboot) {
 		$parWinGet.Add("allowreboot", $true)
+	}else{
+		$parWinGet.Add("allowreboot", $false)
 	}
 	If ($skipdependencies) {
 		$parWinGet.Add("skipdependencies", $true)
+	}else{
+		$parWinGet.Add("skipdependencies", $false)
 	}
 	If ($ignorelocalarchivemalwarescan) {
 		$parWinGet.Add("ignorelocalarchivemalwarescan", $true)
+	}else{
+		$parWinGet.Add("ignorelocalarchivemalwarescan", $false)
 	}
 	If ($dependencysource) {
-		$parWinGet.Add("dependencysource", $true)
+		$parWinGet.Add("dependencysource", $dependencysource)
 	}
 	If ($acceptpackageagreements) {
 		$parWinGet.Add("acceptpackageagreements", $true)
+	}else{
+		$parWinGet.Add("acceptpackageagreements", $false)
 	}
 	If ($noupgrade) {
 		$parWinGet.Add("noupgrade", $true)
+	}else{
+		$parWinGet.Add("noupgrade", $false)
 	}
 	If ($header) {
 		$parWinGet.Add("header", $header)
@@ -813,33 +831,49 @@ Try {
 	}
 	If ($acceptsourceagreements) {
 		$parWinGet.Add("acceptsourceagreements", $true)
+	}else{
+		$parWinGet.Add("acceptsourceagreements", $false)
 	}
 	If ($rename) {
 		$parWinGet.Add("rename", $rename)
 	}
 	If ($uninstallprevious) {
 		$parWinGet.Add("uninstallprevious", $true)
+	}else{
+		$parWinGet.Add("uninstallprevious", $false)
 	}
 	If ($force) {
 		$parWinGet.Add("force", $true)
+	}else{
+		$parWinGet.Add("force", $false)
 	}
 	If ($wait) {
 		$parWinGet.Add("wait", $true)
+	}else{
+		$parWinGet.Add("wait", $false)
 	}
 	If ($enableverbose) {
 		$parWinGet.Add("enableverbose", $true)
+	}else{
+		$parWinGet.Add("enableverbose", $false)
 	}
 	If ($ignorewarnings) {
 		$parWinGet.Add("ignorewarnings", $true)
+	}else{
+		$parWinGet.Add("ignorewarnings", $false)
 	}
 	If ($disableinteractivity) {
 		$parWinGet.Add("disableinteractivity", $true)
+	}else{
+		$parWinGet.Add("disableinteractivity", $false)
 	}
 	If ($proxy) {
 		$parWinGet.Add("proxy", $proxy)
 	}
 	If ($noproxy) {
 		$parWinGet.Add("noproxy", $true)
+	}else{
+		$parWinGet.Add("noproxy", $false)
 	}
 	Write-Log -Message "parWinGet $parWinGet" -Source 'parWinGet-Check' -LogType 'CMTrace'
 
@@ -929,7 +963,7 @@ Try {
 		
         ## <Perform Uninstallation tasks here>
 		Write-Log -Message "Mode $Mode" -Source 'Mode' -LogType 'CMTrace'
-		IF ($id){
+		IF ($wingetmanifest -or $id -or $name -or $moniker){
 			Write-Log -Message "Start-WinGetPackageFM -UserMode $($Mode) -Action $($Action) $($parWinGet)" -Source 'Start-WinGetPackageFM' -LogType 'CMTrace'
 			Start-WinGetPackageFM -UserMode $Mode -Action $Action @parWinGet
 
@@ -955,7 +989,7 @@ Try {
 		
         ## <Perform Installation tasks here>
 		Write-Log -Message "Mode $Mode" -Source 'Mode' -LogType 'CMTrace'
-		IF ($id){
+		IF ($wingetmanifest -or $id -or $name -or $moniker){
 				Write-Log -Message "Start-WinGetPackageFM -UserMode $($Mode) -Action $($Action) $($parWinGet)" -Source 'Start-WinGetPackageFM' -LogType 'CMTrace'
 				Start-WinGetPackageFM -UserMode $Mode -Action $Action @parWinGet
 
@@ -970,7 +1004,7 @@ Try {
 		
         ## <Perform Repair tasks here>
 		Write-Log -Message "Mode $Mode" -Source 'Mode' -LogType 'CMTrace'
-		IF ($id){
+		IF ($wingetmanifest -or $id -or $name -or $moniker){
 			Write-Log -Message "Start-WinGetPackageFM -UserMode $($Mode) -Action uninstall $($parWinGet)" -Source 'Start-WinGetPackageFM' -LogType 'CMTrace'
 			Start-WinGetPackageFM -UserMode $Mode -Action 'uninstall' @parWinGet
 			Write-Log -Message "Start-WinGetPackageFM -UserMode $($Mode) -Action install $($parWinGet)" -Source 'Start-WinGetPackageFM' -LogType 'CMTrace'
