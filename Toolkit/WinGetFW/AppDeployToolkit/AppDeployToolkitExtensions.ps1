@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-WINGETFW version 4.0.0
+WINGETFW version 4.0.2
 PSAppDeployToolkit - Provides the ability to extend and customise the toolkit by adding your own functions that can be re-used.
 
 .DESCRIPTION
@@ -835,7 +835,7 @@ This function does not return any objects.
 		[Parameter( Mandatory = $false, Position = 24, HelpMessage = 'Used to accept the license agreement, and avoid the prompt.',ParameterSetName = 'ID')]
 		[Parameter( Mandatory = $false, Position = 24, HelpMessage = 'Used to accept the license agreement, and avoid the prompt.',ParameterSetName = 'Name')]
 		[Parameter( Mandatory = $false, Position = 24, HelpMessage = 'Used to accept the license agreement, and avoid the prompt.',ParameterSetName = 'Moniker')]
-        [Switch]$acceptpackageagreements,
+        [Switch]$acceptpackageagreements = $true,
 		
 		[Parameter( Mandatory = $false, Position = 25, HelpMessage = 'Skips upgrade if an installed version already exists.',ParameterSetName = 'AdminMode')]
 		[Parameter( Mandatory = $false, Position = 25, HelpMessage = 'Skips upgrade if an installed version already exists.',ParameterSetName = 'UserMode')]
@@ -901,7 +901,7 @@ This function does not return any objects.
 		[Parameter( Mandatory = $false, Position = 29, HelpMessage = 'Used to accept the source license agreement, and avoid the prompt.',ParameterSetName = 'ID')]
 		[Parameter( Mandatory = $false, Position = 29, HelpMessage = 'Used to accept the source license agreement, and avoid the prompt.',ParameterSetName = 'Name')]
 		[Parameter( Mandatory = $false, Position = 29, HelpMessage = 'Used to accept the source license agreement, and avoid the prompt.',ParameterSetName = 'Moniker')]
-        [Switch]$acceptsourceagreements,
+        [Switch]$acceptsourceagreements = $true,
 		
 		[Parameter( Mandatory = $false, Position = 30, HelpMessage = 'The value to rename the executable file (portable).',ParameterSetName = 'AdminMode')]
 		[Parameter( Mandatory = $false, Position = 30, HelpMessage = 'The value to rename the executable file (portable).',ParameterSetName = 'UserMode')]
@@ -1230,11 +1230,14 @@ This function does not return any objects.
             $argsWinGet += " --dependency-source"
 			Write-Verbose "Adding dependencysource to argsWinGet: $($argsWinGet)"
         }
-        If ($acceptpackageagreements) {
-			Write-Verbose "IF acceptpackageagreements: $($acceptpackageagreements)"
-            $argsWinGet += " --accept-package-agreements"
-			Write-Verbose "Adding acceptpackageagreements to argsWinGet: $($argsWinGet)"
-        }
+		If (($($PSBoundParameters.Keys) -Match 'acceptpackageagreements')-OR($Action -NE 'Uninstall')){
+			Write-Verbose "PSBoundParameters -Match acceptpackageagreements)"
+			If ($acceptpackageagreements) {
+				Write-Verbose "IF acceptpackageagreements: $($acceptpackageagreements)"
+				$argsWinGet += " --accept-package-agreements"
+				Write-Verbose "Adding acceptpackageagreements to argsWinGet: $($argsWinGet)"
+			}
+		}
         If ($noupgrade) {
 			Write-Verbose "IF noupgrade: $($noupgrade)"
             $argsWinGet += " --no-upgrade"
@@ -1250,11 +1253,14 @@ This function does not return any objects.
 			$argsWinGet += " --authentication-account $authenticationaccount"
 			Write-Verbose "Adding authenticationaccount to argsWinGet: $($argsWinGet)"
         }
-        If ($acceptsourceagreements) {
-			Write-Verbose "IF acceptsourceagreements: $($acceptsourceagreements)"
-            $argsWinGet += " --accept-source-agreements"
-			Write-Verbose "Adding acceptsourceagreements to argsWinGet: $($argsWinGet)"
-        }
+		If (($($PSBoundParameters.Keys) -Match 'acceptsourceagreements')-OR($Action -NE 'Uninstall')){
+			Write-Verbose "PSBoundParameters -Match acceptsourceagreements)"
+			If ($acceptsourceagreements) {
+				Write-Verbose "IF acceptsourceagreements: $($acceptsourceagreements)"
+				$argsWinGet += " --accept-source-agreements"
+				Write-Verbose "Adding acceptsourceagreements to argsWinGet: $($argsWinGet)"
+			}
+		}
         If ($rename) {
 			Write-Verbose "IF rename: $($rename)"
             $argsWinGet += " --rename $rename"
@@ -1424,6 +1430,11 @@ If ($scriptParentPath) {
 }
 Else {
     Write-Log -Message "Script [$($MyInvocation.MyCommand.Definition)] invoked directly" -Source $appDeployToolkitExtName
+}
+
+## Evaluate non-default parameters passed to the scripts
+If ($appDeployExtScriptParameters) {
+    [String]$appDeployExtScriptParameters = ($appDeployExtScriptParameters.GetEnumerator() | ForEach-Object { & $ResolveParameters $_ }) -join ' '
 }
 
 ##*===============================================
