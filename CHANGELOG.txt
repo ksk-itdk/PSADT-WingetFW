@@ -1,4 +1,4 @@
-﻿**Version 4.0.1 [22/05/2025]**
+﻿**Version 4.0.2 [04/06/2025]**
 - Fixed an issue where acceptpackageagreements stopped the uninstalling for applications as it was default on. Its still default on but not for uninstall
 - Fixed an issue where install did not work if other than ID was used
 
