@@ -1,7 +1,11 @@
-﻿**Version 4.0.1 [22/05/2025]﻿**
+﻿**Version 4.0.1 [22/05/2025]**
+- Fixed an issue where acceptpackageagreements stopped the uninstalling for applications as it was default on. Its still default on but not for uninstall
+- Fixed an issue where install did not work if other than ID was used
+
+**Version 4.0.1 [22/05/2025]**
 - Fixed an issue where setting a parameter to false would not work if the switch parameter was true default.
 
-**Version 4.0.0 [22/05/2025]﻿**
+**Version 4.0.0 [22/05/2025]**
 - Added complet rewitten the tool to run in the extension file as functions
 - Added All parameters has been change to look like the parameters from winget.exe and the missing parametes has been added to the tool
 - Added repair mode where it uninstalls and installs the application again.
