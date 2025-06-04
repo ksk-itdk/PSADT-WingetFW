@@ -592,12 +592,12 @@ Try {
     ## Variables: Application
     [String]$appVendor = "$id"
     [String]$appName = 'WingetFW'
-    [String]$appVersion = '4.0.1'
+    [String]$appVersion = '4.0.2'
     [String]$appArch = ''
     [String]$appLang = 'EN'
     [String]$appRevision = '01'
     [String]$appScriptVersion = '1.0.0'
-    [String]$appScriptDate = '28/05/2025'
+    [String]$appScriptDate = '04/06/2025'
     [String]$appScriptAuthor = 'Kris Spangenberg'
     ##*===============================================
     ## Variables: Install Titles (Only set here to override defaults set by the toolkit)
@@ -813,9 +813,15 @@ Try {
 	If ($dependencysource) {
 		$parWinGet.Add("dependencysource", $dependencysource)
 	}
-	If ($acceptpackageagreements) {
-		$parWinGet.Add("acceptpackageagreements", $true)
+	If (($($PSBoundParameters.Keys) -Match 'acceptpackageagreements')-OR($Action -NE 'Uninstall')){
+		Write-Verbose "PSBoundParameters -Match acceptpackageagreements)"
+		If ($acceptpackageagreements) {
+			$parWinGet.Add("acceptpackageagreements", $true)
+		}else{
+			$parWinGet.Add("acceptpackageagreements", $false)
+		}
 	}else{
+		Write-Verbose "PSBoundParameters -Notmatch acceptpackageagreements)"
 		$parWinGet.Add("acceptpackageagreements", $false)
 	}
 	If ($noupgrade) {
@@ -829,9 +835,15 @@ Try {
 	If ($authenticationaccount) {
 		$parWinGet.Add("authenticationaccount", $authenticationaccount)
 	}
-	If ($acceptsourceagreements) {
-		$parWinGet.Add("acceptsourceagreements", $true)
+	If (($($PSBoundParameters.Keys) -Match 'acceptsourceagreements')-OR($Action -NE 'Uninstall')){
+		Write-Verbose "PSBoundParameters -Match acceptsourceagreements)"
+		If ($acceptsourceagreements) {
+			$parWinGet.Add("acceptsourceagreements", $true)
+		}else{
+			$parWinGet.Add("acceptsourceagreements", $false)
+		}
 	}else{
+		Write-Verbose "PSBoundParameters -Notmatch acceptsourceagreements)"
 		$parWinGet.Add("acceptsourceagreements", $false)
 	}
 	If ($rename) {
@@ -914,7 +926,7 @@ Try {
 		
         ## <Perform Installation tasks here>
 		Write-Log -Message "Mode $Mode" -Source 'Mode' -LogType 'CMTrace'
-		IF ($id){
+		IF ($wingetmanifest -or $id -or $name -or $moniker){
 				Write-Log -Message "Start-WinGetPackageFM -UserMode $($Mode) -Action $($Action) $($parWinGet)" -Source 'Start-WinGetPackageFM' -LogType 'CMTrace'
 				Start-WinGetPackageFM -UserMode $Mode -Action $Action @parWinGet
 
