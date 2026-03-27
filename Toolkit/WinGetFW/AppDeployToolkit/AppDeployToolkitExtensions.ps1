@@ -1,6 +1,6 @@
-﻿<#
+<#
 .SYNOPSIS
-WINGETFW version 4.0.2
+WINGETFW version 4.0.4
 PSAppDeployToolkit - Provides the ability to extend and customise the toolkit by adding your own functions that can be re-used.
 
 .DESCRIPTION
@@ -61,6 +61,7 @@ Param (
 ##*===============================================
 
 # <Your custom functions go here>
+$VerbosePreference = "SilentlyContinue"
 #region Function Check-WinGetFM
 Function Install-WinGetFM {
     <#
@@ -1143,9 +1144,16 @@ This function does not return any objects.
             $argsWinGet += " --id $id"
 			Write-Verbose "Adding id to argsWinGet: $($argsWinGet)"
         }
+		If ($override) {
+			$override=$override.Replace("$([char]39)","$([char]34)$([char]34)")
+			Write-Verbose "IF override: $($override)"
+			$argsWinGet += " --override $([char]34)$override$([char]34)"
+			Write-Verbose "Adding override to argsWinGet: $($argsWinGet)"
+        }
         If ($name) {
+			$name=$name.Replace("$([char]39)","$([char]34)$([char]34)")
 			Write-Verbose "IF name: $($name)"
-            $argsWinGet += " --name $name"
+            $argsWinGet += " --name $([char]34)$name$([char]34)"
 			Write-Verbose "Adding name to argsWinGet: $($argsWinGet)"
         }
         If ($moniker) {
@@ -1202,7 +1210,11 @@ This function does not return any objects.
         }
         If ($location) {
 			Write-Verbose "IF location: $($location)"
-            $argsWinGet += " --location $location"
+			if(($location -notmatch [char]39)-and($location -notmatch [char]34)){
+				$argsWinGet += " --location $([char]34)$location$([char]34)"
+			}else{
+				$argsWinGet += " --location $location"
+			}
 			Write-Verbose "Adding location to argsWinGet: $($argsWinGet)"
         }
         If ($ignoresecurityhash) {
