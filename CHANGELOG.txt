@@ -3,6 +3,8 @@
 - Fixed an issue where location does not pass quotations to winget.exe
 - Fixed an issue where name does not pass quotations to winget.exe
 - Fixed an issue where only id was used for the UI and the log file now name will also work
+- Fixed new version of registryversionregex (v1.0.1) detection this version can handel 0 in version so any version is seen as detected
+- Fixed new version of wingetv (v2.0.1) detection this version fixed an issue where it failed to run winget
 - Added an option to use OverrideAPPName to override what’s written in the UI and log; useful when installing MS Store apps
 
 **Version 4.0.2 [04/06/2025]**
