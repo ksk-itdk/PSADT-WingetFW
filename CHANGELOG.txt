@@ -1,4 +1,11 @@
-﻿**Version 4.0.2 [04/06/2025]**
+﻿**Version 4.0.4 [27/03/2026]**
+- Fixed an issue where override does not pass quotations to winget.exe
+- Fixed an issue where location does not pass quotations to winget.exe
+- Fixed an issue where name does not pass quotations to winget.exe
+- Fixed an issue where only id was used for the UI and the log file now name will also work
+- Added an option to use OverrideAPPName to override what’s written in the UI and log; useful when installing MS Store apps
+
+**Version 4.0.2 [04/06/2025]**
 - Fixed an issue where acceptpackageagreements stopped the uninstalling for applications as it was default on. Its still default on but not for uninstall
 - Fixed an issue where install did not work if other than ID was used
 
