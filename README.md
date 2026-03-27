@@ -435,3 +435,13 @@ Aliases: Arguments
 Required: False
 Default value: None
 ```
+
+### -OverrideAPPName
+Will override ID or Name use for the UI and the log.
+```
+Type: String
+Aliases: Arguments
+
+Required: False
+Default value: None
+```
