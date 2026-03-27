@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
 
 PSApppDeployToolkit - This script performs the installation or uninstallation of an application(s).
@@ -574,7 +574,12 @@ Param (
 	[Parameter( Mandatory = $false, HelpMessage = 'Disable the use of proxy for this execution.',ParameterSetName = 'ID')]
 	[Parameter( Mandatory = $false, HelpMessage = 'Disable the use of proxy for this execution.',ParameterSetName = 'Name')]
 	[Parameter( Mandatory = $false, HelpMessage = 'Disable the use of proxy for this execution.',ParameterSetName = 'Moniker')]
-	[Switch]$noproxy
+	[Switch]$noproxy,
+	
+	[Parameter( Mandatory = $false, HelpMessage = 'Will override ID or Name use for the UI and the log')]
+	[String]$OverrideAPPName
+	
+	
 	
 )
 
@@ -590,9 +595,9 @@ Try {
     ##* VARIABLE DECLARATION
     ##*===============================================
     ## Variables: Application
-    [String]$appVendor = "$id"
+    [String]$appVendor = $(If(-NOT([string]::IsNullOrEmpty($OverrideAPPName))){$OverrideAPPName}elseif(-NOT([string]::IsNullOrEmpty($id))){$id}elseif(-NOT([string]::IsNullOrEmpty($name))){$name})
     [String]$appName = 'WingetFW'
-    [String]$appVersion = '4.0.2'
+    [String]$appVersion = '4.0.4'
     [String]$appArch = ''
     [String]$appLang = 'EN'
     [String]$appRevision = '01'
@@ -788,7 +793,12 @@ Try {
 		$parWinGet.Add("override", $override)
 	}
 	If ($location) {
-		$parWinGet.Add("location", $location)
+		Write-Verbose "location: $($location)"
+		if(($location -notmatch [char]39)-and($location -notmatch [char]34)){
+			$parWinGet.Add("location", [char]34 + $location + [char]34)
+		}else{
+			$parWinGet.Add("location", $location)
+		}
 	}
 	If ($ignoresecurityhash) {
 		$parWinGet.Add("ignoresecurityhash", $true)
