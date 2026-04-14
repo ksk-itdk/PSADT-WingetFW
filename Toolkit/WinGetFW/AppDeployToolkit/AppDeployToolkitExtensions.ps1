@@ -1144,12 +1144,6 @@ This function does not return any objects.
             $argsWinGet += " --id $id"
 			Write-Verbose "Adding id to argsWinGet: $($argsWinGet)"
         }
-		If ($override) {
-			$override=$override.Replace("$([char]39)","$([char]34)$([char]34)")
-			Write-Verbose "IF override: $($override)"
-			$argsWinGet += " --override $([char]34)$override$([char]34)"
-			Write-Verbose "Adding override to argsWinGet: $($argsWinGet)"
-        }
         If ($name) {
 			$name=$name.Replace("$([char]39)","$([char]34)$([char]34)")
 			Write-Verbose "IF name: $($name)"
