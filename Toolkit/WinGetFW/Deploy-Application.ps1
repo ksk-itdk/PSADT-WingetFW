@@ -597,7 +597,7 @@ Try {
     ## Variables: Application
     [String]$appVendor = $(If(-NOT([string]::IsNullOrEmpty($OverrideAPPName))){$OverrideAPPName}elseif(-NOT([string]::IsNullOrEmpty($id))){$id}elseif(-NOT([string]::IsNullOrEmpty($name))){$name})
     [String]$appName = 'WingetFW'
-    [String]$appVersion = '4.0.4'
+    [String]$appVersion = '4.0.5'
     [String]$appArch = ''
     [String]$appLang = 'EN'
     [String]$appRevision = '01'
