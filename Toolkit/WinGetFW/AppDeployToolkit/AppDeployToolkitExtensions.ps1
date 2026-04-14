@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-WINGETFW version 4.0.4
+WINGETFW version 4.0.5
 PSAppDeployToolkit - Provides the ability to extend and customise the toolkit by adding your own functions that can be re-used.
 
 .DESCRIPTION
