@@ -1,7 +1,7 @@
-**Version 4.0.6 [14/00/2026]﻿**
+**Version 4.0.6 [27/04/2026]﻿**
 - Added download and installation of winget-source.msix
 
-**Version 4.0.5 [14/00/2026]﻿**
+**Version 4.0.5 [14/04/2026]﻿**
 - Fixed an issue where override was added twice
 
 **Version 4.0.4 [27/03/2026]**
