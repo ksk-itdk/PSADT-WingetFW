@@ -173,18 +173,18 @@ This function does not return any objects.
 							$ProgressPreference = 'SilentlyContinue'
 							#Download Winget.Source
 							Write-Log -Message "Downloading winget-source.msix from https://cdn.winget.microsoft.com/cache/source.msix" -Source 'Install-WinGetFM' -LogType 'CMTrace'
-							Invoke-WebRequest -Uri "https://cdn.winget.microsoft.com/cache/source.msix" -OutFile "C:\ProgramData\WinGetPackages\winget-source.msix"
+							Invoke-WebRequest -Uri "https://cdn.winget.microsoft.com/cache/source.msix" -OutFile "C:\ProgramData\WinGetPackages\winget-source.msix" -UseBasicParsing
 							#Microsoft.UI.Xaml - newest
 							Write-Log -Message "Downloading microsoft.ui.xaml.newest.zip from https://www.nuget.org/api/v2/package/Microsoft.UI.Xaml/" -Source 'Install-WinGetFM' -LogType 'CMTrace'
-							Invoke-WebRequest -Uri "https://www.nuget.org/api/v2/package/Microsoft.UI.Xaml/" -OutFile "C:\ProgramData\WinGetPackages\microsoft.ui.xaml.newest.zip"
+							Invoke-WebRequest -Uri "https://www.nuget.org/api/v2/package/Microsoft.UI.Xaml/" -OutFile "C:\ProgramData\WinGetPackages\microsoft.ui.xaml.newest.zip" -UseBasicParsing
 							Write-Log -Message "Exstract C:\ProgramData\WinGetPackages\microsoft.ui.xaml.newest.zip" -Source 'Install-WinGetFM' -LogType 'CMTrace'
 							Expand-Archive -LiteralPath "C:\ProgramData\WinGetPackages\microsoft.ui.xaml.newest.zip" -DestinationPath "C:\ProgramData\WinGetPackages\microsoft.ui.xaml.newest" -Force
 							#Microsoft.VCLibs.140.00.UWPDesktop
 							Write-Log -Message "Downloading Microsoft.VCLibs.x64.14.00.Desktop.appx from https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx" -Source 'Install-WinGetFM' -LogType 'CMTrace'
-							Invoke-WebRequest -Uri "https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx" -OutFile "C:\ProgramData\WinGetPackages\Microsoft.VCLibs.x64.14.00.Desktop.appx"
+							Invoke-WebRequest -Uri "https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx" -OutFile "C:\ProgramData\WinGetPackages\Microsoft.VCLibs.x64.14.00.Desktop.appx" -UseBasicParsing
 							#Winget
 							Write-Log -Message "Downloading Winget.msixbundle from https://github.com/microsoft/winget-cli/releases/latest/download/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle" -Source 'Install-WinGetFM' -LogType 'CMTrace'
-							Invoke-WebRequest -Uri "https://github.com/microsoft/winget-cli/releases/latest/download/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle" -OutFile "C:\ProgramData\WinGetPackages\Winget.msixbundle"
+							Invoke-WebRequest -Uri "https://github.com/microsoft/winget-cli/releases/latest/download/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle" -OutFile "C:\ProgramData\WinGetPackages\Winget.msixbundle" -UseBasicParsing
 							Write-Log -Message 'Finding the MicrosoftUIXaml Version and shave the it to $MicrosoftUIXamlVersion' -Source 'Install-WinGetFM' -LogType 'CMTrace'
 							$MicrosoftUIXamlVersion = Get-ChildItem C:\ProgramData\WinGetPackages\microsoft.ui.xaml.newest\tools\AppX\x64\Release -recurse | where {$_.name -like "Microsoft.UI.Xaml.*"} | select name
 							#Installing dependencies + Winget
@@ -218,6 +218,14 @@ This function does not return any objects.
 			
 			}Else{
 				Write-Log -Message "Winget already installed, moving on" -Source 'Install-WinGetFM' -LogType 'CMTrace'
+			}
+			If(Get-AppxPackage -AllUsers Microsoft.Winget.Source*) {
+				#Download Winget.Source
+				Write-Log -Message "Downloading winget-source.msix from https://cdn.winget.microsoft.com/cache/source.msix" -Source 'Install-WinGetFM' -LogType 'CMTrace'
+				Invoke-WebRequest -Uri "https://cdn.winget.microsoft.com/cache/source.msix" -OutFile "C:\ProgramData\WinGetPackages\winget-source.msix" -UseBasicParsing
+				#Installing Winget.Source
+				Write-Log -Message "Installing winget-source" -Source 'Install-WinGetFM' -LogType 'CMTrace'
+				Add-AppxProvisionedPackage -Online -PackagePath "C:\ProgramData\WinGetPackages\winget-source.msix" -SkipLicense
 			}
         }
 		If($UserMode -eq "User"){
