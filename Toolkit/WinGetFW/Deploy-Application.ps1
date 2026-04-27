@@ -597,12 +597,12 @@ Try {
     ## Variables: Application
     [String]$appVendor = $(If(-NOT([string]::IsNullOrEmpty($OverrideAPPName))){$OverrideAPPName}elseif(-NOT([string]::IsNullOrEmpty($id))){$id}elseif(-NOT([string]::IsNullOrEmpty($name))){$name})
     [String]$appName = 'WingetFW'
-    [String]$appVersion = '4.0.5'
+    [String]$appVersion = '4.0.6'
     [String]$appArch = ''
     [String]$appLang = 'EN'
     [String]$appRevision = '01'
     [String]$appScriptVersion = '1.0.0'
-    [String]$appScriptDate = '14/04/2025'
+    [String]$appScriptDate = '27/04/2026'
     [String]$appScriptAuthor = 'Kris Spangenberg'
     ##*===============================================
     ## Variables: Install Titles (Only set here to override defaults set by the toolkit)
