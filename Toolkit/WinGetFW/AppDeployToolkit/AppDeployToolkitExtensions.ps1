@@ -219,7 +219,7 @@ This function does not return any objects.
 			}Else{
 				Write-Log -Message "Winget already installed, moving on" -Source 'Install-WinGetFM' -LogType 'CMTrace'
 			}
-			If(Get-AppxPackage -AllUsers Microsoft.Winget.Source*) {
+			If(!(Get-AppxPackage -AllUsers Microsoft.Winget.Source*)) {
 				#Download Winget.Source
 				Write-Log -Message "Downloading winget-source.msix from https://cdn.winget.microsoft.com/cache/source.msix" -Source 'Install-WinGetFM' -LogType 'CMTrace'
 				Invoke-WebRequest -Uri "https://cdn.winget.microsoft.com/cache/source.msix" -OutFile "C:\ProgramData\WinGetPackages\winget-source.msix" -UseBasicParsing
