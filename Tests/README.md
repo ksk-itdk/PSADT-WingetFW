@@ -1,0 +1,99 @@
+# WingetFW tests
+
+Test suite for the WingetFW package (`Toolkit/WinGetFW`, PSADT v3). It runs every WingetFW parameter for all winget actions on a sandbox VM through `Deploy-Application.exe`, the same way Intune runs it. Each run is then checked against the toolkit log and the state of the machine.
+
+Results of the last run: [TEST-RESULTS.md](TEST-RESULTS.md)
+
+## Files
+
+| File | Purpose |
+|---|---|
+| `Invoke-WingetFWVmTest.ps1` | Run locally. Copies the package and suite to the VM, runs the suite, fetches the results and writes `TEST-RESULTS.md`. |
+| `Invoke-WingetFWTestSuite.ps1` | Runs on the VM. Contains all tests. |
+| `TEST-RESULTS.md` | Generated report (pass/fail per test, parameter coverage, winget command lines, log excerpts). Do not edit by hand. |
+| `results/WingetFW-TestResults.log` | Full readable log of the last run. |
+| `results/WingetFW-TestResults.json` | Machine-readable results, the source for `TEST-RESULTS.md`. |
+| `results/console.txt` | Console output of the last run. |
+
+## Run the tests
+
+```powershell
+cd PSADT-WingetFW\Tests
+.\Invoke-WingetFWVmTest.ps1                 # full run, about 10 minutes, do not interrupt
+.\Invoke-WingetFWVmTest.ps1 -ReportOnly     # only rebuild TEST-RESULTS.md from results\*.json
+```
+
+Do not stop a run halfway. Processes on the VM keep running after the SSH session is closed, and they collide with the next run. The suite refuses to start when a `Deploy-Application` process is still running on the VM.
+
+## Prerequisites
+
+| What | Value |
+|---|---|
+| Sandbox VM | `192.168.58.129`, Windows 11, OpenSSH server |
+| SSH user | `TEST` (local administrator) |
+| SSH key | `%USERPROFILE%\.ssh\wingetfw_sandbox`, no passphrase, public key in `C:\ProgramData\ssh\administrators_authorized_keys` on the VM |
+| PsExec | `C:\temp\PSTools\PsExec64.exe` on the VM |
+| Working folder on VM | `C:\temp\wingetfw-vmtest` (outside user profiles, so SYSTEM can read it) |
+| Internet on VM | winget source, 7-Zip/jq/Postman downloads, GitHub API for the 7-Zip manifest |
+
+Defaults can be changed with `-ComputerName`, `-UserName`, `-KeyFile` and `-RemoteRoot`.
+
+## How a test runs
+
+1. Admin-mode tests run `Deploy-Application.exe` **as SYSTEM through PsExec** (`PsExec64.exe -s`), like Intune. winget in `C:\Program Files\WindowsApps` cannot be started directly by an admin user ("Access is denied").
+2. User-mode tests run `Deploy-Application.exe` as the SSH user without PsExec, with `-DeployMode NonInteractive` so an error dialog cannot block the run.
+3. Before every run a marker line is written to the toolkit log (`C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\<app>_WingetFW_<version>_EN_01_PSAppDeployToolkit_<DeploymentType>.log`). The line has component `WingetFW-Test` and contains the test ID, the run-as account and the full command, including PsExec.
+4. After the run, only the new part of the toolkit log is read. Each test checks:
+   - the exit code of `Deploy-Application.exe`
+   - the winget command line from the `Execute-Process` log line (expected options present, unsupported options absent)
+   - expected or forbidden log messages (validation errors, `Skipping -<option>`)
+   - the state on the machine (7-Zip version and MSI/EXE, portable files, user package folder)
+5. The winget admin settings needed by some options (`LocalManifestFiles`, `InstallerHashOverride`, `LocalArchiveMalwareScanOverride`, `ProxyCommandLineOptions`) are enabled for the run and restored afterwards. The original state is kept in `C:\temp\wingetfw-vmtest\winget-adminsettings-original.json` until the run completes, so an aborted run is restored by the next one.
+
+## Test groups
+
+| Group | IDs | What is tested |
+|---|---|---|
+| Validation | V01-V10 | Conflicting options, options a winget action does not support, and `-header` without `-source` stop with exit code 60001 before winget runs. |
+| Exe quoting | Q01-Q03 | How `Deploy-Application.exe` passes arguments to PowerShell (see Known issues). |
+| Functional | F01-F14 | Install, upgrade, repair, force repair, uninstall and import with 7-Zip (`7zip.7zip`): older MSI (WiX) version, local manifest, import file, EXE with `-override`, product code, moniker, name, proxy, `-OverrideAPPName`. |
+| Portable | P01-P04 | `-rename`, `-location`, `-preserve` and `-purge` with the portable package `jqlang.jq`. |
+| User mode | U01-U04 | `-Mode User` without PsExec: install and uninstall `jqlang.jq` (portable) and `Postman.Postman` (EXE installer with `Scope: user`). |
+
+Paths with spaces are used on purpose (`C:\temp\wingetfw-vmtest\path with spaces\...`) to test the quoting of `-log`, `-wingetmanifest`, `-importfile` and `-location`.
+
+Informational tests accept more than one exit code, because the outcome depends on the package or the network rather than on WingetFW. They still check the winget command line:
+- F04/F05: the 7-Zip MSI repair itself can fail in winget.
+- F13: dummy proxy, so the network call is expected to fail.
+
+## Known issues found by the tests
+
+| Issue | Impact | Workaround / fix |
+|---|---|---|
+| `Deploy-Application.exe` (PSADT v3) removes double quotes and runs the arguments through `powershell.exe -Command & { ... }` | A value in double quotes that contains spaces is split. `Deploy-Application.ps1` never starts, but the exit code is **0** (Q01). An unquoted `{GUID}` loses its braces (Q03). | Put values with spaces or special characters in **single quotes** in Intune command lines, for example `-log 'C:\Logs\my app.log'` or `-productcode '{GUID}'` (Q02). |
+| `-header` without `-source` | winget rejects the call with `0x8A150002`: "The optional header is not applicable without specifying a source". With `-source winget`, winget accepts the call but ignores the header, because headers are only used by REST sources (F02). | **Fixed:** `Start-WinGetPackageFM` now stops with 60001 before winget runs (V10). |
+| `winget repair` of the 7-Zip MSI returns `0x8A15007B` (repair failed) | winget limitation for this package, not WingetFW. `-ForceRepair` works (F06). | Use `-ForceRepair` for packages without working repair support. |
+| PSADT v3 `Show-DialogBox` is only skipped in `NonInteractive` mode | Any error caught by the main `Catch` (for example a parameter conflict) in a user session with `-DeployMode Silent` shows an error dialog. `Exit-Script` only runs after OK is clicked or after `InstallationUI_Timeout` (6900 s), which is longer than the default Intune install timeout. SYSTEM installs switch to NonInteractive by themselves (session 0). | Use `-DeployMode NonInteractive` for user-mode deployments. Fixed in the PSADT v4 template (dialog is commented out). |
+| Package does not support user scope | `-Mode User` with a machine-only package fails. Example: `7zip.7zip` has `Scope: machine` and `ElevationRequirement: elevatesSelf`. | Only use `-Mode User` for packages whose manifest has `Scope: user`, or no scope and no elevation (for example `Postman.Postman`, portable `jqlang.jq`). |
+
+winget return codes: <https://github.com/microsoft/winget-cli/blob/master/doc/windows/package-manager/winget/returnCodes.md>
+
+## Adding a test
+
+Add an `Invoke-Test` call to `Invoke-WingetFWTestSuite.ps1`:
+
+```powershell
+Invoke-Test -Id 'F15' -Title 'Install: ...' -ArgList @('Install', '-id', 'Publisher.App', '-exact', '-silent') `
+    -ExpectExit @(0) `
+    -Flags @(, @('--id Publisher.App', '--silent')) `
+    -NotFlags @(, @('--accept-package-agreements')) `
+    -ExpectLog @('regex that must be in the toolkit log') `
+    -State { [PSCustomObject]@{ Ok = (Test-Path 'C:\Program Files\App\app.exe'); Text = 'app.exe exists' } }
+```
+
+- `-ArgList` starts with the DeploymentType. `-DeployMode` and `-Mode User` are added automatically.
+- `-Flags` and `-NotFlags` hold one array per winget call, in call order. Write `@(, @(...))` for a single call.
+- `-Mode User` runs without PsExec.
+- `-RawArgs` passes a literal argument string to `Deploy-Application.exe`, used to test quoting.
+- `-Pre` runs a script block before the deployment, for example to create a file.
+- `-ExpectExit $null` accepts any exit code.

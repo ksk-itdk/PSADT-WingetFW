@@ -1,4 +1,21 @@
-﻿**Version 4.0.4 [27/03/2026]**
+﻿**Version 4.0.7 [11/10/2026]**
+- Fixed an issue where enableverbose was not passed to winget
+- Fixed an issue where dependencysource did not pass its value to winget
+- Fixed an issue where log, wingetmanifest, header and rename did not pass quotations to winget.exe (paths and values with spaces)
+- Fixed an issue where Admin mode only found winget 1.21; the newest installed winget version is now used
+- Fixed the scope options to User and Machine (as winget) and added Repair to Action
+- Changed the manifest parameter name to wingetmanifest and renamed Check-WinGetFM to Get-WinGetVersionFM
+- Removed the wait parameter and the parameter sets
+- Added the parameters importfile, ignoreunavailable, ignoreversions, productcode, allversions, purge, preserve, includeunknown and includepinned
+- Added Repair with winget repair, and ForceRepair to uninstall and install again (options uninstall does not support are skipped and logged)
+- Added a check of the options for each winget action; unsupported or conflicting options (id/name/moniker/wingetmanifest, interactive/silent/override, proxy/noproxy, purge/preserve) and header without source stop with exit code 60001 before winget runs
+- Added exit code 69001 when no package is specified
+- Added log lines with the WingetFW parameters and which package winget runs for
+- Added AppDeployToolkitExtensionsConfig.xml with WingetFW_TlsCheck (add TLS 1.2 before downloads) and WingetFW_VCRedistCheck (install the VC++ 2015-2022 runtime, needed for winget as SYSTEM, error 0xC000007B). Both are False in the package
+- Added a test suite in the Tests folder (runs Deploy-Application.exe on a sandbox VM as SYSTEM via PsExec and as user) with test results
+- Updated README.md with the new parameters, examples, option rules, exit codes, configuration and known limitations
+
+**Version 4.0.4 [27/03/2026]**
 - Fixed an issue where override does not pass quotations to winget.exe
 - Fixed an issue where location does not pass quotations to winget.exe
 - Fixed an issue where name does not pass quotations to winget.exe
