@@ -2,6 +2,10 @@
 - Fixed an issue where User mode failed right after a user's first logon because Windows registers winget (App Installer) a few seconds late; WingetFW now requests the registration and retries for up to about 20 seconds
 - Changed Install so a package that is already installed (winget 0x8A150061 or 0x8A15002B) is logged as already installed and returns exit code 0 instead of failing
 - Added Tools\Update-WingetFWIntuneApps.ps1 (BETA, not fully tested, use at your own risk) to find all WingetFW apps in Intune, export them to a CSV with the converted command lines, and update the selected apps to the new WingetFW package. The parameter conversion from 3.x and 4.0.x is in Tools\WingetFW-ParameterMap.psd1
+- Added new version of registryversionregex (v1.0.2) detection: the version is compared as a version again (9.10 is newer than 9.9) and non-digit parts of DisplayVersion are replaced by dots, so "v2.3-beta" is compared as 2.3
+- Added new version of registryversionregex (v1.0.3) detection: versions with one number or no number are compared as x.0 and 0.0 instead of failing; before, the version of the previous app in the list could be used
+- Added new version of wingetv (v2.0.2) detection: Admin/SYSTEM uses the newest App Installer folder, User mode retries for up to 20 seconds after first logon, the winget exit code is checked (errors are retried and then return exit code 1) and winget is stopped after 120 seconds
+- Added a help header (synopsis, examples, version and release notes) to all detection scripts in Toolkit\Detection
 
 **Version 4.0.7 [11/10/2026]**
 - Fixed an issue where enableverbose was not passed to winget
