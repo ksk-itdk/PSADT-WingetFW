@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-WINGETFW version 4.0.7
+WINGETFW version 4.0.8
 PSAppDeployToolkit - Provides the ability to extend and customise the toolkit by adding your own functions that can be re-used.
 
 .DESCRIPTION
@@ -1156,7 +1156,16 @@ This function does not return any objects.
 		$wingetpath = Resolve-WingetPath -UserMode $UserMode
 		$package = @($id, $name, $moniker, $productcode, $wingetmanifest, $importfile) | Where-Object { $_ } | Select-Object -First 1
 		Write-Log -Message "Running winget $Action for [$package]" -Source "Start-WinGetPackageFM"
-		Execute-Process -Path "$wingetpath\winget.exe" -Parameters "$Action $argsWinGet" -WindowStyle 'Hidden'
+		If ($Action -eq 'Install') {
+			# 0x8A150061 = already installed (--no-upgrade), 0x8A15002B = installed and no newer version
+			$result = Execute-Process -Path "$wingetpath\winget.exe" -Parameters "$Action $argsWinGet" -WindowStyle 'Hidden' -IgnoreExitCodes '-1978335135,-1978335189' -PassThru
+			If ($result.ExitCode -in @(-1978335135, -1978335189)) {
+				Write-Log -Message ("[$package] is already installed, nothing to install (winget exit code 0x{0:X8})" -f $result.ExitCode) -Source "Start-WinGetPackageFM"
+			}
+		}
+		Else {
+			Execute-Process -Path "$wingetpath\winget.exe" -Parameters "$Action $argsWinGet" -WindowStyle 'Hidden'
+		}
 		Write-Log -Message "Done: winget $Action for [$package]" -Source "Start-WinGetPackageFM"
 		
 	}
@@ -1237,12 +1246,27 @@ This function return the path of winget.
 			}
 		}
 		If($UserMode -eq "User"){
-			$ResolveWingetPath = Resolve-Path "$env:LOCALAPPDATA\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller*\"
-			if($ResolveWingetPath -EQ $null){
-				$ResolveWingetPath = Resolve-Path "$env:LOCALAPPDATA\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\"
+			# At a user's first logon Windows registers App Installer (winget) asynchronously, so it can be missing for a short time
+			For ($attempt = 1; $attempt -le 5; $attempt++) {
+				$ResolveWingetPath = Resolve-Path "$env:LOCALAPPDATA\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller*\winget.exe" -ErrorAction SilentlyContinue
+				If ($ResolveWingetPath) { Break }
+				If ($attempt -eq 1) {
+					Write-Log -Message "winget not found for the user, requesting App Installer registration" -Source 'Resolve-WingetPath' -Severity 2 -LogType 'CMTrace'
+					Try {
+						Add-AppxPackage -RegisterByFamilyName -MainPackage 'Microsoft.DesktopAppInstaller_8wekyb3d8bbwe' -ErrorAction Stop
+					}
+					Catch {
+						Write-Log -Message "App Installer registration failed: $($_.Exception.Message)" -Source 'Resolve-WingetPath' -Severity 2 -LogType 'CMTrace'
+					}
+					Continue
+				}
+				If ($attempt -lt 5) {
+					Write-Log -Message "winget not found yet (attempt $attempt of 5), waiting 5 seconds" -Source 'Resolve-WingetPath' -Severity 2 -LogType 'CMTrace'
+					Start-Sleep -Seconds 5
+				}
 			}
 			if($ResolveWingetPath){
-				$WingetPath = $ResolveWingetPath[-1].Path
+				$WingetPath = Split-Path -Path $ResolveWingetPath[-1].Path -Parent
 			}
 		}
 		if($ResolveWingetPath -EQ $null){

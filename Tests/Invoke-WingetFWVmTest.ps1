@@ -35,11 +35,15 @@
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 1.1.0
+    Version      : 1.1.1
 
     Release notes
+    1.1.1  - Maintainer set to KSKITDK, GitHub link added.
     1.1.0  - Report lists Postman.Postman as test package.
     1.0.0  - First version.
+
+.LINK
+    https://github.com/ksk-itdk/PSADT-WingetFW
 #>
 [CmdletBinding()]
 Param (

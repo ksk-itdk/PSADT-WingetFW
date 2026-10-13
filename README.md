@@ -58,7 +58,7 @@ Use **single quotes** for values with spaces or special characters, for example 
 | Mode | Intune install behavior | winget used | Notes |
 |---|---|---|---|
 | Admin (default) | System | `C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_*\winget.exe` (newest version) | Installs winget and the winget source if they are missing or older than the minimum version. |
-| User | User | winget of the logged-on user | Only checks the winget version, does not install winget. |
+| User | User | winget of the logged-on user | Only checks the winget version, does not install winget. If winget is not found (for example right after the user's first logon), it requests the App Installer registration and retries for up to about 20 seconds. |
 
 User mode:
 - Only works with packages that can install without admin rights: the manifest has `Scope: user`, or it is a portable package. Example: `Postman.Postman` works, `7zip.7zip` does not (`Scope: machine`, `ElevationRequirement: elevatesSelf`).
@@ -118,7 +118,7 @@ If the file or a setting is missing, the check runs.
 ## EXIT CODES
 | Exit code | Meaning |
 |---|---|
-| 0 | Success |
+| 0 | Success. With install, also when the package is already installed (winget `0x8A150061` or `0x8A15002B`); the log says "is already installed, nothing to install". |
 | 60001 | An option rule was broken (see [OPTION RULES](#option-rules)) or another error occurred. The reason is in the log. |
 | 69001 | No package specified. Use `-id`, `-name`, `-moniker`, `-wingetmanifest`, `-productcode` or `-importfile`. |
 | Other | The winget return code is passed through, for example `-1978335135` (`0x8A150061`, package already installed). See [winget return codes](https://github.com/microsoft/winget-cli/blob/master/doc/windows/package-manager/winget/returnCodes.md). |
@@ -128,6 +128,36 @@ If the file or a setting is missing, the check runs.
 C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\<OverrideAPPName|id|name>_WingetFW_<version>_EN_01_PSAppDeployToolkit_<DeploymentType>.log
 ```
 The log contains the WingetFW parameters, the final winget command line and the winget exit code. Use `-OverrideAPPName` to change the first part of the file name. Use `-log` for winget's own log file.
+
+## UPGRADING INTUNE APPS
+> **BETA:** `Tools\Update-WingetFWIntuneApps.ps1` is not fully tested yet. Use it at your own risk, run `-Apply` with `-WhatIf` first and test it on a single app before updating more apps.
+`Tools\Update-WingetFWIntuneApps.ps1` updates existing WingetFW apps in Intune to a new WingetFW package. It needs PowerShell 7, the `Microsoft.Graph.Authentication` module and the permission `DeviceManagementApps.Read.All` (export) or `DeviceManagementApps.ReadWrite.All` (apply). It logs in with a popup, or with an app registration (`-TenantId`, `-ClientId`, `-ClientSecret`).
+
+1. Export: finds all Win32 apps that run `Deploy-Application.exe` with a WingetFW package parameter and writes a CSV with the old and new command lines, the changes, warnings, errors and the detection script used. Nothing is changed in Intune.
+   ```
+   .\Update-WingetFWIntuneApps.ps1 -Export
+   ```
+2. Review the CSV. Set `Update` to `No` (or delete the row) for apps that must not be updated. Rows with errors are set to `No`. The new command lines can be edited.
+3. Apply: uploads the new `.intunewin` as a new content version of each app, sets the new command lines and writes `WingetFW <version>` to the app notes. Assignments, app ID and detection rules are kept. Use `-WhatIf` first.
+   ```
+   .\Update-WingetFWIntuneApps.ps1 -Apply -CsvPath .\WingetFW-IntuneApps-<date>.csv -IntuneWinFile .\Deploy-Application.intunewin -WhatIf
+   ```
+
+The conversion of old parameters is in `Tools\WingetFW-ParameterMap.psd1`, for example:
+
+| Old | New |
+|---|---|
+| `-WingetID` (3.x) | `-id` |
+| `-WingetOverride` (3.x) | `-override` |
+| `-WingetScope '--scope machine'` (3.x) | `-scope 'Machine'` |
+| `-WingetCM '--custom ... --version ...'` (3.x) | `-custom '...' -version '...'` |
+| 3.x always used `--silent` | `-silent` (not with `-override`) |
+| `-testverbose` (4.0.0 - 4.0.6) | `-enableverbose` |
+| `-wait` (4.0.0 - 4.0.6) | removed |
+| `-scope Any/UserOrUnknown/SystemOrUnknown` (4.0.0 - 4.0.6) | removed (was not passed to winget) |
+| `-DeploymentType Repair` (before 4.0.7, always uninstall + install) | `-DeploymentType Repair -ForceRepair` |
+
+Use `-ConvertCommandLine '<command line>'` to see the conversion of one command line without connecting to Intune.
 
 ## TESTS
 The test suite and the latest results are in [Tests/README.md](Tests/README.md) and [Tests/TEST-RESULTS.md](Tests/TEST-RESULTS.md).

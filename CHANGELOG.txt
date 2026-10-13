@@ -1,4 +1,9 @@
-﻿**Version 4.0.7 [11/10/2026]**
+﻿**Version 4.0.8 [11/10/2026]**
+- Fixed an issue where User mode failed right after a user's first logon because Windows registers winget (App Installer) a few seconds late; WingetFW now requests the registration and retries for up to about 20 seconds
+- Changed Install so a package that is already installed (winget 0x8A150061 or 0x8A15002B) is logged as already installed and returns exit code 0 instead of failing
+- Added Tools\Update-WingetFWIntuneApps.ps1 (BETA, not fully tested, use at your own risk) to find all WingetFW apps in Intune, export them to a CSV with the converted command lines, and update the selected apps to the new WingetFW package. The parameter conversion from 3.x and 4.0.x is in Tools\WingetFW-ParameterMap.psd1
+
+**Version 4.0.7 [11/10/2026]**
 - Fixed an issue where enableverbose was not passed to winget
 - Fixed an issue where dependencysource did not pass its value to winget
 - Fixed an issue where log, wingetmanifest, header and rename did not pass quotations to winget.exe (paths and values with spaces)

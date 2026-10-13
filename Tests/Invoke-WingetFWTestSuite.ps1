@@ -36,13 +36,19 @@
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 1.1.0
+    Version      : 1.2.0
 
     Release notes
+    1.2.0  - F02/F15: winget "already installed" exit codes on install are logged and give exit code 0.
+           - U05/U06: user mode where winget appears a few seconds late (first logon race).
+           - Maintainer set to KSKITDK, GitHub link added.
     1.1.0  - V10: -header without -source must stop with 60001.
            - F02: -source winget added, winget rejects --header without --source.
            - U03/U04: Postman.Postman as a real user-scope installer (EXE) in user mode.
     1.0.0  - First version: validation, admin (SYSTEM via PsExec), portable and user-mode tests.
+
+.LINK
+    https://github.com/ksk-itdk/PSADT-WingetFW
 #>
 [CmdletBinding()]
 Param (
@@ -116,6 +122,13 @@ Function Get-JqMachineFolder { Get-ChildItem 'C:\Program Files\WinGet\Packages' 
 Function Get-JqUserFolder { Get-ChildItem "$env:LOCALAPPDATA\Microsoft\WinGet\Packages" -Directory -Filter 'jqlang.jq*' -ErrorAction SilentlyContinue | Select-Object -First 1 }
 # Key name = ProductCode 'Postman' from the winget manifest
 Function Get-PostmanUser { Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Postman' -ErrorAction SilentlyContinue }
+# U05 links the real WindowsApps folder in with a junction; rmdir removes only the link, never the target
+Function Remove-FakeLocalAppData {
+    $fake = Join-Path $Root 'first logon localappdata'
+    If (Test-Path "$fake\Microsoft\WindowsApps") { cmd.exe /c rmdir "$fake\Microsoft\WindowsApps" | Out-Null }
+    If (Test-Path "$fake\Microsoft\WindowsApps") { Throw "Could not remove the junction $fake\Microsoft\WindowsApps" }
+    Remove-Item $fake -Recurse -Force -ErrorAction SilentlyContinue
+}
 
 $script:results = New-Object System.Collections.Generic.List[Object]
 Function Invoke-Test {
@@ -241,6 +254,7 @@ $adminSettings | Where-Object { -not $before.adminSettings.$_ } | ForEach-Object
 Invoke-WingetAsSystem 'uninstall --id 7zip.7zip --exact --silent --all-versions --accept-source-agreements --disable-interactivity' | Out-Null
 Invoke-WingetAsSystem 'uninstall --id jqlang.jq --exact --silent --all-versions --accept-source-agreements --disable-interactivity' | Out-Null
 # Postman is installed per user, so SYSTEM cannot remove it
+Remove-FakeLocalAppData
 If (Get-PostmanUser) {
     Stop-Process -Name 'Postman' -Force -ErrorAction SilentlyContinue
     & (Join-Path $env:LOCALAPPDATA 'Microsoft\WindowsApps\winget.exe') uninstall --id Postman.Postman --exact --silent --accept-source-agreements --disable-interactivity | Out-Null
@@ -303,12 +317,16 @@ Invoke-Test -Id 'F01' -Title 'Install: older MSI (WiX) version with install opti
     -ExpectLog @("-Action Install .*-id '7zip\.7zip'.*-skipdependencies", 'Running winget Install for \[7zip\.7zip\]', 'Done: winget Install for \[7zip\.7zip\]') `
     -State { $z = Get-7Zip; [PSCustomObject]@{ Ok = ($z -and $z.Msi -and $z.Version -like "$old*" -and (Test-Path $f01log)); Text = "7-Zip $($z.Version) msi=$($z.Msi), winget log file created=$(Test-Path $f01log)" } }
 
-Invoke-Test -Id 'F02' -Title 'Install: -noupgrade on installed package (+interactive, locale, source, header, auth) - winget stops: already installed' -ArgList @('Install', '-id', '7zip.7zip', '-exact', '-source', 'winget', '-noupgrade', '-interactive', '-locale', 'en-US', '-header', 'X-WingetFW-Test: 1', '-authenticationmode', 'silentPreferred', '-authenticationaccount', 'wingetfw@contoso.com') `
-    -ExpectExit @(-1978335135) -Flags @(, @('--source winget', '--no-upgrade', '--interactive', '--locale en-US', '--header "X-WingetFW-Test: 1"', '--authentication-mode silentPreferred', '--authentication-account wingetfw@contoso.com')) -State $installed
+Invoke-Test -Id 'F02' -Title 'Install: -noupgrade on installed package (+interactive, locale, source, header, auth) - logged as already installed, exit 0' -ArgList @('Install', '-id', '7zip.7zip', '-exact', '-source', 'winget', '-noupgrade', '-interactive', '-locale', 'en-US', '-header', 'X-WingetFW-Test: 1', '-authenticationmode', 'silentPreferred', '-authenticationaccount', 'wingetfw@contoso.com') `
+    -ExpectLog @('\[7zip\.7zip\] is already installed, nothing to install \(winget exit code 0x8A150061\)') `
+    -Flags @(, @('--source winget', '--no-upgrade', '--interactive', '--locale en-US', '--header "X-WingetFW-Test: 1"', '--authentication-mode silentPreferred', '--authentication-account wingetfw@contoso.com')) -State $installed
 
 Invoke-Test -Id 'F03' -Title 'Upgrade: to latest (-Action upgrade)' -ArgList @('Install', '-Action', 'upgrade', '-id', '7zip.7zip', '-exact', '-silent', '-includeunknown', '-includepinned', '-uninstallprevious', '-force') `
     -Flags @(, @('upgrade', '--include-unknown', '--include-pinned', '--uninstall-previous', '--force')) `
     -State { $z = Get-7Zip; [PSCustomObject]@{ Ok = ($z -and $z.Version -notlike "$old*"); Text = "7-Zip $($z.Version) (older was $old)" } }
+
+Invoke-Test -Id 'F15' -Title 'Install: package already installed with the latest version - logged as already installed, exit 0' -ArgList @('Install', '-id', '7zip.7zip', '-exact', '-silent') `
+    -ExpectLog @('\[7zip\.7zip\] is already installed, nothing to install \(winget exit code 0x8A15002B\)') -State $installed
 
 # 7-Zip MSI repair fails inside winget (0x8A15007B EXEC_REPAIR_FAILED); the test checks WingetFW builds the right command
 Invoke-Test -Id 'F04' -Title 'Repair: winget repair by -id (informational: 7-Zip MSI repair itself may fail in winget)' -ArgList @('Repair', '-id', '7zip.7zip', '-exact', '-silent', '-force') -ExpectExit @(0, -1978335109) -Flags @(, @('Repair', '--id 7zip.7zip', '--force')) -State $installed
@@ -366,6 +384,19 @@ Invoke-Test -Id 'U03' -Title 'User mode: install Postman (EXE installer, user sc
 Invoke-Test -Id 'U04' -Title 'User mode: uninstall Postman' -Mode User -ArgList @('Uninstall', '-id', 'Postman.Postman', '-exact', '-silent') `
     -Pre { $p = @(Get-Process -Name 'Postman' -ErrorAction SilentlyContinue); $p | Stop-Process -Force; "stopped $($p.Count) Postman process(es)" } `
     -NotFlags @(, $noPackageAgreement) -State { $p = Get-PostmanUser; [PSCustomObject]@{ Ok = -not $p; Text = "Postman removed from HKCU uninstall: $(-not $p)" } }
+# Simulates the first-logon race: App Installer is NonRemovable, so LOCALAPPDATA points to a folder where winget appears after ~8 seconds
+$realLocalAppData = $env:LOCALAPPDATA
+$fakeLocalAppData = Join-Path $Root 'first logon localappdata'
+Invoke-Test -Id 'U05' -Title 'User mode: winget appears a few seconds late (first logon) - WingetFW registers App Installer, retries and installs jq' -Mode User -ArgList @('Install', '-id', 'jqlang.jq', '-exact', '-silent', '-scope', 'User') `
+    -Pre { New-Item -ItemType Directory -Path "$fakeLocalAppData\Microsoft" -Force | Out-Null; $env:LOCALAPPDATA = $fakeLocalAppData
+           Start-Process cmd.exe -ArgumentList "/c ping -n 11 127.0.0.1 >nul & mklink /J `"$fakeLocalAppData\Microsoft\WindowsApps`" `"$realLocalAppData\Microsoft\WindowsApps`"" -WindowStyle Hidden
+           "LOCALAPPDATA=$fakeLocalAppData, Microsoft\WindowsApps is linked in after ~10 seconds" } `
+    -ExpectLog @('requesting App Installer registration', 'winget not found yet \(attempt 2 of 5\)') -Flags @(, @('--scope user')) `
+    -State { $d = Get-ChildItem "$realLocalAppData\Microsoft\WinGet\Packages" -Directory -Filter 'jqlang.jq*' -ErrorAction SilentlyContinue | Select-Object -First 1; [PSCustomObject]@{ Ok = [Bool]$d; Text = "user package folder: $($d.FullName)" } }
+$env:LOCALAPPDATA = $realLocalAppData
+Remove-FakeLocalAppData
+Invoke-Test -Id 'U06' -Title 'User mode: uninstall jq' -Mode User -ArgList @('Uninstall', '-id', 'jqlang.jq', '-exact', '-silent') `
+    -NotFlags @(, $noPackageAgreement) -State { $d = Get-JqUserFolder; [PSCustomObject]@{ Ok = -not $d; Text = "user package folder removed: $(-not $d)" } }
 
 # ---------------------------------------------------------------- teardown
 Write-Result ''
