@@ -36,9 +36,12 @@
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 1.2.0
+    Version      : 1.2.1
 
     Release notes
+    1.2.1  - The toolkit log folder is created at the start, so the suite also runs on a clean VM.
+           - U05: winget is linked in after WingetFW logs retry attempt 2 instead of after a fixed
+             10 seconds, so the test no longer fails when the App Installer registration call is slow.
     1.2.0  - F02/F15: winget "already installed" exit codes on install are logged and give exit code 0.
            - U05/U06: user mode where winget appears a few seconds late (first logon race).
            - Maintainer set to KSKITDK, GitHub link added.
@@ -75,7 +78,7 @@ $appVersion    = ([regex]::Match((Get-Content (Join-Path $pkgDir 'Deploy-Applica
 If (-not (Test-Path $exe)) { Throw "Deploy-Application.exe not found: $exe" }
 If (-not (Test-Path $PsExecPath)) { Throw "PsExec not found: $PsExecPath" }
 If (Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'Deploy-Application' }) { Throw 'Another Deploy-Application run is active on this VM - aborting.' }
-New-Item -ItemType Directory -Path $resultDir, $tmpDir, $spaceDir -Force | Out-Null
+New-Item -ItemType Directory -Path $resultDir, $tmpDir, $spaceDir, $toolkitLogDir -Force | Out-Null
 Remove-Item (Join-Path $resultDir '*'), (Join-Path $tmpDir '*'), (Join-Path $spaceDir '*') -Force -Recurse -ErrorAction SilentlyContinue
 
 Function Write-Result([String]$Text) { Add-Content -Path $resultLog -Value $Text -Encoding UTF8; Write-Output $Text }
@@ -384,13 +387,15 @@ Invoke-Test -Id 'U03' -Title 'User mode: install Postman (EXE installer, user sc
 Invoke-Test -Id 'U04' -Title 'User mode: uninstall Postman' -Mode User -ArgList @('Uninstall', '-id', 'Postman.Postman', '-exact', '-silent') `
     -Pre { $p = @(Get-Process -Name 'Postman' -ErrorAction SilentlyContinue); $p | Stop-Process -Force; "stopped $($p.Count) Postman process(es)" } `
     -NotFlags @(, $noPackageAgreement) -State { $p = Get-PostmanUser; [PSCustomObject]@{ Ok = -not $p; Text = "Postman removed from HKCU uninstall: $(-not $p)" } }
-# Simulates the first-logon race: App Installer is NonRemovable, so LOCALAPPDATA points to a folder where winget appears after ~8 seconds
+# Simulates the first-logon race: App Installer is NonRemovable, so LOCALAPPDATA points to a folder where winget appears
+# only after WingetFW has logged retry attempt 2 (a fixed delay failed when the registration call took longer)
 $realLocalAppData = $env:LOCALAPPDATA
 $fakeLocalAppData = Join-Path $Root 'first logon localappdata'
 Invoke-Test -Id 'U05' -Title 'User mode: winget appears a few seconds late (first logon) - WingetFW registers App Installer, retries and installs jq' -Mode User -ArgList @('Install', '-id', 'jqlang.jq', '-exact', '-silent', '-scope', 'User') `
     -Pre { New-Item -ItemType Directory -Path "$fakeLocalAppData\Microsoft" -Force | Out-Null; $env:LOCALAPPDATA = $fakeLocalAppData
-           Start-Process cmd.exe -ArgumentList "/c ping -n 11 127.0.0.1 >nul & mklink /J `"$fakeLocalAppData\Microsoft\WindowsApps`" `"$realLocalAppData\Microsoft\WindowsApps`"" -WindowStyle Hidden
-           "LOCALAPPDATA=$fakeLocalAppData, Microsoft\WindowsApps is linked in after ~10 seconds" } `
+           $watch = "`$s = $((Get-Item $toolkitLog).Length); `$end = (Get-Date).AddSeconds(90); Do { Start-Sleep -Milliseconds 500; `$fs = [IO.File]::Open('$toolkitLog', 'Open', 'Read', 'ReadWrite'); `$fs.Position = `$s; `$t = (New-Object IO.StreamReader(`$fs)).ReadToEnd(); `$fs.Close() } Until ((`$t -match 'attempt 2 of 5') -or ((Get-Date) -gt `$end)); New-Item -ItemType Junction -Path '$fakeLocalAppData\Microsoft\WindowsApps' -Target '$realLocalAppData\Microsoft\WindowsApps' | Out-Null"
+           Start-Process powershell.exe -ArgumentList "-NoProfile -EncodedCommand $([Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($watch)))" -WindowStyle Hidden
+           "LOCALAPPDATA=$fakeLocalAppData, Microsoft\WindowsApps is linked in after WingetFW logs retry attempt 2" } `
     -ExpectLog @('requesting App Installer registration', 'winget not found yet \(attempt 2 of 5\)') -Flags @(, @('--scope user')) `
     -State { $d = Get-ChildItem "$realLocalAppData\Microsoft\WinGet\Packages" -Directory -Filter 'jqlang.jq*' -ErrorAction SilentlyContinue | Select-Object -First 1; [PSCustomObject]@{ Ok = [Bool]$d; Text = "user package folder: $($d.FullName)" } }
 $env:LOCALAPPDATA = $realLocalAppData

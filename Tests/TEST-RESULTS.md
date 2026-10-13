@@ -6,9 +6,9 @@
 
 | Item | Value |
 |---|---|
-| Run date | 2026-10-11 13:37 |
+| Run date | 2026-10-13 21:26 |
 | Machine | DESKTOP-UCC6GH2 (Microsoft Windows 11 Enterprise 10.0.26200) |
-| WingetFW package | 4.0.7 (PSADT v3, `Deploy-Application.exe`) |
+| WingetFW package | 4.0.8 (PSADT v3, `Deploy-Application.exe`) |
 | winget | v1.29.380 `C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe` |
 | Admin-mode tests | run as SYSTEM via `C:\temp\PSTools\PsExec64.exe -s` |
 | User-mode tests | run as `test` without PsExec |
@@ -119,8 +119,8 @@ Each Deploy-Application.ps1 parameter and the tests that used it.
 **Install: -id + -name conflict** - PASS
 
 - Run as: SYSTEM via PsExec
-- Exit code: 60001 (6 s)
-- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\7zip.7zip_WingetFW_4.0.7_EN_01_PSAppDeployToolkit_Install.log`
+- Exit code: 60001 (21 s)
+- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\7zip.7zip_WingetFW_4.0.8_EN_01_PSAppDeployToolkit_Install.log`
 
 Command:
 
@@ -139,11 +139,11 @@ winget was not started.
 <details><summary>Toolkit log excerpt</summary>
 
 ```
-13:31:19.413 [WingetFW-Test] [TEST V01] Install: -id + -name conflict | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -id 7zip.7zip -name 7-Zip -DeployMode Silent
-13:31:24.529 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode Admin -Action Install -acceptpackageagreements -acceptsourceagreements -id '7zip.7zip' -name '7-Zip'
-13:31:24.634 [Deploy Application] [Error] [Installation] :: Error Record: | ------------- | Message        : -id and -name cannot be used together. Use only one of -wingetmanifest, -id, -name, -moniker. | InnerException : 
-13:31:24.670 [Exit-Script] [Installation] :: 7zip.7zip_WingetFW_4.0.7_EN_01 Installation completed with exit code [60001].
-13:31:24.673 [Exit-Script] [Installation] :: -------------------------------------------------------------------------------
+21:07:18.428 [WingetFW-Test] [TEST V01] Install: -id + -name conflict | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -id 7zip.7zip -name 7-Zip -DeployMode Silent
+21:07:36.693 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode Admin -Action Install -acceptpackageagreements -acceptsourceagreements -id '7zip.7zip' -name '7-Zip'
+21:07:37.929 [Deploy Application] [Error] [Installation] :: Error Record: | ------------- | Message        : -id and -name cannot be used together. Use only one of -wingetmanifest, -id, -name, -moniker. | InnerException : 
+21:07:38.002 [Exit-Script] [Installation] :: 7zip.7zip_WingetFW_4.0.8_EN_01 Installation completed with exit code [60001].
+21:07:38.011 [Exit-Script] [Installation] :: -------------------------------------------------------------------------------
 ```
 
 </details>
@@ -153,8 +153,8 @@ winget was not started.
 **Install: -interactive + -silent conflict** - PASS
 
 - Run as: SYSTEM via PsExec
-- Exit code: 60001 (6 s)
-- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\7zip.7zip_WingetFW_4.0.7_EN_01_PSAppDeployToolkit_Install.log`
+- Exit code: 60001 (11 s)
+- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\7zip.7zip_WingetFW_4.0.8_EN_01_PSAppDeployToolkit_Install.log`
 
 Command:
 
@@ -173,11 +173,11 @@ winget was not started.
 <details><summary>Toolkit log excerpt</summary>
 
 ```
-13:31:25.563 [WingetFW-Test] [TEST V02] Install: -interactive + -silent conflict | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -id 7zip.7zip -interactive -silent -DeployMode Silent
-13:31:30.482 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode Admin -Action Install -acceptpackageagreements -acceptsourceagreements -id '7zip.7zip' -interactive -silent
-13:31:30.554 [Deploy Application] [Error] [Installation] :: Error Record: | ------------- | Message        : -silent and -interactive cannot be used together. Use only one of -interactive, -silent, -override. | InnerException : 
-13:31:30.588 [Exit-Script] [Installation] :: 7zip.7zip_WingetFW_4.0.7_EN_01 Installation completed with exit code [60001].
-13:31:30.590 [Exit-Script] [Installation] :: -------------------------------------------------------------------------------
+21:07:40.565 [WingetFW-Test] [TEST V02] Install: -interactive + -silent conflict | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -id 7zip.7zip -interactive -silent -DeployMode Silent
+21:07:50.510 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode Admin -Action Install -acceptpackageagreements -acceptsourceagreements -id '7zip.7zip' -interactive -silent
+21:07:50.690 [Deploy Application] [Error] [Installation] :: Error Record: | ------------- | Message        : -silent and -interactive cannot be used together. Use only one of -interactive, -silent, -override. | InnerException : 
+21:07:50.737 [Exit-Script] [Installation] :: 7zip.7zip_WingetFW_4.0.8_EN_01 Installation completed with exit code [60001].
+21:07:50.743 [Exit-Script] [Installation] :: -------------------------------------------------------------------------------
 ```
 
 </details>
@@ -187,8 +187,8 @@ winget was not started.
 **Install: -silent + -override conflict** - PASS
 
 - Run as: SYSTEM via PsExec
-- Exit code: 60001 (6 s)
-- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\7zip.7zip_WingetFW_4.0.7_EN_01_PSAppDeployToolkit_Install.log`
+- Exit code: 60001 (10 s)
+- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\7zip.7zip_WingetFW_4.0.8_EN_01_PSAppDeployToolkit_Install.log`
 
 Command:
 
@@ -207,11 +207,11 @@ winget was not started.
 <details><summary>Toolkit log excerpt</summary>
 
 ```
-13:31:31.634 [WingetFW-Test] [TEST V03] Install: -silent + -override conflict | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -id 7zip.7zip -silent -override /S -DeployMode Silent
-13:31:36.589 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode Admin -Action Install -acceptpackageagreements -acceptsourceagreements -id '7zip.7zip' -override '/S' -silent
-13:31:36.689 [Deploy Application] [Error] [Installation] :: Error Record: | ------------- | Message        : -silent and -override cannot be used together. Use only one of -interactive, -silent, -override. | InnerException : 
-13:31:36.720 [Exit-Script] [Installation] :: 7zip.7zip_WingetFW_4.0.7_EN_01 Installation completed with exit code [60001].
-13:31:36.724 [Exit-Script] [Installation] :: -------------------------------------------------------------------------------
+21:07:51.831 [WingetFW-Test] [TEST V03] Install: -silent + -override conflict | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -id 7zip.7zip -silent -override /S -DeployMode Silent
+21:08:01.290 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode Admin -Action Install -acceptpackageagreements -acceptsourceagreements -id '7zip.7zip' -override '/S' -silent
+21:08:01.445 [Deploy Application] [Error] [Installation] :: Error Record: | ------------- | Message        : -silent and -override cannot be used together. Use only one of -interactive, -silent, -override. | InnerException : 
+21:08:01.517 [Exit-Script] [Installation] :: 7zip.7zip_WingetFW_4.0.8_EN_01 Installation completed with exit code [60001].
+21:08:01.521 [Exit-Script] [Installation] :: -------------------------------------------------------------------------------
 ```
 
 </details>
@@ -221,8 +221,8 @@ winget was not started.
 **Install: -proxy + -noproxy conflict** - PASS
 
 - Run as: SYSTEM via PsExec
-- Exit code: 60001 (6 s)
-- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\7zip.7zip_WingetFW_4.0.7_EN_01_PSAppDeployToolkit_Install.log`
+- Exit code: 60001 (13 s)
+- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\7zip.7zip_WingetFW_4.0.8_EN_01_PSAppDeployToolkit_Install.log`
 
 Command:
 
@@ -241,11 +241,11 @@ winget was not started.
 <details><summary>Toolkit log excerpt</summary>
 
 ```
-13:31:37.716 [WingetFW-Test] [TEST V04] Install: -proxy + -noproxy conflict | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -id 7zip.7zip -proxy http://127.0.0.1:9 -noproxy -DeployMode Silent
-13:31:42.560 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode Admin -Action Install -acceptpackageagreements -acceptsourceagreements -id '7zip.7zip' -noproxy -proxy 'http://127.0.0.1:9'
-13:31:42.662 [Deploy Application] [Error] [Installation] :: Error Record: | ------------- | Message        : -noproxy and -proxy cannot be used together. Use only one of -proxy, -noproxy. | InnerException : 
-13:31:42.693 [Exit-Script] [Installation] :: 7zip.7zip_WingetFW_4.0.7_EN_01 Installation completed with exit code [60001].
-13:31:42.698 [Exit-Script] [Installation] :: -------------------------------------------------------------------------------
+21:08:02.156 [WingetFW-Test] [TEST V04] Install: -proxy + -noproxy conflict | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -id 7zip.7zip -proxy http://127.0.0.1:9 -noproxy -DeployMode Silent
+21:08:13.696 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode Admin -Action Install -acceptpackageagreements -acceptsourceagreements -id '7zip.7zip' -noproxy -proxy 'http://127.0.0.1:9'
+21:08:14.033 [Deploy Application] [Error] [Installation] :: Error Record: | ------------- | Message        : -noproxy and -proxy cannot be used together. Use only one of -proxy, -noproxy. | InnerException : 
+21:08:14.148 [Exit-Script] [Installation] :: 7zip.7zip_WingetFW_4.0.8_EN_01 Installation completed with exit code [60001].
+21:08:14.164 [Exit-Script] [Installation] :: -------------------------------------------------------------------------------
 ```
 
 </details>
@@ -255,8 +255,8 @@ winget was not started.
 **Uninstall: -override not supported** - PASS
 
 - Run as: SYSTEM via PsExec
-- Exit code: 60001 (6 s)
-- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\7zip.7zip_WingetFW_4.0.7_EN_01_PSAppDeployToolkit_Uninstall.log`
+- Exit code: 60001 (34 s)
+- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\7zip.7zip_WingetFW_4.0.8_EN_01_PSAppDeployToolkit_Uninstall.log`
 
 Command:
 
@@ -275,11 +275,11 @@ winget was not started.
 <details><summary>Toolkit log excerpt</summary>
 
 ```
-13:31:43.802 [WingetFW-Test] [TEST V05] Uninstall: -override not supported | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Uninstall -id 7zip.7zip -override /S -DeployMode Silent
-13:31:48.721 [Start-WinGetPackageFM] [Uninstallation] :: Start-WinGetPackageFM -UserMode Admin -Action Uninstall -id '7zip.7zip' -override '/S'
-13:31:48.820 [Deploy Application] [Error] [Uninstallation] :: Error Record: | ------------- | Message        : -override is not an option with winget Uninstall. Allowed: -wingetmanifest, -id, -name, -moniker,  |                  -version, -source, -exact, -enableverbose, -ignorewarnings, -disableinteractivity, -proxy, -noproxy, 
-13:31:48.855 [Exit-Script] [Uninstallation] :: 7zip.7zip_WingetFW_4.0.7_EN_01 Uninstallation completed with exit code [60001].
-13:31:48.858 [Exit-Script] [Uninstallation] :: -------------------------------------------------------------------------------
+21:08:15.609 [WingetFW-Test] [TEST V05] Uninstall: -override not supported | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Uninstall -id 7zip.7zip -override /S -DeployMode Silent
+21:08:46.671 [Start-WinGetPackageFM] [Uninstallation] :: Start-WinGetPackageFM -UserMode Admin -Action Uninstall -id '7zip.7zip' -override '/S'
+21:08:47.625 [Deploy Application] [Error] [Uninstallation] :: Error Record: | ------------- | Message        : -override is not an option with winget Uninstall. Allowed: -wingetmanifest, -id, -name, -moniker,  |                  -version, -source, -exact, -enableverbose, -ignorewarnings, -disableinteractivity, -proxy, -noproxy, 
+21:08:47.903 [Exit-Script] [Uninstallation] :: 7zip.7zip_WingetFW_4.0.8_EN_01 Uninstallation completed with exit code [60001].
+21:08:47.916 [Exit-Script] [Uninstallation] :: -------------------------------------------------------------------------------
 ```
 
 </details>
@@ -289,8 +289,8 @@ winget was not started.
 **Uninstall: -purge + -preserve conflict** - PASS
 
 - Run as: SYSTEM via PsExec
-- Exit code: 60001 (6 s)
-- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\jqlang.jq_WingetFW_4.0.7_EN_01_PSAppDeployToolkit_Uninstall.log`
+- Exit code: 60001 (16 s)
+- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\jqlang.jq_WingetFW_4.0.8_EN_01_PSAppDeployToolkit_Uninstall.log`
 
 Command:
 
@@ -309,11 +309,11 @@ winget was not started.
 <details><summary>Toolkit log excerpt</summary>
 
 ```
-13:31:49.893 [WingetFW-Test] [TEST V06] Uninstall: -purge + -preserve conflict | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Uninstall -id jqlang.jq -purge -preserve -DeployMode Silent
-13:31:54.804 [Start-WinGetPackageFM] [Uninstallation] :: Start-WinGetPackageFM -UserMode Admin -Action Uninstall -id 'jqlang.jq' -preserve -purge
-13:31:54.910 [Deploy Application] [Error] [Uninstallation] :: Error Record: | ------------- | Message        : -purge and -preserve cannot be used together. Use only one of -purge, -preserve. | InnerException : 
-13:31:54.942 [Exit-Script] [Uninstallation] :: jqlang.jq_WingetFW_4.0.7_EN_01 Uninstallation completed with exit code [60001].
-13:31:54.947 [Exit-Script] [Uninstallation] :: -------------------------------------------------------------------------------
+21:08:49.413 [WingetFW-Test] [TEST V06] Uninstall: -purge + -preserve conflict | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Uninstall -id jqlang.jq -purge -preserve -DeployMode Silent
+21:09:03.880 [Start-WinGetPackageFM] [Uninstallation] :: Start-WinGetPackageFM -UserMode Admin -Action Uninstall -id 'jqlang.jq' -preserve -purge
+21:09:04.245 [Deploy Application] [Error] [Uninstallation] :: Error Record: | ------------- | Message        : -purge and -preserve cannot be used together. Use only one of -purge, -preserve. | InnerException : 
+21:09:04.400 [Exit-Script] [Uninstallation] :: jqlang.jq_WingetFW_4.0.8_EN_01 Uninstallation completed with exit code [60001].
+21:09:04.430 [Exit-Script] [Uninstallation] :: -------------------------------------------------------------------------------
 ```
 
 </details>
@@ -323,8 +323,8 @@ winget was not started.
 **Import: -id not supported** - PASS
 
 - Run as: SYSTEM via PsExec
-- Exit code: 60001 (6 s)
-- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\7zip.7zip_WingetFW_4.0.7_EN_01_PSAppDeployToolkit_Install.log`
+- Exit code: 60001 (10 s)
+- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\7zip.7zip_WingetFW_4.0.8_EN_01_PSAppDeployToolkit_Install.log`
 
 Command:
 
@@ -343,11 +343,11 @@ winget was not started.
 <details><summary>Toolkit log excerpt</summary>
 
 ```
-13:31:55.970 [WingetFW-Test] [TEST V07] Import: -id not supported | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -Action import -importfile 'C:\temp\wingetfw-vmtest\path with spaces\import apps.json' -id 7zip.7zip -DeployMode Silent
-13:32:00.934 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode Admin -Action import -acceptpackageagreements -acceptsourceagreements -id '7zip.7zip' -importfile 'C:\temp\wingetfw-vmtest\path with spaces\import apps.json'
-13:32:01.004 [Deploy Application] [Error] [Installation] :: Error Record: | ------------- | Message        : -id is not an option with winget import. Allowed: -enableverbose, -ignorewarnings,  |                  -disableinteractivity, -proxy, -noproxy, -importfile, -ignoreunavailable, -ignoreversions, -noupgrade
-13:32:01.045 [Exit-Script] [Installation] :: 7zip.7zip_WingetFW_4.0.7_EN_01 Installation completed with exit code [60001].
-13:32:01.049 [Exit-Script] [Installation] :: -------------------------------------------------------------------------------
+21:09:05.739 [WingetFW-Test] [TEST V07] Import: -id not supported | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -Action import -importfile 'C:\temp\wingetfw-vmtest\path with spaces\import apps.json' -id 7zip.7zip -DeployMode Silent
+21:09:14.810 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode Admin -Action import -acceptpackageagreements -acceptsourceagreements -id '7zip.7zip' -importfile 'C:\temp\wingetfw-vmtest\path with spaces\import apps.json'
+21:09:14.964 [Deploy Application] [Error] [Installation] :: Error Record: | ------------- | Message        : -id is not an option with winget import. Allowed: -enableverbose, -ignorewarnings,  |                  -disableinteractivity, -proxy, -noproxy, -importfile, -ignoreunavailable, -ignoreversions, -noupgrade
+21:09:15.020 [Exit-Script] [Installation] :: 7zip.7zip_WingetFW_4.0.8_EN_01 Installation completed with exit code [60001].
+21:09:15.027 [Exit-Script] [Installation] :: -------------------------------------------------------------------------------
 ```
 
 </details>
@@ -357,8 +357,8 @@ winget was not started.
 **Repair: -custom not supported** - PASS
 
 - Run as: SYSTEM via PsExec
-- Exit code: 60001 (5 s)
-- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\7zip.7zip_WingetFW_4.0.7_EN_01_PSAppDeployToolkit_Repair.log`
+- Exit code: 60001 (11 s)
+- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\7zip.7zip_WingetFW_4.0.8_EN_01_PSAppDeployToolkit_Repair.log`
 
 Command:
 
@@ -377,11 +377,11 @@ winget was not started.
 <details><summary>Toolkit log excerpt</summary>
 
 ```
-13:32:02.067 [WingetFW-Test] [TEST V08] Repair: -custom not supported | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Repair -id 7zip.7zip -custom X=1 -DeployMode Silent
-13:32:06.455 [Start-WinGetPackageFM] [Repair] :: Start-WinGetPackageFM -UserMode Admin -Action Repair -acceptpackageagreements -acceptsourceagreements -custom 'X=1' -id '7zip.7zip'
-13:32:06.522 [Deploy Application] [Error] [Repair] :: Error Record: | ------------- | Message        : -custom is not an option with winget Repair. Allowed: -wingetmanifest, -id, -name, -moniker,  |                  -version, -source, -exact, -enableverbose, -ignorewarnings, -disableinteractivity, -proxy, -noproxy, 
-13:32:06.556 [Exit-Script] [Repair] :: 7zip.7zip_WingetFW_4.0.7_EN_01 Repairing completed with exit code [60001].
-13:32:06.560 [Exit-Script] [Repair] :: -------------------------------------------------------------------------------
+21:09:16.224 [WingetFW-Test] [TEST V08] Repair: -custom not supported | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Repair -id 7zip.7zip -custom X=1 -DeployMode Silent
+21:09:26.411 [Start-WinGetPackageFM] [Repair] :: Start-WinGetPackageFM -UserMode Admin -Action Repair -acceptpackageagreements -acceptsourceagreements -custom 'X=1' -id '7zip.7zip'
+21:09:26.578 [Deploy Application] [Error] [Repair] :: Error Record: | ------------- | Message        : -custom is not an option with winget Repair. Allowed: -wingetmanifest, -id, -name, -moniker,  |                  -version, -source, -exact, -enableverbose, -ignorewarnings, -disableinteractivity, -proxy, -noproxy, 
+21:09:26.638 [Exit-Script] [Repair] :: 7zip.7zip_WingetFW_4.0.8_EN_01 Repairing completed with exit code [60001].
+21:09:26.643 [Exit-Script] [Repair] :: -------------------------------------------------------------------------------
 ```
 
 </details>
@@ -391,8 +391,8 @@ winget was not started.
 **Upgrade: -rename not supported** - PASS
 
 - Run as: SYSTEM via PsExec
-- Exit code: 60001 (6 s)
-- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\7zip.7zip_WingetFW_4.0.7_EN_01_PSAppDeployToolkit_Install.log`
+- Exit code: 60001 (10 s)
+- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\7zip.7zip_WingetFW_4.0.8_EN_01_PSAppDeployToolkit_Install.log`
 
 Command:
 
@@ -411,11 +411,11 @@ winget was not started.
 <details><summary>Toolkit log excerpt</summary>
 
 ```
-13:32:07.147 [WingetFW-Test] [TEST V09] Upgrade: -rename not supported | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -Action upgrade -id 7zip.7zip -rename x.exe -DeployMode Silent
-13:32:11.968 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode Admin -Action upgrade -acceptpackageagreements -acceptsourceagreements -id '7zip.7zip' -rename 'x.exe'
-13:32:12.035 [Deploy Application] [Error] [Installation] :: Error Record: | ------------- | Message        : -rename is not an option with winget upgrade. Allowed: -wingetmanifest, -id, -name, -moniker,  |                  -version, -source, -exact, -enableverbose, -ignorewarnings, -disableinteractivity, -proxy, -noproxy, 
-13:32:12.099 [Exit-Script] [Installation] :: 7zip.7zip_WingetFW_4.0.7_EN_01 Installation completed with exit code [60001].
-13:32:12.104 [Exit-Script] [Installation] :: -------------------------------------------------------------------------------
+21:09:27.470 [WingetFW-Test] [TEST V09] Upgrade: -rename not supported | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -Action upgrade -id 7zip.7zip -rename x.exe -DeployMode Silent
+21:09:36.588 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode Admin -Action upgrade -acceptpackageagreements -acceptsourceagreements -id '7zip.7zip' -rename 'x.exe'
+21:09:36.724 [Deploy Application] [Error] [Installation] :: Error Record: | ------------- | Message        : -rename is not an option with winget upgrade. Allowed: -wingetmanifest, -id, -name, -moniker,  |                  -version, -source, -exact, -enableverbose, -ignorewarnings, -disableinteractivity, -proxy, -noproxy, 
+21:09:36.780 [Exit-Script] [Installation] :: 7zip.7zip_WingetFW_4.0.8_EN_01 Installation completed with exit code [60001].
+21:09:36.787 [Exit-Script] [Installation] :: -------------------------------------------------------------------------------
 ```
 
 </details>
@@ -425,8 +425,8 @@ winget was not started.
 **Install: -header without -source** - PASS
 
 - Run as: SYSTEM via PsExec
-- Exit code: 60001 (6 s)
-- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\7zip.7zip_WingetFW_4.0.7_EN_01_PSAppDeployToolkit_Install.log`
+- Exit code: 60001 (13 s)
+- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\7zip.7zip_WingetFW_4.0.8_EN_01_PSAppDeployToolkit_Install.log`
 
 Command:
 
@@ -445,11 +445,11 @@ winget was not started.
 <details><summary>Toolkit log excerpt</summary>
 
 ```
-13:32:13.236 [WingetFW-Test] [TEST V10] Install: -header without -source | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -id 7zip.7zip -header 'X-WingetFW-Test: 1' -DeployMode Silent
-13:32:18.047 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode Admin -Action Install -acceptpackageagreements -acceptsourceagreements -header 'X-WingetFW-Test: 1' -id '7zip.7zip'
-13:32:18.121 [Deploy Application] [Error] [Installation] :: Error Record: | ------------- | Message        : -header requires -source. winget rejects --header without --source. | InnerException : 
-13:32:18.153 [Exit-Script] [Installation] :: 7zip.7zip_WingetFW_4.0.7_EN_01 Installation completed with exit code [60001].
-13:32:18.159 [Exit-Script] [Installation] :: -------------------------------------------------------------------------------
+21:09:37.694 [WingetFW-Test] [TEST V10] Install: -header without -source | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -id 7zip.7zip -header 'X-WingetFW-Test: 1' -DeployMode Silent
+21:09:50.317 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode Admin -Action Install -acceptpackageagreements -acceptsourceagreements -header 'X-WingetFW-Test: 1' -id '7zip.7zip'
+21:09:50.500 [Deploy Application] [Error] [Installation] :: Error Record: | ------------- | Message        : -header requires -source. winget rejects --header without --source. | InnerException : 
+21:09:50.567 [Exit-Script] [Installation] :: 7zip.7zip_WingetFW_4.0.8_EN_01 Installation completed with exit code [60001].
+21:09:50.575 [Exit-Script] [Installation] :: -------------------------------------------------------------------------------
 ```
 
 </details>
@@ -459,8 +459,8 @@ winget was not started.
 **Install: no package specified fails with 69001** - PASS
 
 - Run as: SYSTEM via PsExec
-- Exit code: 69001 (6 s)
-- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\WingetFW_4.0.7_EN_01_PSAppDeployToolkit_Install.log`
+- Exit code: 69001 (17 s)
+- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\WingetFW_4.0.8_EN_01_PSAppDeployToolkit_Install.log`
 
 Command:
 
@@ -479,10 +479,10 @@ winget was not started.
 <details><summary>Toolkit log excerpt</summary>
 
 ```
-13:32:19.345 [WingetFW-Test] [TEST N01] Install: no package specified fails with 69001 | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -silent -DeployMode Silent
-13:32:24.191 [INSTALLATION] [Error] [Installation] :: No package specified. Use -id, -name, -moniker, -wingetmanifest, -productcode or -importfile
-13:32:24.211 [Exit-Script] [Installation] :: WingetFW_4.0.7_EN_01 Installation completed with exit code [69001].
-13:32:24.213 [Exit-Script] [Installation] :: -------------------------------------------------------------------------------
+21:09:51.109 [WingetFW-Test] [TEST N01] Install: no package specified fails with 69001 | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -silent -DeployMode Silent
+21:10:05.188 [INSTALLATION] [Error] [Installation] :: No package specified. Use -id, -name, -moniker, -wingetmanifest, -productcode or -importfile
+21:10:05.270 [Exit-Script] [Installation] :: WingetFW_4.0.8_EN_01 Installation completed with exit code [69001].
+21:10:05.278 [Exit-Script] [Installation] :: -------------------------------------------------------------------------------
 ```
 
 </details>
@@ -492,8 +492,8 @@ winget was not started.
 **Deploy-Application.exe: double-quoted value with spaces is split - script does not start, exit 0** - PASS
 
 - Run as: SYSTEM via PsExec
-- Exit code: 0 (1 s)
-- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\7zip.7zip_WingetFW_4.0.7_EN_01_PSAppDeployToolkit_Install.log`
+- Exit code: 0 (8 s)
+- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\7zip.7zip_WingetFW_4.0.8_EN_01_PSAppDeployToolkit_Install.log`
 
 Command:
 
@@ -514,7 +514,7 @@ winget was not started.
 <details><summary>Toolkit log excerpt</summary>
 
 ```
-13:32:25.411 [WingetFW-Test] [TEST Q01] Deploy-Application.exe: double-quoted value with spaces is split - script does not start, exit 0 | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -id 7zip.7zip -name "7 Zip" -DeployMode Silent
+21:10:10.526 [WingetFW-Test] [TEST Q01] Deploy-Application.exe: double-quoted value with spaces is split - script does not start, exit 0 | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -id 7zip.7zip -name "7 Zip" -DeployMode Silent
 ```
 
 </details>
@@ -524,8 +524,8 @@ winget was not started.
 **Deploy-Application.exe: single-quoted value with spaces is passed correctly** - PASS
 
 - Run as: SYSTEM via PsExec
-- Exit code: 60001 (6 s)
-- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\7zip.7zip_WingetFW_4.0.7_EN_01_PSAppDeployToolkit_Install.log`
+- Exit code: 60001 (16 s)
+- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\7zip.7zip_WingetFW_4.0.8_EN_01_PSAppDeployToolkit_Install.log`
 
 Command:
 
@@ -544,11 +544,11 @@ winget was not started.
 <details><summary>Toolkit log excerpt</summary>
 
 ```
-13:32:26.459 [WingetFW-Test] [TEST Q02] Deploy-Application.exe: single-quoted value with spaces is passed correctly | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -id 7zip.7zip -name '7 Zip' -DeployMode Silent
-13:32:31.351 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode Admin -Action Install -acceptpackageagreements -acceptsourceagreements -id '7zip.7zip' -name '7 Zip'
-13:32:31.453 [Deploy Application] [Error] [Installation] :: Error Record: | ------------- | Message        : -id and -name cannot be used together. Use only one of -wingetmanifest, -id, -name, -moniker. | InnerException : 
-13:32:31.487 [Exit-Script] [Installation] :: 7zip.7zip_WingetFW_4.0.7_EN_01 Installation completed with exit code [60001].
-13:32:31.490 [Exit-Script] [Installation] :: -------------------------------------------------------------------------------
+21:10:19.795 [WingetFW-Test] [TEST Q02] Deploy-Application.exe: single-quoted value with spaces is passed correctly | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -id 7zip.7zip -name '7 Zip' -DeployMode Silent
+21:10:34.391 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode Admin -Action Install -acceptpackageagreements -acceptsourceagreements -id '7zip.7zip' -name '7 Zip'
+21:10:34.600 [Deploy Application] [Error] [Installation] :: Error Record: | ------------- | Message        : -id and -name cannot be used together. Use only one of -wingetmanifest, -id, -name, -moniker. | InnerException : 
+21:10:34.655 [Exit-Script] [Installation] :: 7zip.7zip_WingetFW_4.0.8_EN_01 Installation completed with exit code [60001].
+21:10:34.657 [Exit-Script] [Installation] :: -------------------------------------------------------------------------------
 ```
 
 </details>
@@ -558,8 +558,8 @@ winget was not started.
 **Deploy-Application.exe: unquoted {GUID} loses its braces (PowerShell script block)** - PASS
 
 - Run as: SYSTEM via PsExec
-- Exit code: -1978335212 (0x8A150014) (6 s)
-- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\WingetFW_4.0.7_EN_01_PSAppDeployToolkit_Uninstall.log`
+- Exit code: -1978335212 (0x8A150014) (11 s)
+- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\WingetFW_4.0.8_EN_01_PSAppDeployToolkit_Uninstall.log`
 
 Command:
 
@@ -583,17 +583,17 @@ winget Uninstall  --silent --product-code 00000000-0000-0000-0000-000000000000
 <details><summary>Toolkit log excerpt</summary>
 
 ```
-13:32:32.532 [WingetFW-Test] [TEST Q03] Deploy-Application.exe: unquoted {GUID} loses its braces (PowerShell script block) | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Uninstall -productcode {00000000-0000-0000-0000-000000000000} -silent -DeployMode Silent
-13:32:37.378 [Start-WinGetPackageFM] [Uninstallation] :: Start-WinGetPackageFM -UserMode Admin -Action Uninstall -productcode '00000000-0000-0000-0000-000000000000' -silent
-13:32:37.408 [Start-WinGetPackageFM] [Uninstallation] :: Final argsWinGet:  --silent --product-code 00000000-0000-0000-0000-000000000000
-13:32:37.412 [Start-WinGetPackageFM] [Uninstallation] :: UserMode: Admin
-13:32:37.436 [Start-WinGetPackageFM] [Uninstallation] :: Running winget Uninstall for [00000000-0000-0000-0000-000000000000]
-13:32:37.451 [Execute-Process] [Uninstallation] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
-13:32:37.473 [Execute-Process] [Uninstallation] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
-13:32:37.478 [Execute-Process] [Uninstallation] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe Uninstall  --silent --product-code 00000000-0000-0000-0000-000000000000]...
-13:32:38.062 [Execute-Process] [Error] [Uninstallation] :: Execution failed with exit code [-1978335212].
-13:32:38.085 [Exit-Script] [Uninstallation] :: WingetFW_4.0.7_EN_01 Uninstallation completed with exit code [-1978335212].
-13:32:38.088 [Exit-Script] [Uninstallation] :: -------------------------------------------------------------------------------
+21:10:35.553 [WingetFW-Test] [TEST Q03] Deploy-Application.exe: unquoted {GUID} loses its braces (PowerShell script block) | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Uninstall -productcode {00000000-0000-0000-0000-000000000000} -silent -DeployMode Silent
+21:10:43.908 [Start-WinGetPackageFM] [Uninstallation] :: Start-WinGetPackageFM -UserMode Admin -Action Uninstall -productcode '00000000-0000-0000-0000-000000000000' -silent
+21:10:43.985 [Start-WinGetPackageFM] [Uninstallation] :: Final argsWinGet:  --silent --product-code 00000000-0000-0000-0000-000000000000
+21:10:44.000 [Start-WinGetPackageFM] [Uninstallation] :: UserMode: Admin
+21:10:44.078 [Start-WinGetPackageFM] [Uninstallation] :: Running winget Uninstall for [00000000-0000-0000-0000-000000000000]
+21:10:44.152 [Execute-Process] [Uninstallation] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
+21:10:44.208 [Execute-Process] [Uninstallation] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
+21:10:44.218 [Execute-Process] [Uninstallation] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe Uninstall  --silent --product-code 00000000-0000-0000-0000-000000000000]...
+21:10:45.409 [Execute-Process] [Error] [Uninstallation] :: Execution failed with exit code [-1978335212].
+21:10:45.440 [Exit-Script] [Uninstallation] :: WingetFW_4.0.8_EN_01 Uninstallation completed with exit code [-1978335212].
+21:10:45.447 [Exit-Script] [Uninstallation] :: -------------------------------------------------------------------------------
 ```
 
 </details>
@@ -603,8 +603,8 @@ winget Uninstall  --silent --product-code 00000000-0000-0000-0000-000000000000
 **Install: older MSI (WiX) version with install options** - PASS
 
 - Run as: SYSTEM via PsExec
-- Exit code: 0 (16 s)
-- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\7zip.7zip_WingetFW_4.0.7_EN_01_PSAppDeployToolkit_Install.log`
+- Exit code: 0 (33 s)
+- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\7zip.7zip_WingetFW_4.0.8_EN_01_PSAppDeployToolkit_Install.log`
 
 Command:
 
@@ -650,19 +650,19 @@ winget Install  --scope machine --architecture x64 --installer-type wix --id 7zi
 <details><summary>Toolkit log excerpt</summary>
 
 ```
-13:32:38.618 [WingetFW-Test] [TEST F01] Install: older MSI (WiX) version with install options | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -id 7zip.7zip -exact -version 26.03 -scope Machine -architecture X64 -installertype Wix -silent -log 'C:\temp\wingetfw-vmtest\path with spaces\winget logs\F01 install.log' -source winget -dependencysource winget -skipdependencies -allowreboot -custom REBOOT=ReallySuppress -ignoresecurityhash -enableverbose -ignorewarnings -disableinteractivity -noproxy -DeployMode Silent
-13:32:43.493 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode Admin -Action Install -acceptpackageagreements -acceptsourceagreements -allowreboot -architecture 'x64' -custom 'REBOOT=ReallySuppress' -dependencysource 'winget' -disableinteractivity -enableverbose -exact -id '7zip.7zip' -ignoresecurityhash -ignorewarnings -installertype 'wix' -log 'C:\temp\wingetfw-vmtest\path with spaces\winget logs\F01 install.log' -noproxy -scope 'machine' -silent -skipdependencies -source 'winget' -version '26.03'
-13:32:43.562 [Start-WinGetPackageFM] [Installation] :: Final argsWinGet:  --scope machine --architecture x64 --installer-type wix --id 7zip.7zip --version 26.03 --source winget --exact --silent --log "C:\temp\wingetfw-vmtest\path with spaces\winget logs\F01 install.log" --custom "REBOOT=ReallySuppress" --ignore-security-hash --allow-reboot --skip-dependencies --dependency-source winget --accept-package-agreements --accept-source-agreements --verbose --ignore-warnings --disable-interactivity --no-proxy
-13:32:43.567 [Start-WinGetPackageFM] [Installation] :: UserMode: Admin
-13:32:43.592 [Start-WinGetPackageFM] [Installation] :: Running winget Install for [7zip.7zip]
-13:32:43.606 [Execute-Process] [Installation] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
-13:32:43.627 [Execute-Process] [Installation] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
-13:32:43.632 [Execute-Process] [Installation] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe Install  --scope machine --architecture x64 --installer-type wix --id 7zip.7zip --version 26.03 --source winget --exact --silent --log "C:\temp\wingetfw-vmtest\path with spaces\winget logs\F01 install.log" --custom "REBOOT=ReallySuppress" --ignore-security-hash --allow-reboot --skip-dependencies --dependency-source winget --accept-package-agreements --accept-source-agreements --verbose --ignore-warnings --disable-interactivity --no-proxy]...
-13:32:53.751 [Execute-Process] [Installation] :: PassThru parameter specified, returning execution results object.
-13:32:53.754 [Execute-Process] [Installation] :: Execution completed successfully with exit code [0].
-13:32:53.770 [Start-WinGetPackageFM] [Installation] :: Done: winget Install for [7zip.7zip]
-13:32:53.794 [Exit-Script] [Post-Installation] :: 7zip.7zip_WingetFW_4.0.7_EN_01 Installation completed with exit code [0].
-13:32:53.798 [Exit-Script] [Post-Installation] :: -------------------------------------------------------------------------------
+21:10:46.923 [WingetFW-Test] [TEST F01] Install: older MSI (WiX) version with install options | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -id 7zip.7zip -exact -version 26.03 -scope Machine -architecture X64 -installertype Wix -silent -log 'C:\temp\wingetfw-vmtest\path with spaces\winget logs\F01 install.log' -source winget -dependencysource winget -skipdependencies -allowreboot -custom REBOOT=ReallySuppress -ignoresecurityhash -enableverbose -ignorewarnings -disableinteractivity -noproxy -DeployMode Silent
+21:10:59.615 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode Admin -Action Install -acceptpackageagreements -acceptsourceagreements -allowreboot -architecture 'x64' -custom 'REBOOT=ReallySuppress' -dependencysource 'winget' -disableinteractivity -enableverbose -exact -id '7zip.7zip' -ignoresecurityhash -ignorewarnings -installertype 'wix' -log 'C:\temp\wingetfw-vmtest\path with spaces\winget logs\F01 install.log' -noproxy -scope 'machine' -silent -skipdependencies -source 'winget' -version '26.03'
+21:10:59.814 [Start-WinGetPackageFM] [Installation] :: Final argsWinGet:  --scope machine --architecture x64 --installer-type wix --id 7zip.7zip --version 26.03 --source winget --exact --silent --log "C:\temp\wingetfw-vmtest\path with spaces\winget logs\F01 install.log" --custom "REBOOT=ReallySuppress" --ignore-security-hash --allow-reboot --skip-dependencies --dependency-source winget --accept-package-agreements --accept-source-agreements --verbose --ignore-warnings --disable-interactivity --no-proxy
+21:10:59.875 [Start-WinGetPackageFM] [Installation] :: UserMode: Admin
+21:10:59.987 [Start-WinGetPackageFM] [Installation] :: Running winget Install for [7zip.7zip]
+21:11:00.131 [Execute-Process] [Installation] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
+21:11:00.188 [Execute-Process] [Installation] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
+21:11:00.205 [Execute-Process] [Installation] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe Install  --scope machine --architecture x64 --installer-type wix --id 7zip.7zip --version 26.03 --source winget --exact --silent --log "C:\temp\wingetfw-vmtest\path with spaces\winget logs\F01 install.log" --custom "REBOOT=ReallySuppress" --ignore-security-hash --allow-reboot --skip-dependencies --dependency-source winget --accept-package-agreements --accept-source-agreements --verbose --ignore-warnings --disable-interactivity --no-proxy]...
+21:11:17.806 [Execute-Process] [Installation] :: PassThru parameter specified, returning execution results object.
+21:11:17.822 [Execute-Process] [Installation] :: Execution completed successfully with exit code [0].
+21:11:17.875 [Start-WinGetPackageFM] [Installation] :: Done: winget Install for [7zip.7zip]
+21:11:18.156 [Exit-Script] [Post-Installation] :: 7zip.7zip_WingetFW_4.0.8_EN_01 Installation completed with exit code [0].
+21:11:18.418 [Exit-Script] [Post-Installation] :: -------------------------------------------------------------------------------
 ```
 
 </details>
@@ -672,8 +672,8 @@ winget Install  --scope machine --architecture x64 --installer-type wix --id 7zi
 **Install: -noupgrade on installed package (+interactive, locale, source, header, auth) - logged as already installed, exit 0** - PASS
 
 - Run as: SYSTEM via PsExec
-- Exit code: 0 (7 s)
-- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\7zip.7zip_WingetFW_4.0.7_EN_01_PSAppDeployToolkit_Install.log`
+- Exit code: 0 (30 s)
+- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\7zip.7zip_WingetFW_4.0.8_EN_01_PSAppDeployToolkit_Install.log`
 
 Command:
 
@@ -704,20 +704,20 @@ winget Install  --authentication-mode silentPreferred --id 7zip.7zip --source wi
 <details><summary>Toolkit log excerpt</summary>
 
 ```
-13:32:54.859 [WingetFW-Test] [TEST F02] Install: -noupgrade on installed package (+interactive, locale, source, header, auth) - logged as already installed, exit 0 | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -id 7zip.7zip -exact -source winget -noupgrade -interactive -locale en-US -header 'X-WingetFW-Test: 1' -authenticationmode silentPreferred -authenticationaccount 'wingetfw@contoso.com' -DeployMode Silent
-13:33:00.183 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode Admin -Action Install -acceptpackageagreements -acceptsourceagreements -authenticationaccount 'wingetfw@contoso.com' -authenticationmode 'silentPreferred' -exact -header 'X-WingetFW-Test: 1' -id '7zip.7zip' -interactive -locale 'en-US' -noupgrade -source 'winget'
-13:33:00.216 [Start-WinGetPackageFM] [Installation] :: Final argsWinGet:  --authentication-mode silentPreferred --id 7zip.7zip --source winget --exact --interactive --locale en-US --accept-package-agreements --no-upgrade --header "X-WingetFW-Test: 1" --authentication-account wingetfw@contoso.com --accept-source-agreements
-13:33:00.223 [Start-WinGetPackageFM] [Installation] :: UserMode: Admin
-13:33:00.247 [Start-WinGetPackageFM] [Installation] :: Running winget Install for [7zip.7zip]
-13:33:00.264 [Execute-Process] [Installation] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
-13:33:00.282 [Execute-Process] [Installation] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
-13:33:00.288 [Execute-Process] [Installation] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe Install  --authentication-mode silentPreferred --id 7zip.7zip --source winget --exact --interactive --locale en-US --accept-package-agreements --no-upgrade --header "X-WingetFW-Test: 1" --authentication-account wingetfw@contoso.com --accept-source-agreements]...
-13:33:00.731 [Execute-Process] [Installation] :: PassThru parameter specified, returning execution results object.
-13:33:00.735 [Execute-Process] [Installation] :: Execution completed and the exit code [-1978335135] is being ignored.
-13:33:00.739 [Start-WinGetPackageFM] [Installation] :: [7zip.7zip] is already installed, nothing to install (winget exit code 0x8A150061)
-13:33:00.744 [Start-WinGetPackageFM] [Installation] :: Done: winget Install for [7zip.7zip]
-13:33:00.768 [Exit-Script] [Post-Installation] :: 7zip.7zip_WingetFW_4.0.7_EN_01 Installation completed with exit code [0].
-13:33:00.770 [Exit-Script] [Post-Installation] :: -------------------------------------------------------------------------------
+21:11:24.040 [WingetFW-Test] [TEST F02] Install: -noupgrade on installed package (+interactive, locale, source, header, auth) - logged as already installed, exit 0 | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -id 7zip.7zip -exact -source winget -noupgrade -interactive -locale en-US -header 'X-WingetFW-Test: 1' -authenticationmode silentPreferred -authenticationaccount 'wingetfw@contoso.com' -DeployMode Silent
+21:11:48.508 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode Admin -Action Install -acceptpackageagreements -acceptsourceagreements -authenticationaccount 'wingetfw@contoso.com' -authenticationmode 'silentPreferred' -exact -header 'X-WingetFW-Test: 1' -id '7zip.7zip' -interactive -locale 'en-US' -noupgrade -source 'winget'
+21:11:48.671 [Start-WinGetPackageFM] [Installation] :: Final argsWinGet:  --authentication-mode silentPreferred --id 7zip.7zip --source winget --exact --interactive --locale en-US --accept-package-agreements --no-upgrade --header "X-WingetFW-Test: 1" --authentication-account wingetfw@contoso.com --accept-source-agreements
+21:11:48.710 [Start-WinGetPackageFM] [Installation] :: UserMode: Admin
+21:11:48.776 [Start-WinGetPackageFM] [Installation] :: Running winget Install for [7zip.7zip]
+21:11:48.797 [Execute-Process] [Installation] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
+21:11:48.818 [Execute-Process] [Installation] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
+21:11:48.842 [Execute-Process] [Installation] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe Install  --authentication-mode silentPreferred --id 7zip.7zip --source winget --exact --interactive --locale en-US --accept-package-agreements --no-upgrade --header "X-WingetFW-Test: 1" --authentication-account wingetfw@contoso.com --accept-source-agreements]...
+21:11:51.508 [Execute-Process] [Installation] :: PassThru parameter specified, returning execution results object.
+21:11:51.543 [Execute-Process] [Installation] :: Execution completed and the exit code [-1978335135] is being ignored.
+21:11:51.567 [Start-WinGetPackageFM] [Installation] :: [7zip.7zip] is already installed, nothing to install (winget exit code 0x8A150061)
+21:11:51.579 [Start-WinGetPackageFM] [Installation] :: Done: winget Install for [7zip.7zip]
+21:11:51.632 [Exit-Script] [Post-Installation] :: 7zip.7zip_WingetFW_4.0.8_EN_01 Installation completed with exit code [0].
+21:11:51.648 [Exit-Script] [Post-Installation] :: -------------------------------------------------------------------------------
 ```
 
 </details>
@@ -727,8 +727,8 @@ winget Install  --authentication-mode silentPreferred --id 7zip.7zip --source wi
 **Upgrade: to latest (-Action upgrade)** - PASS
 
 - Run as: SYSTEM via PsExec
-- Exit code: 0 (13 s)
-- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\7zip.7zip_WingetFW_4.0.7_EN_01_PSAppDeployToolkit_Install.log`
+- Exit code: 0 (72 s)
+- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\7zip.7zip_WingetFW_4.0.8_EN_01_PSAppDeployToolkit_Install.log`
 
 Command:
 
@@ -756,18 +756,18 @@ winget upgrade  --id 7zip.7zip --exact --silent --accept-package-agreements --ac
 <details><summary>Toolkit log excerpt</summary>
 
 ```
-13:33:01.991 [WingetFW-Test] [TEST F03] Upgrade: to latest (-Action upgrade) | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -Action upgrade -id 7zip.7zip -exact -silent -includeunknown -includepinned -uninstallprevious -force -DeployMode Silent
-13:33:06.924 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode Admin -Action upgrade -acceptpackageagreements -acceptsourceagreements -exact -force -id '7zip.7zip' -includepinned -includeunknown -silent -uninstallprevious
-13:33:06.979 [Start-WinGetPackageFM] [Installation] :: Final argsWinGet:  --id 7zip.7zip --exact --silent --accept-package-agreements --accept-source-agreements --uninstall-previous --force --include-unknown --include-pinned
-13:33:06.983 [Start-WinGetPackageFM] [Installation] :: UserMode: Admin
-13:33:07.008 [Start-WinGetPackageFM] [Installation] :: Running winget upgrade for [7zip.7zip]
-13:33:07.023 [Execute-Process] [Installation] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
-13:33:07.044 [Execute-Process] [Installation] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
-13:33:07.047 [Execute-Process] [Installation] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe upgrade  --id 7zip.7zip --exact --silent --accept-package-agreements --accept-source-agreements --uninstall-previous --force --include-unknown --include-pinned]...
-13:33:14.333 [Execute-Process] [Installation] :: Execution completed successfully with exit code [0].
-13:33:14.339 [Start-WinGetPackageFM] [Installation] :: Done: winget upgrade for [7zip.7zip]
-13:33:14.373 [Exit-Script] [Post-Installation] :: 7zip.7zip_WingetFW_4.0.7_EN_01 Installation completed with exit code [0].
-13:33:14.378 [Exit-Script] [Post-Installation] :: -------------------------------------------------------------------------------
+21:11:54.170 [WingetFW-Test] [TEST F03] Upgrade: to latest (-Action upgrade) | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -Action upgrade -id 7zip.7zip -exact -silent -includeunknown -includepinned -uninstallprevious -force -DeployMode Silent
+21:12:06.777 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode Admin -Action upgrade -acceptpackageagreements -acceptsourceagreements -exact -force -id '7zip.7zip' -includepinned -includeunknown -silent -uninstallprevious
+21:12:06.842 [Start-WinGetPackageFM] [Installation] :: Final argsWinGet:  --id 7zip.7zip --exact --silent --accept-package-agreements --accept-source-agreements --uninstall-previous --force --include-unknown --include-pinned
+21:12:06.854 [Start-WinGetPackageFM] [Installation] :: UserMode: Admin
+21:12:06.887 [Start-WinGetPackageFM] [Installation] :: Running winget upgrade for [7zip.7zip]
+21:12:06.906 [Execute-Process] [Installation] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
+21:12:06.929 [Execute-Process] [Installation] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
+21:12:06.932 [Execute-Process] [Installation] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe upgrade  --id 7zip.7zip --exact --silent --accept-package-agreements --accept-source-agreements --uninstall-previous --force --include-unknown --include-pinned]...
+21:13:04.886 [Execute-Process] [Installation] :: Execution completed successfully with exit code [0].
+21:13:04.904 [Start-WinGetPackageFM] [Installation] :: Done: winget upgrade for [7zip.7zip]
+21:13:05.024 [Exit-Script] [Post-Installation] :: 7zip.7zip_WingetFW_4.0.8_EN_01 Installation completed with exit code [0].
+21:13:05.042 [Exit-Script] [Post-Installation] :: -------------------------------------------------------------------------------
 ```
 
 </details>
@@ -777,8 +777,8 @@ winget upgrade  --id 7zip.7zip --exact --silent --accept-package-agreements --ac
 **Install: package already installed with the latest version - logged as already installed, exit 0** - PASS
 
 - Run as: SYSTEM via PsExec
-- Exit code: 0 (6 s)
-- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\7zip.7zip_WingetFW_4.0.7_EN_01_PSAppDeployToolkit_Install.log`
+- Exit code: 0 (17 s)
+- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\7zip.7zip_WingetFW_4.0.8_EN_01_PSAppDeployToolkit_Install.log`
 
 Command:
 
@@ -802,20 +802,20 @@ winget Install  --id 7zip.7zip --exact --silent --accept-package-agreements --ac
 <details><summary>Toolkit log excerpt</summary>
 
 ```
-13:33:15.137 [WingetFW-Test] [TEST F15] Install: package already installed with the latest version - logged as already installed, exit 0 | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -id 7zip.7zip -exact -silent -DeployMode Silent
-13:33:20.034 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode Admin -Action Install -acceptpackageagreements -acceptsourceagreements -exact -id '7zip.7zip' -silent
-13:33:20.065 [Start-WinGetPackageFM] [Installation] :: Final argsWinGet:  --id 7zip.7zip --exact --silent --accept-package-agreements --accept-source-agreements
-13:33:20.068 [Start-WinGetPackageFM] [Installation] :: UserMode: Admin
-13:33:20.091 [Start-WinGetPackageFM] [Installation] :: Running winget Install for [7zip.7zip]
-13:33:20.135 [Execute-Process] [Installation] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
-13:33:20.158 [Execute-Process] [Installation] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
-13:33:20.162 [Execute-Process] [Installation] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe Install  --id 7zip.7zip --exact --silent --accept-package-agreements --accept-source-agreements]...
-13:33:20.691 [Execute-Process] [Installation] :: PassThru parameter specified, returning execution results object.
-13:33:20.697 [Execute-Process] [Installation] :: Execution completed and the exit code [-1978335189] is being ignored.
-13:33:20.701 [Start-WinGetPackageFM] [Installation] :: [7zip.7zip] is already installed, nothing to install (winget exit code 0x8A15002B)
-13:33:20.703 [Start-WinGetPackageFM] [Installation] :: Done: winget Install for [7zip.7zip]
-13:33:20.727 [Exit-Script] [Post-Installation] :: 7zip.7zip_WingetFW_4.0.7_EN_01 Installation completed with exit code [0].
-13:33:20.732 [Exit-Script] [Post-Installation] :: -------------------------------------------------------------------------------
+21:13:07.942 [WingetFW-Test] [TEST F15] Install: package already installed with the latest version - logged as already installed, exit 0 | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -id 7zip.7zip -exact -silent -DeployMode Silent
+21:13:19.323 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode Admin -Action Install -acceptpackageagreements -acceptsourceagreements -exact -id '7zip.7zip' -silent
+21:13:19.424 [Start-WinGetPackageFM] [Installation] :: Final argsWinGet:  --id 7zip.7zip --exact --silent --accept-package-agreements --accept-source-agreements
+21:13:19.445 [Start-WinGetPackageFM] [Installation] :: UserMode: Admin
+21:13:19.478 [Start-WinGetPackageFM] [Installation] :: Running winget Install for [7zip.7zip]
+21:13:19.502 [Execute-Process] [Installation] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
+21:13:19.528 [Execute-Process] [Installation] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
+21:13:19.533 [Execute-Process] [Installation] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe Install  --id 7zip.7zip --exact --silent --accept-package-agreements --accept-source-agreements]...
+21:13:22.992 [Execute-Process] [Installation] :: PassThru parameter specified, returning execution results object.
+21:13:23.000 [Execute-Process] [Installation] :: Execution completed and the exit code [-1978335189] is being ignored.
+21:13:23.019 [Start-WinGetPackageFM] [Installation] :: [7zip.7zip] is already installed, nothing to install (winget exit code 0x8A15002B)
+21:13:23.024 [Start-WinGetPackageFM] [Installation] :: Done: winget Install for [7zip.7zip]
+21:13:23.055 [Exit-Script] [Post-Installation] :: 7zip.7zip_WingetFW_4.0.8_EN_01 Installation completed with exit code [0].
+21:13:23.060 [Exit-Script] [Post-Installation] :: -------------------------------------------------------------------------------
 ```
 
 </details>
@@ -825,8 +825,8 @@ winget Install  --id 7zip.7zip --exact --silent --accept-package-agreements --ac
 **Repair: winget repair by -id (informational: 7-Zip MSI repair itself may fail in winget)** - PASS
 
 - Run as: SYSTEM via PsExec
-- Exit code: -1978335109 (0x8A15007B) (6 s)
-- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\7zip.7zip_WingetFW_4.0.7_EN_01_PSAppDeployToolkit_Repair.log`
+- Exit code: -1978335109 (0x8A15007B) (16 s)
+- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\7zip.7zip_WingetFW_4.0.8_EN_01_PSAppDeployToolkit_Repair.log`
 
 Command:
 
@@ -852,17 +852,17 @@ winget Repair  --id 7zip.7zip --exact --silent --accept-package-agreements --acc
 <details><summary>Toolkit log excerpt</summary>
 
 ```
-13:33:21.258 [WingetFW-Test] [TEST F04] Repair: winget repair by -id (informational: 7-Zip MSI repair itself may fail in winget) | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Repair -id 7zip.7zip -exact -silent -force -DeployMode Silent
-13:33:25.613 [Start-WinGetPackageFM] [Repair] :: Start-WinGetPackageFM -UserMode Admin -Action Repair -acceptpackageagreements -acceptsourceagreements -exact -force -id '7zip.7zip' -silent
-13:33:25.645 [Start-WinGetPackageFM] [Repair] :: Final argsWinGet:  --id 7zip.7zip --exact --silent --accept-package-agreements --accept-source-agreements --force
-13:33:25.650 [Start-WinGetPackageFM] [Repair] :: UserMode: Admin
-13:33:25.676 [Start-WinGetPackageFM] [Repair] :: Running winget Repair for [7zip.7zip]
-13:33:25.691 [Execute-Process] [Repair] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
-13:33:25.712 [Execute-Process] [Repair] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
-13:33:25.716 [Execute-Process] [Repair] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe Repair  --id 7zip.7zip --exact --silent --accept-package-agreements --accept-source-agreements --force]...
-13:33:26.566 [Execute-Process] [Error] [Repair] :: Execution failed with exit code [-1978335109].
-13:33:26.586 [Exit-Script] [Repair] :: 7zip.7zip_WingetFW_4.0.7_EN_01 Repairing completed with exit code [-1978335109].
-13:33:26.614 [Exit-Script] [Repair] :: -------------------------------------------------------------------------------
+21:13:26.609 [WingetFW-Test] [TEST F04] Repair: winget repair by -id (informational: 7-Zip MSI repair itself may fail in winget) | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Repair -id 7zip.7zip -exact -silent -force -DeployMode Silent
+21:13:37.946 [Start-WinGetPackageFM] [Repair] :: Start-WinGetPackageFM -UserMode Admin -Action Repair -acceptpackageagreements -acceptsourceagreements -exact -force -id '7zip.7zip' -silent
+21:13:38.026 [Start-WinGetPackageFM] [Repair] :: Final argsWinGet:  --id 7zip.7zip --exact --silent --accept-package-agreements --accept-source-agreements --force
+21:13:38.043 [Start-WinGetPackageFM] [Repair] :: UserMode: Admin
+21:13:38.088 [Start-WinGetPackageFM] [Repair] :: Running winget Repair for [7zip.7zip]
+21:13:38.112 [Execute-Process] [Repair] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
+21:13:38.147 [Execute-Process] [Repair] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
+21:13:38.153 [Execute-Process] [Repair] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe Repair  --id 7zip.7zip --exact --silent --accept-package-agreements --accept-source-agreements --force]...
+21:13:39.845 [Execute-Process] [Error] [Repair] :: Execution failed with exit code [-1978335109].
+21:13:39.897 [Exit-Script] [Repair] :: 7zip.7zip_WingetFW_4.0.8_EN_01 Repairing completed with exit code [-1978335109].
+21:13:39.905 [Exit-Script] [Repair] :: -------------------------------------------------------------------------------
 ```
 
 </details>
@@ -872,8 +872,8 @@ winget Repair  --id 7zip.7zip --exact --silent --accept-package-agreements --acc
 **Repair: winget repair by -productcode (informational: 7-Zip MSI repair itself may fail in winget)** - PASS
 
 - Run as: SYSTEM via PsExec
-- Exit code: -1978335109 (0x8A15007B) (6 s)
-- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\WingetFW_4.0.7_EN_01_PSAppDeployToolkit_Repair.log`
+- Exit code: -1978335109 (0x8A15007B) (22 s)
+- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\WingetFW_4.0.8_EN_01_PSAppDeployToolkit_Repair.log`
 
 Command:
 
@@ -897,17 +897,17 @@ winget Repair  --silent --accept-package-agreements --accept-source-agreements -
 <details><summary>Toolkit log excerpt</summary>
 
 ```
-13:33:27.379 [WingetFW-Test] [TEST F05] Repair: winget repair by -productcode (informational: 7-Zip MSI repair itself may fail in winget) | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Repair -productcode '{23170F69-40C1-2702-2604-000001000000}' -silent -DeployMode Silent
-13:33:31.780 [Start-WinGetPackageFM] [Repair] :: Start-WinGetPackageFM -UserMode Admin -Action Repair -acceptpackageagreements -acceptsourceagreements -productcode '{23170F69-40C1-2702-2604-000001000000}' -silent
-13:33:31.813 [Start-WinGetPackageFM] [Repair] :: Final argsWinGet:  --silent --accept-package-agreements --accept-source-agreements --product-code {23170F69-40C1-2702-2604-000001000000}
-13:33:31.817 [Start-WinGetPackageFM] [Repair] :: UserMode: Admin
-13:33:31.841 [Start-WinGetPackageFM] [Repair] :: Running winget Repair for [{23170F69-40C1-2702-2604-000001000000}]
-13:33:31.857 [Execute-Process] [Repair] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
-13:33:31.878 [Execute-Process] [Repair] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
-13:33:31.882 [Execute-Process] [Repair] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe Repair  --silent --accept-package-agreements --accept-source-agreements --product-code {23170F69-40C1-2702-2604-000001000000}]...
-13:33:32.807 [Execute-Process] [Error] [Repair] :: Execution failed with exit code [-1978335109].
-13:33:32.827 [Exit-Script] [Repair] :: WingetFW_4.0.7_EN_01 Repairing completed with exit code [-1978335109].
-13:33:32.832 [Exit-Script] [Repair] :: -------------------------------------------------------------------------------
+21:13:43.434 [WingetFW-Test] [TEST F05] Repair: winget repair by -productcode (informational: 7-Zip MSI repair itself may fail in winget) | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Repair -productcode '{23170F69-40C1-2702-2604-000001000000}' -silent -DeployMode Silent
+21:14:00.780 [Start-WinGetPackageFM] [Repair] :: Start-WinGetPackageFM -UserMode Admin -Action Repair -acceptpackageagreements -acceptsourceagreements -productcode '{23170F69-40C1-2702-2604-000001000000}' -silent
+21:14:00.863 [Start-WinGetPackageFM] [Repair] :: Final argsWinGet:  --silent --accept-package-agreements --accept-source-agreements --product-code {23170F69-40C1-2702-2604-000001000000}
+21:14:00.900 [Start-WinGetPackageFM] [Repair] :: UserMode: Admin
+21:14:00.941 [Start-WinGetPackageFM] [Repair] :: Running winget Repair for [{23170F69-40C1-2702-2604-000001000000}]
+21:14:00.971 [Execute-Process] [Repair] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
+21:14:01.002 [Execute-Process] [Repair] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
+21:14:01.009 [Execute-Process] [Repair] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe Repair  --silent --accept-package-agreements --accept-source-agreements --product-code {23170F69-40C1-2702-2604-000001000000}]...
+21:14:03.417 [Execute-Process] [Error] [Repair] :: Execution failed with exit code [-1978335109].
+21:14:03.561 [Exit-Script] [Repair] :: WingetFW_4.0.8_EN_01 Repairing completed with exit code [-1978335109].
+21:14:03.574 [Exit-Script] [Repair] :: -------------------------------------------------------------------------------
 ```
 
 </details>
@@ -917,8 +917,8 @@ winget Repair  --silent --accept-package-agreements --accept-source-agreements -
 **ForceRepair: uninstall skips install-only options, install uses them** - PASS
 
 - Run as: SYSTEM via PsExec
-- Exit code: 0 (13 s)
-- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\7zip.7zip_WingetFW_4.0.7_EN_01_PSAppDeployToolkit_Repair.log`
+- Exit code: 0 (42 s)
+- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\7zip.7zip_WingetFW_4.0.8_EN_01_PSAppDeployToolkit_Repair.log`
 
 Command:
 
@@ -955,31 +955,31 @@ winget install  --scope machine --id 7zip.7zip --exact --silent --custom "REBOOT
 <details><summary>Toolkit log excerpt</summary>
 
 ```
-13:33:33.486 [WingetFW-Test] [TEST F06] ForceRepair: uninstall skips install-only options, install uses them | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Repair -ForceRepair -id 7zip.7zip -exact -silent -scope Machine -allowreboot -skipdependencies -custom REBOOT=ReallySuppress -DeployMode Silent
-13:33:37.999 [Start-WinGetPackageFM] [Repair] :: Start-WinGetPackageFM -UserMode Admin -Action uninstall -acceptpackageagreements -acceptsourceagreements -allowreboot -custom 'REBOOT=ReallySuppress' -exact -id '7zip.7zip' -scope 'machine' -silent -skipdependencies
-13:33:38.028 [Start-WinGetPackageFM] [Warning] [Repair] :: Skipping -allowreboot, it is not an option with winget uninstall
-13:33:38.033 [Start-WinGetPackageFM] [Warning] [Repair] :: Skipping -skipdependencies, it is not an option with winget uninstall
-13:33:38.037 [Start-WinGetPackageFM] [Warning] [Repair] :: Skipping -custom, it is not an option with winget uninstall
-13:33:38.046 [Start-WinGetPackageFM] [Repair] :: Final argsWinGet:  --scope machine --id 7zip.7zip --exact --silent --accept-source-agreements
-13:33:38.051 [Start-WinGetPackageFM] [Repair] :: UserMode: Admin
-13:33:38.074 [Start-WinGetPackageFM] [Repair] :: Running winget uninstall for [7zip.7zip]
-13:33:38.090 [Execute-Process] [Repair] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
-13:33:38.111 [Execute-Process] [Repair] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
-13:33:38.116 [Execute-Process] [Repair] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe uninstall  --scope machine --id 7zip.7zip --exact --silent --accept-source-agreements]...
-13:33:39.086 [Execute-Process] [Repair] :: Execution completed successfully with exit code [0].
-13:33:39.118 [Start-WinGetPackageFM] [Repair] :: Done: winget uninstall for [7zip.7zip]
-13:33:39.120 [Start-WinGetPackageFM] [Repair] :: Start-WinGetPackageFM -UserMode Admin -Action install -acceptpackageagreements -acceptsourceagreements -allowreboot -custom 'REBOOT=ReallySuppress' -exact -id '7zip.7zip' -scope 'machine' -silent -skipdependencies
-13:33:39.131 [Start-WinGetPackageFM] [Repair] :: Final argsWinGet:  --scope machine --id 7zip.7zip --exact --silent --custom "REBOOT=ReallySuppress" --allow-reboot --skip-dependencies --accept-package-agreements --accept-source-agreements
-13:33:39.135 [Start-WinGetPackageFM] [Repair] :: UserMode: Admin
-13:33:39.149 [Start-WinGetPackageFM] [Repair] :: Running winget install for [7zip.7zip]
-13:33:39.155 [Execute-Process] [Repair] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
-13:33:39.159 [Execute-Process] [Repair] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
-13:33:39.161 [Execute-Process] [Repair] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe install  --scope machine --id 7zip.7zip --exact --silent --custom "REBOOT=ReallySuppress" --allow-reboot --skip-dependencies --accept-package-agreements --accept-source-agreements]...
-13:33:45.894 [Execute-Process] [Repair] :: PassThru parameter specified, returning execution results object.
-13:33:45.901 [Execute-Process] [Repair] :: Execution completed successfully with exit code [0].
-13:33:45.906 [Start-WinGetPackageFM] [Repair] :: Done: winget install for [7zip.7zip]
-13:33:45.928 [Exit-Script] [Post-Repair] :: 7zip.7zip_WingetFW_4.0.7_EN_01 Repairing completed with exit code [0].
-13:33:45.932 [Exit-Script] [Post-Repair] :: -------------------------------------------------------------------------------
+21:14:07.120 [WingetFW-Test] [TEST F06] ForceRepair: uninstall skips install-only options, install uses them | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Repair -ForceRepair -id 7zip.7zip -exact -silent -scope Machine -allowreboot -skipdependencies -custom REBOOT=ReallySuppress -DeployMode Silent
+21:14:23.707 [Start-WinGetPackageFM] [Repair] :: Start-WinGetPackageFM -UserMode Admin -Action uninstall -acceptpackageagreements -acceptsourceagreements -allowreboot -custom 'REBOOT=ReallySuppress' -exact -id '7zip.7zip' -scope 'machine' -silent -skipdependencies
+21:14:23.751 [Start-WinGetPackageFM] [Warning] [Repair] :: Skipping -allowreboot, it is not an option with winget uninstall
+21:14:23.769 [Start-WinGetPackageFM] [Warning] [Repair] :: Skipping -skipdependencies, it is not an option with winget uninstall
+21:14:23.777 [Start-WinGetPackageFM] [Warning] [Repair] :: Skipping -custom, it is not an option with winget uninstall
+21:14:23.815 [Start-WinGetPackageFM] [Repair] :: Final argsWinGet:  --scope machine --id 7zip.7zip --exact --silent --accept-source-agreements
+21:14:23.827 [Start-WinGetPackageFM] [Repair] :: UserMode: Admin
+21:14:23.866 [Start-WinGetPackageFM] [Repair] :: Running winget uninstall for [7zip.7zip]
+21:14:23.914 [Execute-Process] [Repair] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
+21:14:24.003 [Execute-Process] [Repair] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
+21:14:24.021 [Execute-Process] [Repair] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe uninstall  --scope machine --id 7zip.7zip --exact --silent --accept-source-agreements]...
+21:14:27.052 [Execute-Process] [Repair] :: Execution completed successfully with exit code [0].
+21:14:27.059 [Start-WinGetPackageFM] [Repair] :: Done: winget uninstall for [7zip.7zip]
+21:14:27.065 [Start-WinGetPackageFM] [Repair] :: Start-WinGetPackageFM -UserMode Admin -Action install -acceptpackageagreements -acceptsourceagreements -allowreboot -custom 'REBOOT=ReallySuppress' -exact -id '7zip.7zip' -scope 'machine' -silent -skipdependencies
+21:14:27.081 [Start-WinGetPackageFM] [Repair] :: Final argsWinGet:  --scope machine --id 7zip.7zip --exact --silent --custom "REBOOT=ReallySuppress" --allow-reboot --skip-dependencies --accept-package-agreements --accept-source-agreements
+21:14:27.085 [Start-WinGetPackageFM] [Repair] :: UserMode: Admin
+21:14:27.156 [Start-WinGetPackageFM] [Repair] :: Running winget install for [7zip.7zip]
+21:14:27.163 [Execute-Process] [Repair] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
+21:14:27.171 [Execute-Process] [Repair] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
+21:14:27.176 [Execute-Process] [Repair] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe install  --scope machine --id 7zip.7zip --exact --silent --custom "REBOOT=ReallySuppress" --allow-reboot --skip-dependencies --accept-package-agreements --accept-source-agreements]...
+21:14:48.601 [Execute-Process] [Repair] :: PassThru parameter specified, returning execution results object.
+21:14:48.612 [Execute-Process] [Repair] :: Execution completed successfully with exit code [0].
+21:14:48.622 [Start-WinGetPackageFM] [Repair] :: Done: winget install for [7zip.7zip]
+21:14:48.668 [Exit-Script] [Post-Repair] :: 7zip.7zip_WingetFW_4.0.8_EN_01 Repairing completed with exit code [0].
+21:14:48.675 [Exit-Script] [Post-Repair] :: -------------------------------------------------------------------------------
 ```
 
 </details>
@@ -989,8 +989,8 @@ winget install  --scope machine --id 7zip.7zip --exact --silent --custom "REBOOT
 **Uninstall: by -productcode** - PASS
 
 - Run as: SYSTEM via PsExec
-- Exit code: 0 (7 s)
-- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\WingetFW_4.0.7_EN_01_PSAppDeployToolkit_Uninstall.log`
+- Exit code: 0 (27 s)
+- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\WingetFW_4.0.8_EN_01_PSAppDeployToolkit_Uninstall.log`
 
 Command:
 
@@ -1016,18 +1016,18 @@ winget Uninstall  --silent --force --product-code {23170F69-40C1-2702-2604-00000
 <details><summary>Toolkit log excerpt</summary>
 
 ```
-13:33:46.656 [WingetFW-Test] [TEST F07] Uninstall: by -productcode | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Uninstall -productcode '{23170F69-40C1-2702-2604-000001000000}' -silent -force -DeployMode Silent
-13:33:51.562 [Start-WinGetPackageFM] [Uninstallation] :: Start-WinGetPackageFM -UserMode Admin -Action Uninstall -force -productcode '{23170F69-40C1-2702-2604-000001000000}' -silent
-13:33:51.616 [Start-WinGetPackageFM] [Uninstallation] :: Final argsWinGet:  --silent --force --product-code {23170F69-40C1-2702-2604-000001000000}
-13:33:51.619 [Start-WinGetPackageFM] [Uninstallation] :: UserMode: Admin
-13:33:51.643 [Start-WinGetPackageFM] [Uninstallation] :: Running winget Uninstall for [{23170F69-40C1-2702-2604-000001000000}]
-13:33:51.657 [Execute-Process] [Uninstallation] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
-13:33:51.677 [Execute-Process] [Uninstallation] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
-13:33:51.681 [Execute-Process] [Uninstallation] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe Uninstall  --silent --force --product-code {23170F69-40C1-2702-2604-000001000000}]...
-13:33:52.693 [Execute-Process] [Uninstallation] :: Execution completed successfully with exit code [0].
-13:33:52.697 [Start-WinGetPackageFM] [Uninstallation] :: Done: winget Uninstall for [{23170F69-40C1-2702-2604-000001000000}]
-13:33:52.737 [Exit-Script] [Post-Uninstallation] :: WingetFW_4.0.7_EN_01 Uninstallation completed with exit code [0].
-13:33:52.739 [Exit-Script] [Post-Uninstallation] :: -------------------------------------------------------------------------------
+21:14:51.150 [WingetFW-Test] [TEST F07] Uninstall: by -productcode | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Uninstall -productcode '{23170F69-40C1-2702-2604-000001000000}' -silent -force -DeployMode Silent
+21:15:08.373 [Start-WinGetPackageFM] [Uninstallation] :: Start-WinGetPackageFM -UserMode Admin -Action Uninstall -force -productcode '{23170F69-40C1-2702-2604-000001000000}' -silent
+21:15:08.516 [Start-WinGetPackageFM] [Uninstallation] :: Final argsWinGet:  --silent --force --product-code {23170F69-40C1-2702-2604-000001000000}
+21:15:08.558 [Start-WinGetPackageFM] [Uninstallation] :: UserMode: Admin
+21:15:08.623 [Start-WinGetPackageFM] [Uninstallation] :: Running winget Uninstall for [{23170F69-40C1-2702-2604-000001000000}]
+21:15:08.661 [Execute-Process] [Uninstallation] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
+21:15:08.718 [Execute-Process] [Uninstallation] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
+21:15:08.728 [Execute-Process] [Uninstallation] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe Uninstall  --silent --force --product-code {23170F69-40C1-2702-2604-000001000000}]...
+21:15:17.261 [Execute-Process] [Uninstallation] :: Execution completed successfully with exit code [0].
+21:15:17.268 [Start-WinGetPackageFM] [Uninstallation] :: Done: winget Uninstall for [{23170F69-40C1-2702-2604-000001000000}]
+21:15:17.324 [Exit-Script] [Post-Uninstallation] :: WingetFW_4.0.8_EN_01 Uninstallation completed with exit code [0].
+21:15:17.329 [Exit-Script] [Post-Uninstallation] :: -------------------------------------------------------------------------------
 ```
 
 </details>
@@ -1037,8 +1037,8 @@ winget Uninstall  --silent --force --product-code {23170F69-40C1-2702-2604-00000
 **Install: local manifest folder (path with spaces)** - PASS
 
 - Run as: SYSTEM via PsExec
-- Exit code: 0 (13 s)
-- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\WingetFW_4.0.7_EN_01_PSAppDeployToolkit_Install.log`
+- Exit code: 0 (35 s)
+- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\WingetFW_4.0.8_EN_01_PSAppDeployToolkit_Install.log`
 
 Command:
 
@@ -1063,19 +1063,19 @@ winget Install  --scope machine --manifest "C:\temp\wingetfw-vmtest\path with sp
 <details><summary>Toolkit log excerpt</summary>
 
 ```
-13:33:53.768 [WingetFW-Test] [TEST F08] Install: local manifest folder (path with spaces) | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -wingetmanifest 'C:\temp\wingetfw-vmtest\path with spaces\manifest 7zip 26.03' -silent -scope Machine -ignorelocalarchivemalwarescan -DeployMode Silent
-13:33:58.700 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode Admin -Action Install -acceptpackageagreements -acceptsourceagreements -ignorelocalarchivemalwarescan -scope 'machine' -silent -wingetmanifest 'C:\temp\wingetfw-vmtest\path with spaces\manifest 7zip 26.03'
-13:33:58.749 [Start-WinGetPackageFM] [Installation] :: Final argsWinGet:  --scope machine --manifest "C:\temp\wingetfw-vmtest\path with spaces\manifest 7zip 26.03" --silent --ignore-local-archive-malware-scan --accept-package-agreements --accept-source-agreements
-13:33:58.753 [Start-WinGetPackageFM] [Installation] :: UserMode: Admin
-13:33:58.780 [Start-WinGetPackageFM] [Installation] :: Running winget Install for [C:\temp\wingetfw-vmtest\path with spaces\manifest 7zip 26.03]
-13:33:58.800 [Execute-Process] [Installation] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
-13:33:58.822 [Execute-Process] [Installation] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
-13:33:58.826 [Execute-Process] [Installation] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe Install  --scope machine --manifest "C:\temp\wingetfw-vmtest\path with spaces\manifest 7zip 26.03" --silent --ignore-local-archive-malware-scan --accept-package-agreements --accept-source-agreements]...
-13:34:05.754 [Execute-Process] [Installation] :: PassThru parameter specified, returning execution results object.
-13:34:05.772 [Execute-Process] [Installation] :: Execution completed successfully with exit code [0].
-13:34:05.776 [Start-WinGetPackageFM] [Installation] :: Done: winget Install for [C:\temp\wingetfw-vmtest\path with spaces\manifest 7zip 26.03]
-13:34:05.799 [Exit-Script] [Post-Installation] :: WingetFW_4.0.7_EN_01 Installation completed with exit code [0].
-13:34:05.803 [Exit-Script] [Post-Installation] :: -------------------------------------------------------------------------------
+21:15:18.843 [WingetFW-Test] [TEST F08] Install: local manifest folder (path with spaces) | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -wingetmanifest 'C:\temp\wingetfw-vmtest\path with spaces\manifest 7zip 26.03' -silent -scope Machine -ignorelocalarchivemalwarescan -DeployMode Silent
+21:15:32.117 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode Admin -Action Install -acceptpackageagreements -acceptsourceagreements -ignorelocalarchivemalwarescan -scope 'machine' -silent -wingetmanifest 'C:\temp\wingetfw-vmtest\path with spaces\manifest 7zip 26.03'
+21:15:32.368 [Start-WinGetPackageFM] [Installation] :: Final argsWinGet:  --scope machine --manifest "C:\temp\wingetfw-vmtest\path with spaces\manifest 7zip 26.03" --silent --ignore-local-archive-malware-scan --accept-package-agreements --accept-source-agreements
+21:15:32.403 [Start-WinGetPackageFM] [Installation] :: UserMode: Admin
+21:15:32.600 [Start-WinGetPackageFM] [Installation] :: Running winget Install for [C:\temp\wingetfw-vmtest\path with spaces\manifest 7zip 26.03]
+21:15:32.721 [Execute-Process] [Installation] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
+21:15:32.780 [Execute-Process] [Installation] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
+21:15:32.785 [Execute-Process] [Installation] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe Install  --scope machine --manifest "C:\temp\wingetfw-vmtest\path with spaces\manifest 7zip 26.03" --silent --ignore-local-archive-malware-scan --accept-package-agreements --accept-source-agreements]...
+21:15:53.524 [Execute-Process] [Installation] :: PassThru parameter specified, returning execution results object.
+21:15:53.532 [Execute-Process] [Installation] :: Execution completed successfully with exit code [0].
+21:15:53.540 [Start-WinGetPackageFM] [Installation] :: Done: winget Install for [C:\temp\wingetfw-vmtest\path with spaces\manifest 7zip 26.03]
+21:15:53.578 [Exit-Script] [Post-Installation] :: WingetFW_4.0.8_EN_01 Installation completed with exit code [0].
+21:15:53.585 [Exit-Script] [Post-Installation] :: -------------------------------------------------------------------------------
 ```
 
 </details>
@@ -1085,8 +1085,8 @@ winget Install  --scope machine --manifest "C:\temp\wingetfw-vmtest\path with sp
 **Uninstall: by -moniker** - PASS
 
 - Run as: SYSTEM via PsExec
-- Exit code: 0 (7 s)
-- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\WingetFW_4.0.7_EN_01_PSAppDeployToolkit_Uninstall.log`
+- Exit code: 0 (21 s)
+- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\WingetFW_4.0.8_EN_01_PSAppDeployToolkit_Uninstall.log`
 
 Command:
 
@@ -1111,18 +1111,18 @@ winget Uninstall  --moniker 7zip --silent
 <details><summary>Toolkit log excerpt</summary>
 
 ```
-13:34:06.954 [WingetFW-Test] [TEST F09] Uninstall: by -moniker | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Uninstall -moniker 7zip -silent -DeployMode Silent
-13:34:11.869 [Start-WinGetPackageFM] [Uninstallation] :: Start-WinGetPackageFM -UserMode Admin -Action Uninstall -moniker '7zip' -silent
-13:34:11.923 [Start-WinGetPackageFM] [Uninstallation] :: Final argsWinGet:  --moniker 7zip --silent
-13:34:11.928 [Start-WinGetPackageFM] [Uninstallation] :: UserMode: Admin
-13:34:11.953 [Start-WinGetPackageFM] [Uninstallation] :: Running winget Uninstall for [7zip]
-13:34:11.969 [Execute-Process] [Uninstallation] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
-13:34:11.990 [Execute-Process] [Uninstallation] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
-13:34:11.997 [Execute-Process] [Uninstallation] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe Uninstall  --moniker 7zip --silent]...
-13:34:12.992 [Execute-Process] [Uninstallation] :: Execution completed successfully with exit code [0].
-13:34:12.997 [Start-WinGetPackageFM] [Uninstallation] :: Done: winget Uninstall for [7zip]
-13:34:13.023 [Exit-Script] [Post-Uninstallation] :: WingetFW_4.0.7_EN_01 Uninstallation completed with exit code [0].
-13:34:13.036 [Exit-Script] [Post-Uninstallation] :: -------------------------------------------------------------------------------
+21:15:56.457 [WingetFW-Test] [TEST F09] Uninstall: by -moniker | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Uninstall -moniker 7zip -silent -DeployMode Silent
+21:16:09.589 [Start-WinGetPackageFM] [Uninstallation] :: Start-WinGetPackageFM -UserMode Admin -Action Uninstall -moniker '7zip' -silent
+21:16:09.653 [Start-WinGetPackageFM] [Uninstallation] :: Final argsWinGet:  --moniker 7zip --silent
+21:16:09.676 [Start-WinGetPackageFM] [Uninstallation] :: UserMode: Admin
+21:16:09.724 [Start-WinGetPackageFM] [Uninstallation] :: Running winget Uninstall for [7zip]
+21:16:09.754 [Execute-Process] [Uninstallation] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
+21:16:09.787 [Execute-Process] [Uninstallation] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
+21:16:09.794 [Execute-Process] [Uninstallation] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe Uninstall  --moniker 7zip --silent]...
+21:16:16.598 [Execute-Process] [Uninstallation] :: Execution completed successfully with exit code [0].
+21:16:16.603 [Start-WinGetPackageFM] [Uninstallation] :: Done: winget Uninstall for [7zip]
+21:16:16.650 [Exit-Script] [Post-Uninstallation] :: WingetFW_4.0.8_EN_01 Uninstallation completed with exit code [0].
+21:16:16.655 [Exit-Script] [Post-Uninstallation] :: -------------------------------------------------------------------------------
 ```
 
 </details>
@@ -1132,8 +1132,8 @@ winget Uninstall  --moniker 7zip --silent
 **Import: JSON file (path with spaces) with -ignoreversions -ignoreunavailable -noupgrade** - PASS
 
 - Run as: SYSTEM via PsExec
-- Exit code: 0 (12 s)
-- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\WingetFW_4.0.7_EN_01_PSAppDeployToolkit_Install.log`
+- Exit code: 0 (43 s)
+- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\WingetFW_4.0.8_EN_01_PSAppDeployToolkit_Install.log`
 
 Command:
 
@@ -1161,18 +1161,18 @@ winget import  --accept-package-agreements --no-upgrade --accept-source-agreemen
 <details><summary>Toolkit log excerpt</summary>
 
 ```
-13:34:14.062 [WingetFW-Test] [TEST F10] Import: JSON file (path with spaces) with -ignoreversions -ignoreunavailable -noupgrade | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -Action import -importfile 'C:\temp\wingetfw-vmtest\path with spaces\import apps.json' -ignoreunavailable -ignoreversions -noupgrade -DeployMode Silent
-13:34:18.988 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode Admin -Action import -acceptpackageagreements -acceptsourceagreements -ignoreunavailable -ignoreversions -importfile 'C:\temp\wingetfw-vmtest\path with spaces\import apps.json' -noupgrade
-13:34:19.019 [Start-WinGetPackageFM] [Installation] :: Final argsWinGet:  --accept-package-agreements --no-upgrade --accept-source-agreements --import-file "C:\temp\wingetfw-vmtest\path with spaces\import apps.json" --ignore-unavailable --ignore-versions
-13:34:19.023 [Start-WinGetPackageFM] [Installation] :: UserMode: Admin
-13:34:19.080 [Start-WinGetPackageFM] [Installation] :: Running winget import for [C:\temp\wingetfw-vmtest\path with spaces\import apps.json]
-13:34:19.097 [Execute-Process] [Installation] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
-13:34:19.117 [Execute-Process] [Installation] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
-13:34:19.124 [Execute-Process] [Installation] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe import  --accept-package-agreements --no-upgrade --accept-source-agreements --import-file "C:\temp\wingetfw-vmtest\path with spaces\import apps.json" --ignore-unavailable --ignore-versions]...
-13:34:25.783 [Execute-Process] [Installation] :: Execution completed successfully with exit code [0].
-13:34:25.797 [Start-WinGetPackageFM] [Installation] :: Done: winget import for [C:\temp\wingetfw-vmtest\path with spaces\import apps.json]
-13:34:25.821 [Exit-Script] [Post-Installation] :: WingetFW_4.0.7_EN_01 Installation completed with exit code [0].
-13:34:25.824 [Exit-Script] [Post-Installation] :: -------------------------------------------------------------------------------
+21:16:20.048 [WingetFW-Test] [TEST F10] Import: JSON file (path with spaces) with -ignoreversions -ignoreunavailable -noupgrade | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -Action import -importfile 'C:\temp\wingetfw-vmtest\path with spaces\import apps.json' -ignoreunavailable -ignoreversions -noupgrade -DeployMode Silent
+21:16:37.313 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode Admin -Action import -acceptpackageagreements -acceptsourceagreements -ignoreunavailable -ignoreversions -importfile 'C:\temp\wingetfw-vmtest\path with spaces\import apps.json' -noupgrade
+21:16:37.402 [Start-WinGetPackageFM] [Installation] :: Final argsWinGet:  --accept-package-agreements --no-upgrade --accept-source-agreements --import-file "C:\temp\wingetfw-vmtest\path with spaces\import apps.json" --ignore-unavailable --ignore-versions
+21:16:37.420 [Start-WinGetPackageFM] [Installation] :: UserMode: Admin
+21:16:37.464 [Start-WinGetPackageFM] [Installation] :: Running winget import for [C:\temp\wingetfw-vmtest\path with spaces\import apps.json]
+21:16:37.518 [Execute-Process] [Installation] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
+21:16:37.577 [Execute-Process] [Installation] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
+21:16:37.593 [Execute-Process] [Installation] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe import  --accept-package-agreements --no-upgrade --accept-source-agreements --import-file "C:\temp\wingetfw-vmtest\path with spaces\import apps.json" --ignore-unavailable --ignore-versions]...
+21:17:01.320 [Execute-Process] [Installation] :: Execution completed successfully with exit code [0].
+21:17:01.326 [Start-WinGetPackageFM] [Installation] :: Done: winget import for [C:\temp\wingetfw-vmtest\path with spaces\import apps.json]
+21:17:01.348 [Exit-Script] [Post-Installation] :: WingetFW_4.0.8_EN_01 Installation completed with exit code [0].
+21:17:01.353 [Exit-Script] [Post-Installation] :: -------------------------------------------------------------------------------
 ```
 
 </details>
@@ -1182,8 +1182,8 @@ winget import  --accept-package-agreements --no-upgrade --accept-source-agreemen
 **Uninstall: by -name** - PASS
 
 - Run as: SYSTEM via PsExec
-- Exit code: 0 (7 s)
-- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\7-Zip_WingetFW_4.0.7_EN_01_PSAppDeployToolkit_Uninstall.log`
+- Exit code: 0 (19 s)
+- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\7-Zip_WingetFW_4.0.8_EN_01_PSAppDeployToolkit_Uninstall.log`
 
 Command:
 
@@ -1208,18 +1208,18 @@ winget Uninstall  --name "7-Zip" --silent
 <details><summary>Toolkit log excerpt</summary>
 
 ```
-13:34:26.212 [WingetFW-Test] [TEST F11] Uninstall: by -name | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Uninstall -name 7-Zip -silent -DeployMode Silent
-13:34:31.188 [Start-WinGetPackageFM] [Uninstallation] :: Start-WinGetPackageFM -UserMode Admin -Action Uninstall -name '7-Zip' -silent
-13:34:31.257 [Start-WinGetPackageFM] [Uninstallation] :: Final argsWinGet:  --name "7-Zip" --silent
-13:34:31.261 [Start-WinGetPackageFM] [Uninstallation] :: UserMode: Admin
-13:34:31.285 [Start-WinGetPackageFM] [Uninstallation] :: Running winget Uninstall for [7-Zip]
-13:34:31.301 [Execute-Process] [Uninstallation] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
-13:34:31.322 [Execute-Process] [Uninstallation] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
-13:34:31.327 [Execute-Process] [Uninstallation] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe Uninstall  --name "7-Zip" --silent]...
-13:34:32.383 [Execute-Process] [Uninstallation] :: Execution completed successfully with exit code [0].
-13:34:32.386 [Start-WinGetPackageFM] [Uninstallation] :: Done: winget Uninstall for [7-Zip]
-13:34:32.424 [Exit-Script] [Post-Uninstallation] :: 7-Zip_WingetFW_4.0.7_EN_01 Uninstallation completed with exit code [0].
-13:34:32.426 [Exit-Script] [Post-Uninstallation] :: -------------------------------------------------------------------------------
+21:17:04.100 [WingetFW-Test] [TEST F11] Uninstall: by -name | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Uninstall -name 7-Zip -silent -DeployMode Silent
+21:17:15.373 [Start-WinGetPackageFM] [Uninstallation] :: Start-WinGetPackageFM -UserMode Admin -Action Uninstall -name '7-Zip' -silent
+21:17:15.447 [Start-WinGetPackageFM] [Uninstallation] :: Final argsWinGet:  --name "7-Zip" --silent
+21:17:15.461 [Start-WinGetPackageFM] [Uninstallation] :: UserMode: Admin
+21:17:15.533 [Start-WinGetPackageFM] [Uninstallation] :: Running winget Uninstall for [7-Zip]
+21:17:15.809 [Execute-Process] [Uninstallation] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
+21:17:15.857 [Execute-Process] [Uninstallation] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
+21:17:15.868 [Execute-Process] [Uninstallation] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe Uninstall  --name "7-Zip" --silent]...
+21:17:21.865 [Execute-Process] [Uninstallation] :: Execution completed successfully with exit code [0].
+21:17:21.871 [Start-WinGetPackageFM] [Uninstallation] :: Done: winget Uninstall for [7-Zip]
+21:17:21.935 [Exit-Script] [Post-Uninstallation] :: 7-Zip_WingetFW_4.0.8_EN_01 Uninstallation completed with exit code [0].
+21:17:21.943 [Exit-Script] [Post-Uninstallation] :: -------------------------------------------------------------------------------
 ```
 
 </details>
@@ -1229,8 +1229,8 @@ winget Uninstall  --name "7-Zip" --silent
 **Install: EXE installer with -override** - PASS
 
 - Run as: SYSTEM via PsExec
-- Exit code: 0 (13 s)
-- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\7zip.7zip_WingetFW_4.0.7_EN_01_PSAppDeployToolkit_Install.log`
+- Exit code: 0 (42 s)
+- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\7zip.7zip_WingetFW_4.0.8_EN_01_PSAppDeployToolkit_Install.log`
 
 Command:
 
@@ -1255,19 +1255,19 @@ winget Install  --scope machine --installer-type exe --id 7zip.7zip --exact --ov
 <details><summary>Toolkit log excerpt</summary>
 
 ```
-13:34:33.316 [WingetFW-Test] [TEST F12] Install: EXE installer with -override | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -id 7zip.7zip -exact -installertype Exe -scope Machine -override /S -DeployMode Silent
-13:34:38.240 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode Admin -Action Install -acceptpackageagreements -acceptsourceagreements -exact -id '7zip.7zip' -installertype 'exe' -override '/S' -scope 'machine'
-13:34:38.292 [Start-WinGetPackageFM] [Installation] :: Final argsWinGet:  --scope machine --installer-type exe --id 7zip.7zip --exact --override "/S" --accept-package-agreements --accept-source-agreements
-13:34:38.296 [Start-WinGetPackageFM] [Installation] :: UserMode: Admin
-13:34:38.322 [Start-WinGetPackageFM] [Installation] :: Running winget Install for [7zip.7zip]
-13:34:38.338 [Execute-Process] [Installation] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
-13:34:38.359 [Execute-Process] [Installation] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
-13:34:38.364 [Execute-Process] [Installation] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe Install  --scope machine --installer-type exe --id 7zip.7zip --exact --override "/S" --accept-package-agreements --accept-source-agreements]...
-13:34:45.615 [Execute-Process] [Installation] :: PassThru parameter specified, returning execution results object.
-13:34:45.621 [Execute-Process] [Installation] :: Execution completed successfully with exit code [0].
-13:34:45.626 [Start-WinGetPackageFM] [Installation] :: Done: winget Install for [7zip.7zip]
-13:34:45.661 [Exit-Script] [Post-Installation] :: 7zip.7zip_WingetFW_4.0.7_EN_01 Installation completed with exit code [0].
-13:34:45.664 [Exit-Script] [Post-Installation] :: -------------------------------------------------------------------------------
+21:17:24.417 [WingetFW-Test] [TEST F12] Install: EXE installer with -override | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -id 7zip.7zip -exact -installertype Exe -scope Machine -override /S -DeployMode Silent
+21:17:40.087 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode Admin -Action Install -acceptpackageagreements -acceptsourceagreements -exact -id '7zip.7zip' -installertype 'exe' -override '/S' -scope 'machine'
+21:17:40.152 [Start-WinGetPackageFM] [Installation] :: Final argsWinGet:  --scope machine --installer-type exe --id 7zip.7zip --exact --override "/S" --accept-package-agreements --accept-source-agreements
+21:17:40.166 [Start-WinGetPackageFM] [Installation] :: UserMode: Admin
+21:17:40.254 [Start-WinGetPackageFM] [Installation] :: Running winget Install for [7zip.7zip]
+21:17:40.310 [Execute-Process] [Installation] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
+21:17:40.389 [Execute-Process] [Installation] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
+21:17:40.403 [Execute-Process] [Installation] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe Install  --scope machine --installer-type exe --id 7zip.7zip --exact --override "/S" --accept-package-agreements --accept-source-agreements]...
+21:18:03.243 [Execute-Process] [Installation] :: PassThru parameter specified, returning execution results object.
+21:18:03.251 [Execute-Process] [Installation] :: Execution completed successfully with exit code [0].
+21:18:03.259 [Start-WinGetPackageFM] [Installation] :: Done: winget Install for [7zip.7zip]
+21:18:03.296 [Exit-Script] [Post-Installation] :: 7zip.7zip_WingetFW_4.0.8_EN_01 Installation completed with exit code [0].
+21:18:03.300 [Exit-Script] [Post-Installation] :: -------------------------------------------------------------------------------
 ```
 
 </details>
@@ -1277,8 +1277,8 @@ winget Install  --scope machine --installer-type exe --id 7zip.7zip --exact --ov
 **Install: -proxy with a dummy proxy (informational, network is expected to fail)** - PASS
 
 - Run as: SYSTEM via PsExec
-- Exit code: -2147012867 (0x80072EFD) (8 s)
-- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\7zip.7zip_WingetFW_4.0.7_EN_01_PSAppDeployToolkit_Install.log`
+- Exit code: -2147012867 (0x80072EFD) (20 s)
+- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\7zip.7zip_WingetFW_4.0.8_EN_01_PSAppDeployToolkit_Install.log`
 
 Command:
 
@@ -1301,18 +1301,18 @@ winget Install  --id 7zip.7zip --exact --silent --accept-package-agreements --ac
 <details><summary>Toolkit log excerpt</summary>
 
 ```
-13:34:46.475 [WingetFW-Test] [TEST F13] Install: -proxy with a dummy proxy (informational, network is expected to fail) | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -id 7zip.7zip -exact -silent -proxy http://127.0.0.1:9 -DeployMode Silent
-13:34:51.351 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode Admin -Action Install -acceptpackageagreements -acceptsourceagreements -exact -id '7zip.7zip' -proxy 'http://127.0.0.1:9' -silent
-13:34:51.381 [Start-WinGetPackageFM] [Installation] :: Final argsWinGet:  --id 7zip.7zip --exact --silent --accept-package-agreements --accept-source-agreements --proxy http://127.0.0.1:9
-13:34:51.385 [Start-WinGetPackageFM] [Installation] :: UserMode: Admin
-13:34:51.410 [Start-WinGetPackageFM] [Installation] :: Running winget Install for [7zip.7zip]
-13:34:51.425 [Execute-Process] [Installation] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
-13:34:51.446 [Execute-Process] [Installation] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
-13:34:51.450 [Execute-Process] [Installation] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe Install  --id 7zip.7zip --exact --silent --accept-package-agreements --accept-source-agreements --proxy http://127.0.0.1:9]...
-13:34:53.939 [Execute-Process] [Installation] :: PassThru parameter specified, returning execution results object.
-13:34:53.943 [Execute-Process] [Error] [Installation] :: Execution failed with exit code [-2147012867].
-13:34:54.013 [Exit-Script] [Installation] :: 7zip.7zip_WingetFW_4.0.7_EN_01 Installation completed with exit code [-2147012867].
-13:34:54.016 [Exit-Script] [Installation] :: -------------------------------------------------------------------------------
+21:18:06.887 [WingetFW-Test] [TEST F13] Install: -proxy with a dummy proxy (informational, network is expected to fail) | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -id 7zip.7zip -exact -silent -proxy http://127.0.0.1:9 -DeployMode Silent
+21:18:21.798 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode Admin -Action Install -acceptpackageagreements -acceptsourceagreements -exact -id '7zip.7zip' -proxy 'http://127.0.0.1:9' -silent
+21:18:21.905 [Start-WinGetPackageFM] [Installation] :: Final argsWinGet:  --id 7zip.7zip --exact --silent --accept-package-agreements --accept-source-agreements --proxy http://127.0.0.1:9
+21:18:21.913 [Start-WinGetPackageFM] [Installation] :: UserMode: Admin
+21:18:21.938 [Start-WinGetPackageFM] [Installation] :: Running winget Install for [7zip.7zip]
+21:18:21.957 [Execute-Process] [Installation] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
+21:18:21.976 [Execute-Process] [Installation] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
+21:18:21.981 [Execute-Process] [Installation] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe Install  --id 7zip.7zip --exact --silent --accept-package-agreements --accept-source-agreements --proxy http://127.0.0.1:9]...
+21:18:24.986 [Execute-Process] [Installation] :: PassThru parameter specified, returning execution results object.
+21:18:24.991 [Execute-Process] [Error] [Installation] :: Execution failed with exit code [-2147012867].
+21:18:25.011 [Exit-Script] [Installation] :: 7zip.7zip_WingetFW_4.0.8_EN_01 Installation completed with exit code [-2147012867].
+21:18:25.014 [Exit-Script] [Installation] :: -------------------------------------------------------------------------------
 ```
 
 </details>
@@ -1322,8 +1322,8 @@ winget Install  --id 7zip.7zip --exact --silent --accept-package-agreements --ac
 **Uninstall: -allversions + -OverrideAPPName (custom toolkit log name)** - PASS
 
 - Run as: SYSTEM via PsExec
-- Exit code: 0 (6 s)
-- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\WingetFW-Test_WingetFW_4.0.7_EN_01_PSAppDeployToolkit_Uninstall.log`
+- Exit code: 0 (16 s)
+- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\WingetFW-Test_WingetFW_4.0.8_EN_01_PSAppDeployToolkit_Uninstall.log`
 
 Command:
 
@@ -1348,18 +1348,18 @@ winget Uninstall  --id 7zip.7zip --exact --silent --all-versions
 <details><summary>Toolkit log excerpt</summary>
 
 ```
-13:34:54.592 [WingetFW-Test] [TEST F14] Uninstall: -allversions + -OverrideAPPName (custom toolkit log name) | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Uninstall -id 7zip.7zip -exact -silent -allversions -OverrideAPPName WingetFW-Test -DeployMode Silent
-13:34:59.428 [Start-WinGetPackageFM] [Uninstallation] :: Start-WinGetPackageFM -UserMode Admin -Action Uninstall -allversions -exact -id '7zip.7zip' -silent
-13:34:59.458 [Start-WinGetPackageFM] [Uninstallation] :: Final argsWinGet:  --id 7zip.7zip --exact --silent --all-versions
-13:34:59.463 [Start-WinGetPackageFM] [Uninstallation] :: UserMode: Admin
-13:34:59.513 [Start-WinGetPackageFM] [Uninstallation] :: Running winget Uninstall for [7zip.7zip]
-13:34:59.531 [Execute-Process] [Uninstallation] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
-13:34:59.553 [Execute-Process] [Uninstallation] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
-13:34:59.558 [Execute-Process] [Uninstallation] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe Uninstall  --id 7zip.7zip --exact --silent --all-versions]...
-13:35:00.210 [Execute-Process] [Uninstallation] :: Execution completed successfully with exit code [0].
-13:35:00.212 [Start-WinGetPackageFM] [Uninstallation] :: Done: winget Uninstall for [7zip.7zip]
-13:35:00.237 [Exit-Script] [Post-Uninstallation] :: WingetFW-Test_WingetFW_4.0.7_EN_01 Uninstallation completed with exit code [0].
-13:35:00.241 [Exit-Script] [Post-Uninstallation] :: -------------------------------------------------------------------------------
+21:18:27.836 [WingetFW-Test] [TEST F14] Uninstall: -allversions + -OverrideAPPName (custom toolkit log name) | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Uninstall -id 7zip.7zip -exact -silent -allversions -OverrideAPPName WingetFW-Test -DeployMode Silent
+21:18:39.596 [Start-WinGetPackageFM] [Uninstallation] :: Start-WinGetPackageFM -UserMode Admin -Action Uninstall -allversions -exact -id '7zip.7zip' -silent
+21:18:39.845 [Start-WinGetPackageFM] [Uninstallation] :: Final argsWinGet:  --id 7zip.7zip --exact --silent --all-versions
+21:18:39.908 [Start-WinGetPackageFM] [Uninstallation] :: UserMode: Admin
+21:18:40.118 [Start-WinGetPackageFM] [Uninstallation] :: Running winget Uninstall for [7zip.7zip]
+21:18:40.256 [Execute-Process] [Uninstallation] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
+21:18:40.376 [Execute-Process] [Uninstallation] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
+21:18:40.424 [Execute-Process] [Uninstallation] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe Uninstall  --id 7zip.7zip --exact --silent --all-versions]...
+21:18:43.459 [Execute-Process] [Uninstallation] :: Execution completed successfully with exit code [0].
+21:18:43.464 [Start-WinGetPackageFM] [Uninstallation] :: Done: winget Uninstall for [7zip.7zip]
+21:18:43.493 [Exit-Script] [Post-Uninstallation] :: WingetFW-Test_WingetFW_4.0.8_EN_01 Uninstallation completed with exit code [0].
+21:18:43.507 [Exit-Script] [Post-Uninstallation] :: -------------------------------------------------------------------------------
 ```
 
 </details>
@@ -1369,8 +1369,8 @@ winget Uninstall  --id 7zip.7zip --exact --silent --all-versions
 **Install: portable jq machine scope with -rename (name with space)** - PASS
 
 - Run as: SYSTEM via PsExec
-- Exit code: 0 (14 s)
-- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\jqlang.jq_WingetFW_4.0.7_EN_01_PSAppDeployToolkit_Install.log`
+- Exit code: 0 (45 s)
+- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\jqlang.jq_WingetFW_4.0.8_EN_01_PSAppDeployToolkit_Install.log`
 
 Command:
 
@@ -1394,19 +1394,19 @@ winget Install  --scope machine --id jqlang.jq --exact --silent --accept-package
 <details><summary>Toolkit log excerpt</summary>
 
 ```
-13:35:00.699 [WingetFW-Test] [TEST P01] Install: portable jq machine scope with -rename (name with space) | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -id jqlang.jq -exact -silent -scope Machine -rename 'jq fw.exe' -DeployMode Silent
-13:35:05.598 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode Admin -Action Install -acceptpackageagreements -acceptsourceagreements -exact -id 'jqlang.jq' -rename 'jq fw.exe' -scope 'machine' -silent
-13:35:05.629 [Start-WinGetPackageFM] [Installation] :: Final argsWinGet:  --scope machine --id jqlang.jq --exact --silent --accept-package-agreements --accept-source-agreements --rename "jq fw.exe"
-13:35:05.636 [Start-WinGetPackageFM] [Installation] :: UserMode: Admin
-13:35:05.691 [Start-WinGetPackageFM] [Installation] :: Running winget Install for [jqlang.jq]
-13:35:05.709 [Execute-Process] [Installation] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
-13:35:05.728 [Execute-Process] [Installation] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
-13:35:05.732 [Execute-Process] [Installation] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe Install  --scope machine --id jqlang.jq --exact --silent --accept-package-agreements --accept-source-agreements --rename "jq fw.exe"]...
-13:35:13.711 [Execute-Process] [Installation] :: PassThru parameter specified, returning execution results object.
-13:35:13.716 [Execute-Process] [Installation] :: Execution completed successfully with exit code [0].
-13:35:13.723 [Start-WinGetPackageFM] [Installation] :: Done: winget Install for [jqlang.jq]
-13:35:13.752 [Exit-Script] [Post-Installation] :: jqlang.jq_WingetFW_4.0.7_EN_01 Installation completed with exit code [0].
-13:35:13.757 [Exit-Script] [Post-Installation] :: -------------------------------------------------------------------------------
+21:18:45.155 [WingetFW-Test] [TEST P01] Install: portable jq machine scope with -rename (name with space) | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -id jqlang.jq -exact -silent -scope Machine -rename 'jq fw.exe' -DeployMode Silent
+21:19:02.722 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode Admin -Action Install -acceptpackageagreements -acceptsourceagreements -exact -id 'jqlang.jq' -rename 'jq fw.exe' -scope 'machine' -silent
+21:19:02.876 [Start-WinGetPackageFM] [Installation] :: Final argsWinGet:  --scope machine --id jqlang.jq --exact --silent --accept-package-agreements --accept-source-agreements --rename "jq fw.exe"
+21:19:02.913 [Start-WinGetPackageFM] [Installation] :: UserMode: Admin
+21:19:03.087 [Start-WinGetPackageFM] [Installation] :: Running winget Install for [jqlang.jq]
+21:19:03.264 [Execute-Process] [Installation] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
+21:19:03.609 [Execute-Process] [Installation] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
+21:19:03.764 [Execute-Process] [Installation] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe Install  --scope machine --id jqlang.jq --exact --silent --accept-package-agreements --accept-source-agreements --rename "jq fw.exe"]...
+21:19:27.079 [Execute-Process] [Installation] :: PassThru parameter specified, returning execution results object.
+21:19:27.086 [Execute-Process] [Installation] :: Execution completed successfully with exit code [0].
+21:19:27.096 [Start-WinGetPackageFM] [Installation] :: Done: winget Install for [jqlang.jq]
+21:19:27.139 [Exit-Script] [Post-Installation] :: jqlang.jq_WingetFW_4.0.8_EN_01 Installation completed with exit code [0].
+21:19:27.144 [Exit-Script] [Post-Installation] :: -------------------------------------------------------------------------------
 ```
 
 </details>
@@ -1416,8 +1416,8 @@ winget Install  --scope machine --id jqlang.jq --exact --silent --accept-package
 **Uninstall: portable jq with -preserve (file created by the app stays)** - PASS
 
 - Run as: SYSTEM via PsExec
-- Exit code: 0 (6 s)
-- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\jqlang.jq_WingetFW_4.0.7_EN_01_PSAppDeployToolkit_Uninstall.log`
+- Exit code: 0 (21 s)
+- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\jqlang.jq_WingetFW_4.0.8_EN_01_PSAppDeployToolkit_Uninstall.log`
 
 Command:
 
@@ -1441,18 +1441,18 @@ winget Uninstall  --id jqlang.jq --exact --silent --preserve
 <details><summary>Toolkit log excerpt</summary>
 
 ```
-13:35:14.854 [WingetFW-Test] [TEST P02] Uninstall: portable jq with -preserve (file created by the app stays) | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Uninstall -id jqlang.jq -exact -silent -preserve -DeployMode Silent
-13:35:19.770 [Start-WinGetPackageFM] [Uninstallation] :: Start-WinGetPackageFM -UserMode Admin -Action Uninstall -exact -id 'jqlang.jq' -preserve -silent
-13:35:19.805 [Start-WinGetPackageFM] [Uninstallation] :: Final argsWinGet:  --id jqlang.jq --exact --silent --preserve
-13:35:19.808 [Start-WinGetPackageFM] [Uninstallation] :: UserMode: Admin
-13:35:19.835 [Start-WinGetPackageFM] [Uninstallation] :: Running winget Uninstall for [jqlang.jq]
-13:35:19.882 [Execute-Process] [Uninstallation] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
-13:35:19.904 [Execute-Process] [Uninstallation] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
-13:35:19.908 [Execute-Process] [Uninstallation] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe Uninstall  --id jqlang.jq --exact --silent --preserve]...
-13:35:20.430 [Execute-Process] [Uninstallation] :: Execution completed successfully with exit code [0].
-13:35:20.435 [Start-WinGetPackageFM] [Uninstallation] :: Done: winget Uninstall for [jqlang.jq]
-13:35:20.458 [Exit-Script] [Post-Uninstallation] :: jqlang.jq_WingetFW_4.0.7_EN_01 Uninstallation completed with exit code [0].
-13:35:20.462 [Exit-Script] [Post-Uninstallation] :: -------------------------------------------------------------------------------
+21:19:31.812 [WingetFW-Test] [TEST P02] Uninstall: portable jq with -preserve (file created by the app stays) | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Uninstall -id jqlang.jq -exact -silent -preserve -DeployMode Silent
+21:19:49.148 [Start-WinGetPackageFM] [Uninstallation] :: Start-WinGetPackageFM -UserMode Admin -Action Uninstall -exact -id 'jqlang.jq' -preserve -silent
+21:19:49.230 [Start-WinGetPackageFM] [Uninstallation] :: Final argsWinGet:  --id jqlang.jq --exact --silent --preserve
+21:19:49.253 [Start-WinGetPackageFM] [Uninstallation] :: UserMode: Admin
+21:19:49.294 [Start-WinGetPackageFM] [Uninstallation] :: Running winget Uninstall for [jqlang.jq]
+21:19:49.320 [Execute-Process] [Uninstallation] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
+21:19:49.356 [Execute-Process] [Uninstallation] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
+21:19:49.364 [Execute-Process] [Uninstallation] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe Uninstall  --id jqlang.jq --exact --silent --preserve]...
+21:19:52.248 [Execute-Process] [Uninstallation] :: Execution completed successfully with exit code [0].
+21:19:52.253 [Start-WinGetPackageFM] [Uninstallation] :: Done: winget Uninstall for [jqlang.jq]
+21:19:52.310 [Exit-Script] [Post-Uninstallation] :: jqlang.jq_WingetFW_4.0.8_EN_01 Uninstallation completed with exit code [0].
+21:19:52.315 [Exit-Script] [Post-Uninstallation] :: -------------------------------------------------------------------------------
 ```
 
 </details>
@@ -1462,8 +1462,8 @@ winget Uninstall  --id jqlang.jq --exact --silent --preserve
 **Install: portable jq with -location (path with spaces)** - PASS
 
 - Run as: SYSTEM via PsExec
-- Exit code: 0 (13 s)
-- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\jqlang.jq_WingetFW_4.0.7_EN_01_PSAppDeployToolkit_Install.log`
+- Exit code: 0 (35 s)
+- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\jqlang.jq_WingetFW_4.0.8_EN_01_PSAppDeployToolkit_Install.log`
 
 Command:
 
@@ -1487,19 +1487,19 @@ winget Install  --scope machine --id jqlang.jq --exact --silent --location "C:\t
 <details><summary>Toolkit log excerpt</summary>
 
 ```
-13:35:20.960 [WingetFW-Test] [TEST P03] Install: portable jq with -location (path with spaces) | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -id jqlang.jq -exact -silent -scope Machine -location 'C:\temp\wingetfw-vmtest\path with spaces\jq portable' -DeployMode Silent
-13:35:25.830 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode Admin -Action Install -acceptpackageagreements -acceptsourceagreements -exact -id 'jqlang.jq' -location '"C:\temp\wingetfw-vmtest\path with spaces\jq portable"' -scope 'machine' -silent
-13:35:25.862 [Start-WinGetPackageFM] [Installation] :: Final argsWinGet:  --scope machine --id jqlang.jq --exact --silent --location "C:\temp\wingetfw-vmtest\path with spaces\jq portable" --accept-package-agreements --accept-source-agreements
-13:35:25.866 [Start-WinGetPackageFM] [Installation] :: UserMode: Admin
-13:35:25.892 [Start-WinGetPackageFM] [Installation] :: Running winget Install for [jqlang.jq]
-13:35:25.907 [Execute-Process] [Installation] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
-13:35:25.931 [Execute-Process] [Installation] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
-13:35:25.941 [Execute-Process] [Installation] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe Install  --scope machine --id jqlang.jq --exact --silent --location "C:\temp\wingetfw-vmtest\path with spaces\jq portable" --accept-package-agreements --accept-source-agreements]...
-13:35:33.704 [Execute-Process] [Installation] :: PassThru parameter specified, returning execution results object.
-13:35:33.761 [Execute-Process] [Installation] :: Execution completed successfully with exit code [0].
-13:35:33.767 [Start-WinGetPackageFM] [Installation] :: Done: winget Install for [jqlang.jq]
-13:35:33.791 [Exit-Script] [Post-Installation] :: jqlang.jq_WingetFW_4.0.7_EN_01 Installation completed with exit code [0].
-13:35:33.796 [Exit-Script] [Post-Installation] :: -------------------------------------------------------------------------------
+21:19:54.805 [WingetFW-Test] [TEST P03] Install: portable jq with -location (path with spaces) | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -id jqlang.jq -exact -silent -scope Machine -location 'C:\temp\wingetfw-vmtest\path with spaces\jq portable' -DeployMode Silent
+21:20:04.230 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode Admin -Action Install -acceptpackageagreements -acceptsourceagreements -exact -id 'jqlang.jq' -location '"C:\temp\wingetfw-vmtest\path with spaces\jq portable"' -scope 'machine' -silent
+21:20:04.292 [Start-WinGetPackageFM] [Installation] :: Final argsWinGet:  --scope machine --id jqlang.jq --exact --silent --location "C:\temp\wingetfw-vmtest\path with spaces\jq portable" --accept-package-agreements --accept-source-agreements
+21:20:04.297 [Start-WinGetPackageFM] [Installation] :: UserMode: Admin
+21:20:04.333 [Start-WinGetPackageFM] [Installation] :: Running winget Install for [jqlang.jq]
+21:20:04.355 [Execute-Process] [Installation] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
+21:20:04.374 [Execute-Process] [Installation] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
+21:20:04.382 [Execute-Process] [Installation] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe Install  --scope machine --id jqlang.jq --exact --silent --location "C:\temp\wingetfw-vmtest\path with spaces\jq portable" --accept-package-agreements --accept-source-agreements]...
+21:20:28.469 [Execute-Process] [Installation] :: PassThru parameter specified, returning execution results object.
+21:20:28.474 [Execute-Process] [Installation] :: Execution completed successfully with exit code [0].
+21:20:28.480 [Start-WinGetPackageFM] [Installation] :: Done: winget Install for [jqlang.jq]
+21:20:28.512 [Exit-Script] [Post-Installation] :: jqlang.jq_WingetFW_4.0.8_EN_01 Installation completed with exit code [0].
+21:20:28.514 [Exit-Script] [Post-Installation] :: -------------------------------------------------------------------------------
 ```
 
 </details>
@@ -1509,8 +1509,8 @@ winget Install  --scope machine --id jqlang.jq --exact --silent --location "C:\t
 **Uninstall: portable jq with -purge (all files removed)** - PASS
 
 - Run as: SYSTEM via PsExec
-- Exit code: 0 (6 s)
-- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\jqlang.jq_WingetFW_4.0.7_EN_01_PSAppDeployToolkit_Uninstall.log`
+- Exit code: 0 (26 s)
+- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\jqlang.jq_WingetFW_4.0.8_EN_01_PSAppDeployToolkit_Uninstall.log`
 
 Command:
 
@@ -1534,18 +1534,18 @@ winget Uninstall  --id jqlang.jq --exact --silent --purge
 <details><summary>Toolkit log excerpt</summary>
 
 ```
-13:35:34.127 [WingetFW-Test] [TEST P04] Uninstall: portable jq with -purge (all files removed) | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Uninstall -id jqlang.jq -exact -silent -purge -DeployMode Silent
-13:35:38.995 [Start-WinGetPackageFM] [Uninstallation] :: Start-WinGetPackageFM -UserMode Admin -Action Uninstall -exact -id 'jqlang.jq' -purge -silent
-13:35:39.027 [Start-WinGetPackageFM] [Uninstallation] :: Final argsWinGet:  --id jqlang.jq --exact --silent --purge
-13:35:39.030 [Start-WinGetPackageFM] [Uninstallation] :: UserMode: Admin
-13:35:39.056 [Start-WinGetPackageFM] [Uninstallation] :: Running winget Uninstall for [jqlang.jq]
-13:35:39.071 [Execute-Process] [Uninstallation] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
-13:35:39.093 [Execute-Process] [Uninstallation] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
-13:35:39.098 [Execute-Process] [Uninstallation] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe Uninstall  --id jqlang.jq --exact --silent --purge]...
-13:35:39.619 [Execute-Process] [Uninstallation] :: Execution completed successfully with exit code [0].
-13:35:39.623 [Start-WinGetPackageFM] [Uninstallation] :: Done: winget Uninstall for [jqlang.jq]
-13:35:39.703 [Exit-Script] [Post-Uninstallation] :: jqlang.jq_WingetFW_4.0.7_EN_01 Uninstallation completed with exit code [0].
-13:35:39.706 [Exit-Script] [Post-Uninstallation] :: -------------------------------------------------------------------------------
+21:20:35.322 [WingetFW-Test] [TEST P04] Uninstall: portable jq with -purge (all files removed) | Run as: SYSTEM via PsExec | Command: C:\temp\PSTools\PsExec64.exe -accepteula -nobanner -s -w "C:\temp\wingetfw-vmtest\WinGetFW" "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Uninstall -id jqlang.jq -exact -silent -purge -DeployMode Silent
+21:20:54.935 [Start-WinGetPackageFM] [Uninstallation] :: Start-WinGetPackageFM -UserMode Admin -Action Uninstall -exact -id 'jqlang.jq' -purge -silent
+21:20:55.072 [Start-WinGetPackageFM] [Uninstallation] :: Final argsWinGet:  --id jqlang.jq --exact --silent --purge
+21:20:55.108 [Start-WinGetPackageFM] [Uninstallation] :: UserMode: Admin
+21:20:55.241 [Start-WinGetPackageFM] [Uninstallation] :: Running winget Uninstall for [jqlang.jq]
+21:20:55.340 [Execute-Process] [Uninstallation] :: [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
+21:20:55.450 [Execute-Process] [Uninstallation] :: Working Directory is [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe].
+21:20:55.469 [Execute-Process] [Uninstallation] :: Executing [C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_1.29.380.0_x64__8wekyb3d8bbwe\winget.exe Uninstall  --id jqlang.jq --exact --silent --purge]...
+21:20:58.645 [Execute-Process] [Uninstallation] :: Execution completed successfully with exit code [0].
+21:20:58.652 [Start-WinGetPackageFM] [Uninstallation] :: Done: winget Uninstall for [jqlang.jq]
+21:20:58.732 [Exit-Script] [Post-Uninstallation] :: jqlang.jq_WingetFW_4.0.8_EN_01 Uninstallation completed with exit code [0].
+21:20:58.740 [Exit-Script] [Post-Uninstallation] :: -------------------------------------------------------------------------------
 ```
 
 </details>
@@ -1555,8 +1555,8 @@ winget Uninstall  --id jqlang.jq --exact --silent --purge
 **User mode: install portable jq user scope** - PASS
 
 - Run as: test (no PsExec)
-- Exit code: 0 (6 s)
-- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\jqlang.jq_WingetFW_4.0.7_EN_01_PSAppDeployToolkit_Install.log`
+- Exit code: 0 (38 s)
+- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\jqlang.jq_WingetFW_4.0.8_EN_01_PSAppDeployToolkit_Install.log`
 
 Command:
 
@@ -1580,19 +1580,19 @@ winget Install  --scope user --id jqlang.jq --exact --silent --accept-package-ag
 <details><summary>Toolkit log excerpt</summary>
 
 ```
-13:35:40.260 [WingetFW-Test] [TEST U01] User mode: install portable jq user scope | Run as: test (no PsExec) | Command: "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -id jqlang.jq -exact -silent -scope User -DeployMode NonInteractive -Mode User
-13:35:44.421 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode User -Action Install -acceptpackageagreements -acceptsourceagreements -exact -id 'jqlang.jq' -scope 'user' -silent
-13:35:44.457 [Start-WinGetPackageFM] [Installation] :: Final argsWinGet:  --scope user --id jqlang.jq --exact --silent --accept-package-agreements --accept-source-agreements
-13:35:44.461 [Start-WinGetPackageFM] [Installation] :: UserMode: User
-13:35:44.484 [Start-WinGetPackageFM] [Installation] :: Running winget Install for [jqlang.jq]
-13:35:44.499 [Execute-Process] [Installation] :: [C:\Users\TEST\AppData\Local\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
-13:35:44.527 [Execute-Process] [Installation] :: Working Directory is [C:\Users\TEST\AppData\Local\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe].
-13:35:44.529 [Execute-Process] [Installation] :: Executing [C:\Users\TEST\AppData\Local\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\winget.exe Install  --scope user --id jqlang.jq --exact --silent --accept-package-agreements --accept-source-agreements]...
-13:35:46.120 [Execute-Process] [Installation] :: PassThru parameter specified, returning execution results object.
-13:35:46.125 [Execute-Process] [Installation] :: Execution completed successfully with exit code [0].
-13:35:46.130 [Start-WinGetPackageFM] [Installation] :: Done: winget Install for [jqlang.jq]
-13:35:46.157 [Exit-Script] [Post-Installation] :: jqlang.jq_WingetFW_4.0.7_EN_01 Installation completed with exit code [0].
-13:35:46.161 [Exit-Script] [Post-Installation] :: -------------------------------------------------------------------------------
+21:21:03.038 [WingetFW-Test] [TEST U01] User mode: install portable jq user scope | Run as: test (no PsExec) | Command: "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -id jqlang.jq -exact -silent -scope User -DeployMode NonInteractive -Mode User
+21:21:16.770 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode User -Action Install -acceptpackageagreements -acceptsourceagreements -exact -id 'jqlang.jq' -scope 'user' -silent
+21:21:16.948 [Start-WinGetPackageFM] [Installation] :: Final argsWinGet:  --scope user --id jqlang.jq --exact --silent --accept-package-agreements --accept-source-agreements
+21:21:16.995 [Start-WinGetPackageFM] [Installation] :: UserMode: User
+21:21:17.187 [Start-WinGetPackageFM] [Installation] :: Running winget Install for [jqlang.jq]
+21:21:17.315 [Execute-Process] [Installation] :: [C:\Users\TEST\AppData\Local\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
+21:21:17.550 [Execute-Process] [Installation] :: Working Directory is [C:\Users\TEST\AppData\Local\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe].
+21:21:17.586 [Execute-Process] [Installation] :: Executing [C:\Users\TEST\AppData\Local\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\winget.exe Install  --scope user --id jqlang.jq --exact --silent --accept-package-agreements --accept-source-agreements]...
+21:21:40.357 [Execute-Process] [Installation] :: PassThru parameter specified, returning execution results object.
+21:21:40.361 [Execute-Process] [Installation] :: Execution completed successfully with exit code [0].
+21:21:40.369 [Start-WinGetPackageFM] [Installation] :: Done: winget Install for [jqlang.jq]
+21:21:40.402 [Exit-Script] [Post-Installation] :: jqlang.jq_WingetFW_4.0.8_EN_01 Installation completed with exit code [0].
+21:21:40.407 [Exit-Script] [Post-Installation] :: -------------------------------------------------------------------------------
 ```
 
 </details>
@@ -1602,8 +1602,8 @@ winget Install  --scope user --id jqlang.jq --exact --silent --accept-package-ag
 **User mode: uninstall jq** - PASS
 
 - Run as: test (no PsExec)
-- Exit code: 0 (5 s)
-- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\jqlang.jq_WingetFW_4.0.7_EN_01_PSAppDeployToolkit_Uninstall.log`
+- Exit code: 0 (13 s)
+- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\jqlang.jq_WingetFW_4.0.8_EN_01_PSAppDeployToolkit_Uninstall.log`
 
 Command:
 
@@ -1627,18 +1627,18 @@ winget Uninstall  --id jqlang.jq --exact --silent
 <details><summary>Toolkit log excerpt</summary>
 
 ```
-13:35:46.394 [WingetFW-Test] [TEST U02] User mode: uninstall jq | Run as: test (no PsExec) | Command: "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Uninstall -id jqlang.jq -exact -silent -DeployMode NonInteractive -Mode User
-13:35:50.511 [Start-WinGetPackageFM] [Uninstallation] :: Start-WinGetPackageFM -UserMode User -Action Uninstall -exact -id 'jqlang.jq' -silent
-13:35:50.549 [Start-WinGetPackageFM] [Uninstallation] :: Final argsWinGet:  --id jqlang.jq --exact --silent
-13:35:50.554 [Start-WinGetPackageFM] [Uninstallation] :: UserMode: User
-13:35:50.575 [Start-WinGetPackageFM] [Uninstallation] :: Running winget Uninstall for [jqlang.jq]
-13:35:50.591 [Execute-Process] [Uninstallation] :: [C:\Users\TEST\AppData\Local\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
-13:35:50.611 [Execute-Process] [Uninstallation] :: Working Directory is [C:\Users\TEST\AppData\Local\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe].
-13:35:50.613 [Execute-Process] [Uninstallation] :: Executing [C:\Users\TEST\AppData\Local\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\winget.exe Uninstall  --id jqlang.jq --exact --silent]...
-13:35:51.144 [Execute-Process] [Uninstallation] :: Execution completed successfully with exit code [0].
-13:35:51.149 [Start-WinGetPackageFM] [Uninstallation] :: Done: winget Uninstall for [jqlang.jq]
-13:35:51.173 [Exit-Script] [Post-Uninstallation] :: jqlang.jq_WingetFW_4.0.7_EN_01 Uninstallation completed with exit code [0].
-13:35:51.178 [Exit-Script] [Post-Uninstallation] :: -------------------------------------------------------------------------------
+21:21:41.954 [WingetFW-Test] [TEST U02] User mode: uninstall jq | Run as: test (no PsExec) | Command: "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Uninstall -id jqlang.jq -exact -silent -DeployMode NonInteractive -Mode User
+21:21:51.594 [Start-WinGetPackageFM] [Uninstallation] :: Start-WinGetPackageFM -UserMode User -Action Uninstall -exact -id 'jqlang.jq' -silent
+21:21:51.674 [Start-WinGetPackageFM] [Uninstallation] :: Final argsWinGet:  --id jqlang.jq --exact --silent
+21:21:51.681 [Start-WinGetPackageFM] [Uninstallation] :: UserMode: User
+21:21:51.708 [Start-WinGetPackageFM] [Uninstallation] :: Running winget Uninstall for [jqlang.jq]
+21:21:51.726 [Execute-Process] [Uninstallation] :: [C:\Users\TEST\AppData\Local\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
+21:21:51.744 [Execute-Process] [Uninstallation] :: Working Directory is [C:\Users\TEST\AppData\Local\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe].
+21:21:51.749 [Execute-Process] [Uninstallation] :: Executing [C:\Users\TEST\AppData\Local\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\winget.exe Uninstall  --id jqlang.jq --exact --silent]...
+21:21:55.137 [Execute-Process] [Uninstallation] :: Execution completed successfully with exit code [0].
+21:21:55.151 [Start-WinGetPackageFM] [Uninstallation] :: Done: winget Uninstall for [jqlang.jq]
+21:21:55.219 [Exit-Script] [Post-Uninstallation] :: jqlang.jq_WingetFW_4.0.8_EN_01 Uninstallation completed with exit code [0].
+21:21:55.227 [Exit-Script] [Post-Uninstallation] :: -------------------------------------------------------------------------------
 ```
 
 </details>
@@ -1648,8 +1648,8 @@ winget Uninstall  --id jqlang.jq --exact --silent
 **User mode: install Postman (EXE installer, user scope)** - PASS
 
 - Run as: test (no PsExec)
-- Exit code: 0 (66 s)
-- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\Postman.Postman_WingetFW_4.0.7_EN_01_PSAppDeployToolkit_Install.log`
+- Exit code: 0 (165 s)
+- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\Postman.Postman_WingetFW_4.0.8_EN_01_PSAppDeployToolkit_Install.log`
 
 Command:
 
@@ -1670,24 +1670,24 @@ winget Install  --scope user --id Postman.Postman --exact --silent --accept-pack
 | winget call 1 contains: --id Postman.Postman | OK |
 | winget call 1 contains: --scope user | OK |
 | winget call 1 contains: --silent | OK |
-| state: Postman in HKCU uninstall: True 12.31.7 | OK |
+| state: Postman in HKCU uninstall: True 12.32.1 | OK |
 
 <details><summary>Toolkit log excerpt</summary>
 
 ```
-13:35:51.476 [WingetFW-Test] [TEST U03] User mode: install Postman (EXE installer, user scope) | Run as: test (no PsExec) | Command: "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -id Postman.Postman -exact -silent -scope User -DeployMode NonInteractive -Mode User
-13:35:55.559 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode User -Action Install -acceptpackageagreements -acceptsourceagreements -exact -id 'Postman.Postman' -scope 'user' -silent
-13:35:55.594 [Start-WinGetPackageFM] [Installation] :: Final argsWinGet:  --scope user --id Postman.Postman --exact --silent --accept-package-agreements --accept-source-agreements
-13:35:55.601 [Start-WinGetPackageFM] [Installation] :: UserMode: User
-13:35:55.623 [Start-WinGetPackageFM] [Installation] :: Running winget Install for [Postman.Postman]
-13:35:55.639 [Execute-Process] [Installation] :: [C:\Users\TEST\AppData\Local\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
-13:35:55.659 [Execute-Process] [Installation] :: Working Directory is [C:\Users\TEST\AppData\Local\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe].
-13:35:55.663 [Execute-Process] [Installation] :: Executing [C:\Users\TEST\AppData\Local\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\winget.exe Install  --scope user --id Postman.Postman --exact --silent --accept-package-agreements --accept-source-agreements]...
-13:36:56.769 [Execute-Process] [Installation] :: PassThru parameter specified, returning execution results object.
-13:36:56.773 [Execute-Process] [Installation] :: Execution completed successfully with exit code [0].
-13:36:56.777 [Start-WinGetPackageFM] [Installation] :: Done: winget Install for [Postman.Postman]
-13:36:56.801 [Exit-Script] [Post-Installation] :: Postman.Postman_WingetFW_4.0.7_EN_01 Installation completed with exit code [0].
-13:36:56.803 [Exit-Script] [Post-Installation] :: -------------------------------------------------------------------------------
+21:21:57.591 [WingetFW-Test] [TEST U03] User mode: install Postman (EXE installer, user scope) | Run as: test (no PsExec) | Command: "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -id Postman.Postman -exact -silent -scope User -DeployMode NonInteractive -Mode User
+21:22:08.505 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode User -Action Install -acceptpackageagreements -acceptsourceagreements -exact -id 'Postman.Postman' -scope 'user' -silent
+21:22:08.584 [Start-WinGetPackageFM] [Installation] :: Final argsWinGet:  --scope user --id Postman.Postman --exact --silent --accept-package-agreements --accept-source-agreements
+21:22:08.608 [Start-WinGetPackageFM] [Installation] :: UserMode: User
+21:22:08.641 [Start-WinGetPackageFM] [Installation] :: Running winget Install for [Postman.Postman]
+21:22:08.703 [Execute-Process] [Installation] :: [C:\Users\TEST\AppData\Local\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
+21:22:08.765 [Execute-Process] [Installation] :: Working Directory is [C:\Users\TEST\AppData\Local\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe].
+21:22:08.777 [Execute-Process] [Installation] :: Executing [C:\Users\TEST\AppData\Local\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\winget.exe Install  --scope user --id Postman.Postman --exact --silent --accept-package-agreements --accept-source-agreements]...
+21:24:42.521 [Execute-Process] [Installation] :: PassThru parameter specified, returning execution results object.
+21:24:42.527 [Execute-Process] [Installation] :: Execution completed successfully with exit code [0].
+21:24:42.534 [Start-WinGetPackageFM] [Installation] :: Done: winget Install for [Postman.Postman]
+21:24:42.564 [Exit-Script] [Post-Installation] :: Postman.Postman_WingetFW_4.0.8_EN_01 Installation completed with exit code [0].
+21:24:42.574 [Exit-Script] [Post-Installation] :: -------------------------------------------------------------------------------
 ```
 
 </details>
@@ -1697,8 +1697,8 @@ winget Install  --scope user --id Postman.Postman --exact --silent --accept-pack
 **User mode: uninstall Postman** - PASS
 
 - Run as: test (no PsExec)
-- Exit code: 0 (6 s)
-- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\Postman.Postman_WingetFW_4.0.7_EN_01_PSAppDeployToolkit_Uninstall.log`
+- Exit code: 0 (13 s)
+- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\Postman.Postman_WingetFW_4.0.8_EN_01_PSAppDeployToolkit_Uninstall.log`
 
 Command:
 
@@ -1722,18 +1722,18 @@ winget Uninstall  --id Postman.Postman --exact --silent
 <details><summary>Toolkit log excerpt</summary>
 
 ```
-13:36:57.285 [WingetFW-Test] [TEST U04] User mode: uninstall Postman | Run as: test (no PsExec) | Command: "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Uninstall -id Postman.Postman -exact -silent -DeployMode NonInteractive -Mode User
-13:37:01.490 [Start-WinGetPackageFM] [Uninstallation] :: Start-WinGetPackageFM -UserMode User -Action Uninstall -exact -id 'Postman.Postman' -silent
-13:37:01.523 [Start-WinGetPackageFM] [Uninstallation] :: Final argsWinGet:  --id Postman.Postman --exact --silent
-13:37:01.525 [Start-WinGetPackageFM] [Uninstallation] :: UserMode: User
-13:37:01.546 [Start-WinGetPackageFM] [Uninstallation] :: Running winget Uninstall for [Postman.Postman]
-13:37:01.567 [Execute-Process] [Uninstallation] :: [C:\Users\TEST\AppData\Local\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
-13:37:01.594 [Execute-Process] [Uninstallation] :: Working Directory is [C:\Users\TEST\AppData\Local\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe].
-13:37:01.598 [Execute-Process] [Uninstallation] :: Executing [C:\Users\TEST\AppData\Local\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\winget.exe Uninstall  --id Postman.Postman --exact --silent]...
-13:37:03.095 [Execute-Process] [Uninstallation] :: Execution completed successfully with exit code [0].
-13:37:03.100 [Start-WinGetPackageFM] [Uninstallation] :: Done: winget Uninstall for [Postman.Postman]
-13:37:03.131 [Exit-Script] [Post-Uninstallation] :: Postman.Postman_WingetFW_4.0.7_EN_01 Uninstallation completed with exit code [0].
-13:37:03.133 [Exit-Script] [Post-Uninstallation] :: -------------------------------------------------------------------------------
+21:24:43.913 [WingetFW-Test] [TEST U04] User mode: uninstall Postman | Run as: test (no PsExec) | Command: "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Uninstall -id Postman.Postman -exact -silent -DeployMode NonInteractive -Mode User
+21:24:52.500 [Start-WinGetPackageFM] [Uninstallation] :: Start-WinGetPackageFM -UserMode User -Action Uninstall -exact -id 'Postman.Postman' -silent
+21:24:52.564 [Start-WinGetPackageFM] [Uninstallation] :: Final argsWinGet:  --id Postman.Postman --exact --silent
+21:24:52.578 [Start-WinGetPackageFM] [Uninstallation] :: UserMode: User
+21:24:52.601 [Start-WinGetPackageFM] [Uninstallation] :: Running winget Uninstall for [Postman.Postman]
+21:24:52.622 [Execute-Process] [Uninstallation] :: [C:\Users\TEST\AppData\Local\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
+21:24:52.684 [Execute-Process] [Uninstallation] :: Working Directory is [C:\Users\TEST\AppData\Local\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe].
+21:24:52.689 [Execute-Process] [Uninstallation] :: Executing [C:\Users\TEST\AppData\Local\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\winget.exe Uninstall  --id Postman.Postman --exact --silent]...
+21:24:56.318 [Execute-Process] [Uninstallation] :: Execution completed successfully with exit code [0].
+21:24:56.325 [Start-WinGetPackageFM] [Uninstallation] :: Done: winget Uninstall for [Postman.Postman]
+21:24:56.368 [Exit-Script] [Post-Uninstallation] :: Postman.Postman_WingetFW_4.0.8_EN_01 Uninstallation completed with exit code [0].
+21:24:56.375 [Exit-Script] [Post-Uninstallation] :: -------------------------------------------------------------------------------
 ```
 
 </details>
@@ -1743,8 +1743,8 @@ winget Uninstall  --id Postman.Postman --exact --silent
 **User mode: winget appears a few seconds late (first logon) - WingetFW registers App Installer, retries and installs jq** - PASS
 
 - Run as: test (no PsExec)
-- Exit code: 0 (17 s)
-- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\jqlang.jq_WingetFW_4.0.7_EN_01_PSAppDeployToolkit_Install.log`
+- Exit code: 0 (59 s)
+- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\jqlang.jq_WingetFW_4.0.8_EN_01_PSAppDeployToolkit_Install.log`
 
 Command:
 
@@ -1770,22 +1770,22 @@ winget Install  --scope user --id jqlang.jq --exact --silent --accept-package-ag
 <details><summary>Toolkit log excerpt</summary>
 
 ```
-13:37:03.376 [WingetFW-Test] [TEST U05] User mode: winget appears a few seconds late (first logon) - WingetFW registers App Installer, retries and installs jq | Run as: test (no PsExec) | Command: "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -id jqlang.jq -exact -silent -scope User -DeployMode NonInteractive -Mode User
-13:37:07.406 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode User -Action Install -acceptpackageagreements -acceptsourceagreements -exact -id 'jqlang.jq' -scope 'user' -silent
-13:37:07.443 [Start-WinGetPackageFM] [Installation] :: Final argsWinGet:  --scope user --id jqlang.jq --exact --silent --accept-package-agreements --accept-source-agreements
-13:37:07.448 [Start-WinGetPackageFM] [Installation] :: UserMode: User
-13:37:07.459 [Resolve-WingetPath] [Warning] [Installation] :: winget not found for the user, requesting App Installer registration
-13:37:13.312 [Resolve-WingetPath] [Warning] [Installation] :: App Installer registration failed: Deployment failed with HRESULT: 0x80070005, Access is denied. | Deployment Register operation with target volume C: on Package Microsoft.DesktopAppInstaller_2026.728.1707.0_neutral_~_8wekyb3d8bbwe from:  (AppxBundleManifest.xml)  failed with error 0x80070005. See http://go.microsoft.com/fwlink/?LinkId=235160 for help diagnosing app deployment issues. | NOTE: For additional information, look for [ActivityId] 00af269e-593c-0001-b742-ce003c59dd01 in the Event Log or use the command line Get-AppPackageLog -ActivityID 00af269e-593c-0001-b742-ce003c59dd01
-13:37:13.317 [Resolve-WingetPath] [Warning] [Installation] :: winget not found yet (attempt 2 of 5), waiting 5 seconds
-13:37:18.352 [Start-WinGetPackageFM] [Installation] :: Running winget Install for [jqlang.jq]
-13:37:18.373 [Execute-Process] [Installation] :: [C:\temp\wingetfw-vmtest\first logon localappdata\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
-13:37:18.414 [Execute-Process] [Installation] :: Working Directory is [C:\temp\wingetfw-vmtest\first logon localappdata\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe].
-13:37:18.420 [Execute-Process] [Installation] :: Executing [C:\temp\wingetfw-vmtest\first logon localappdata\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\winget.exe Install  --scope user --id jqlang.jq --exact --silent --accept-package-agreements --accept-source-agreements]...
-13:37:20.090 [Execute-Process] [Installation] :: PassThru parameter specified, returning execution results object.
-13:37:20.096 [Execute-Process] [Installation] :: Execution completed successfully with exit code [0].
-13:37:20.100 [Start-WinGetPackageFM] [Installation] :: Done: winget Install for [jqlang.jq]
-13:37:20.124 [Exit-Script] [Post-Installation] :: jqlang.jq_WingetFW_4.0.7_EN_01 Installation completed with exit code [0].
-13:37:20.129 [Exit-Script] [Post-Installation] :: -------------------------------------------------------------------------------
+21:24:57.874 [WingetFW-Test] [TEST U05] User mode: winget appears a few seconds late (first logon) - WingetFW registers App Installer, retries and installs jq | Run as: test (no PsExec) | Command: "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Install -id jqlang.jq -exact -silent -scope User -DeployMode NonInteractive -Mode User
+21:25:12.309 [Start-WinGetPackageFM] [Installation] :: Start-WinGetPackageFM -UserMode User -Action Install -acceptpackageagreements -acceptsourceagreements -exact -id 'jqlang.jq' -scope 'user' -silent
+21:25:12.535 [Start-WinGetPackageFM] [Installation] :: Final argsWinGet:  --scope user --id jqlang.jq --exact --silent --accept-package-agreements --accept-source-agreements
+21:25:12.574 [Start-WinGetPackageFM] [Installation] :: UserMode: User
+21:25:12.590 [Resolve-WingetPath] [Warning] [Installation] :: winget not found for the user, requesting App Installer registration
+21:25:19.788 [Resolve-WingetPath] [Warning] [Installation] :: App Installer registration failed: Deployment failed with HRESULT: 0x80070005, Access is denied. | Deployment Register operation with target volume C: on Package Microsoft.DesktopAppInstaller_2026.917.151.0_neutral_~_8wekyb3d8bbwe from:  (AppxBundleManifest.xml)  failed with error 0x80070005. See http://go.microsoft.com/fwlink/?LinkId=235160 for help diagnosing app deployment issues. | NOTE: For additional information, look for [ActivityId] c68be95e-5b41-0001-272f-9bc6415bdd01 in the Event Log or use the command line Get-AppPackageLog -ActivityID c68be95e-5b41-0001-272f-9bc6415bdd01
+21:25:20.104 [Resolve-WingetPath] [Warning] [Installation] :: winget not found yet (attempt 2 of 5), waiting 5 seconds
+21:25:25.131 [Start-WinGetPackageFM] [Installation] :: Running winget Install for [jqlang.jq]
+21:25:25.175 [Execute-Process] [Installation] :: [C:\temp\wingetfw-vmtest\first logon localappdata\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
+21:25:25.210 [Execute-Process] [Installation] :: Working Directory is [C:\temp\wingetfw-vmtest\first logon localappdata\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe].
+21:25:25.215 [Execute-Process] [Installation] :: Executing [C:\temp\wingetfw-vmtest\first logon localappdata\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\winget.exe Install  --scope user --id jqlang.jq --exact --silent --accept-package-agreements --accept-source-agreements]...
+21:25:56.304 [Execute-Process] [Installation] :: PassThru parameter specified, returning execution results object.
+21:25:56.311 [Execute-Process] [Installation] :: Execution completed successfully with exit code [0].
+21:25:56.321 [Start-WinGetPackageFM] [Installation] :: Done: winget Install for [jqlang.jq]
+21:25:56.405 [Exit-Script] [Post-Installation] :: jqlang.jq_WingetFW_4.0.8_EN_01 Installation completed with exit code [0].
+21:25:56.412 [Exit-Script] [Post-Installation] :: -------------------------------------------------------------------------------
 ```
 
 </details>
@@ -1795,8 +1795,8 @@ winget Install  --scope user --id jqlang.jq --exact --silent --accept-package-ag
 **User mode: uninstall jq** - PASS
 
 - Run as: test (no PsExec)
-- Exit code: 0 (5 s)
-- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\jqlang.jq_WingetFW_4.0.7_EN_01_PSAppDeployToolkit_Uninstall.log`
+- Exit code: 0 (15 s)
+- Toolkit log: `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\jqlang.jq_WingetFW_4.0.8_EN_01_PSAppDeployToolkit_Uninstall.log`
 
 Command:
 
@@ -1820,18 +1820,18 @@ winget Uninstall  --id jqlang.jq --exact --silent
 <details><summary>Toolkit log excerpt</summary>
 
 ```
-13:37:20.669 [WingetFW-Test] [TEST U06] User mode: uninstall jq | Run as: test (no PsExec) | Command: "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Uninstall -id jqlang.jq -exact -silent -DeployMode NonInteractive -Mode User
-13:37:24.645 [Start-WinGetPackageFM] [Uninstallation] :: Start-WinGetPackageFM -UserMode User -Action Uninstall -exact -id 'jqlang.jq' -silent
-13:37:24.676 [Start-WinGetPackageFM] [Uninstallation] :: Final argsWinGet:  --id jqlang.jq --exact --silent
-13:37:24.680 [Start-WinGetPackageFM] [Uninstallation] :: UserMode: User
-13:37:24.699 [Start-WinGetPackageFM] [Uninstallation] :: Running winget Uninstall for [jqlang.jq]
-13:37:24.713 [Execute-Process] [Uninstallation] :: [C:\Users\TEST\AppData\Local\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
-13:37:24.735 [Execute-Process] [Uninstallation] :: Working Directory is [C:\Users\TEST\AppData\Local\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe].
-13:37:24.737 [Execute-Process] [Uninstallation] :: Executing [C:\Users\TEST\AppData\Local\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\winget.exe Uninstall  --id jqlang.jq --exact --silent]...
-13:37:25.276 [Execute-Process] [Uninstallation] :: Execution completed successfully with exit code [0].
-13:37:25.281 [Start-WinGetPackageFM] [Uninstallation] :: Done: winget Uninstall for [jqlang.jq]
-13:37:25.301 [Exit-Script] [Post-Uninstallation] :: jqlang.jq_WingetFW_4.0.7_EN_01 Uninstallation completed with exit code [0].
-13:37:25.305 [Exit-Script] [Post-Uninstallation] :: -------------------------------------------------------------------------------
+21:25:58.913 [WingetFW-Test] [TEST U06] User mode: uninstall jq | Run as: test (no PsExec) | Command: "C:\temp\wingetfw-vmtest\WinGetFW\Deploy-Application.exe" -DeploymentType Uninstall -id jqlang.jq -exact -silent -DeployMode NonInteractive -Mode User
+21:26:10.913 [Start-WinGetPackageFM] [Uninstallation] :: Start-WinGetPackageFM -UserMode User -Action Uninstall -exact -id 'jqlang.jq' -silent
+21:26:11.027 [Start-WinGetPackageFM] [Uninstallation] :: Final argsWinGet:  --id jqlang.jq --exact --silent
+21:26:11.037 [Start-WinGetPackageFM] [Uninstallation] :: UserMode: User
+21:26:11.059 [Start-WinGetPackageFM] [Uninstallation] :: Running winget Uninstall for [jqlang.jq]
+21:26:11.075 [Execute-Process] [Uninstallation] :: [C:\Users\TEST\AppData\Local\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\winget.exe] is a valid fully qualified path, continue.
+21:26:11.092 [Execute-Process] [Uninstallation] :: Working Directory is [C:\Users\TEST\AppData\Local\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe].
+21:26:11.097 [Execute-Process] [Uninstallation] :: Executing [C:\Users\TEST\AppData\Local\Microsoft\WindowsApps\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\winget.exe Uninstall  --id jqlang.jq --exact --silent]...
+21:26:12.782 [Execute-Process] [Uninstallation] :: Execution completed successfully with exit code [0].
+21:26:12.787 [Start-WinGetPackageFM] [Uninstallation] :: Done: winget Uninstall for [jqlang.jq]
+21:26:12.816 [Exit-Script] [Post-Uninstallation] :: jqlang.jq_WingetFW_4.0.8_EN_01 Uninstallation completed with exit code [0].
+21:26:12.821 [Exit-Script] [Post-Uninstallation] :: -------------------------------------------------------------------------------
 ```
 
 </details>
