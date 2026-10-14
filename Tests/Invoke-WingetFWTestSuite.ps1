@@ -25,20 +25,26 @@
       WingetFW-TestResults.json  machine readable results (used for TEST-RESULTS.md)
 
 .PARAMETER Root
-    Folder on the VM that contains the WinGetFW package folder. Must not be in a user profile
+    Folder on the VM that contains the WingetFW package folder. Must not be in a user profile
     (SYSTEM must be able to read it).
+
+.PARAMETER PackageFolder
+    Name of the package folder in -Root. WinGetFW5.0.0 (Invoke-AppDeployToolkit.exe, PSADT 4) or
+    WinGetFW (Deploy-Application.exe, PSADT 3). The package type is detected from the exe.
 
 .PARAMETER PsExecPath
     Path to PsExec64.exe on the VM.
 
 .EXAMPLE
-    powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\temp\wingetfw-vmtest\Invoke-WingetFWTestSuite.ps1
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\temp\wingetfw-vmtest\Invoke-WingetFWTestSuite.ps1 -PackageFolder WinGetFW5.0.0
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 1.2.1
+    Version      : 1.3.0
 
     Release notes
+    1.3.0  - Runs against WingetFW 5.0.0 (Invoke-AppDeployToolkit.exe, PSADT 4) or 4.0.8 (Deploy-Application.exe);
+             the package folder is set with -PackageFolder. The Q tests check the quoting of the exe used.
     1.2.1  - The toolkit log folder is created at the start, so the suite also runs on a clean VM.
            - U05: winget is linked in after WingetFW logs retry attempt 2 instead of after a fixed
              10 seconds, so the test no longer fails when the App Installer registration call is slow.
@@ -59,31 +65,38 @@ Param (
     [String]$Root = 'C:\temp\wingetfw-vmtest',
 
     [Parameter()]
+    [String]$PackageFolder = 'WinGetFW5.0.0',
+
+    [Parameter()]
     [String]$PsExecPath = 'C:\temp\PSTools\PsExec64.exe'
 )
 
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 
-$pkgDir        = Join-Path $Root 'WinGetFW'
-$exe           = Join-Path $pkgDir 'Deploy-Application.exe'
+$pkgDir        = Join-Path $Root $PackageFolder
+$isV4          = Test-Path (Join-Path $pkgDir 'Invoke-AppDeployToolkit.exe')
+$exeName       = If ($isV4) { 'Invoke-AppDeployToolkit.exe' } Else { 'Deploy-Application.exe' }
+$exe           = Join-Path $pkgDir $exeName
+$deployScript  = Get-Content (Join-Path $pkgDir ([IO.Path]::ChangeExtension($exeName, '.ps1'))) -Raw
 $resultDir     = Join-Path $Root 'results'
 $tmpDir        = Join-Path $Root 'tmp'
 $spaceDir      = Join-Path $Root 'path with spaces'
 $resultLog     = Join-Path $resultDir 'WingetFW-TestResults.log'
 $resultJson    = Join-Path $resultDir 'WingetFW-TestResults.json'
 $toolkitLogDir = 'C:\ProgramData\Microsoft\IntuneManagementExtension\Logs'
-$appVersion    = ([regex]::Match((Get-Content (Join-Path $pkgDir 'Deploy-Application.ps1') -Raw), "\`$appVersion = '([^']+)'")).Groups[1].Value
+$appVersion    = [regex]::Match($deployScript, "(?im)^\s*(\[String\]\`$)?appVersion = '([^']+)'").Groups[2].Value
+$psadtVersion  = [regex]::Match($deployScript, "(?i)deployAppScriptVersion = (\[Version\])?'([^']+)'").Groups[2].Value
 
-If (-not (Test-Path $exe)) { Throw "Deploy-Application.exe not found: $exe" }
+If (-not (Test-Path $exe)) { Throw "$exeName not found: $exe" }
 If (-not (Test-Path $PsExecPath)) { Throw "PsExec not found: $PsExecPath" }
-If (Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'Deploy-Application' }) { Throw 'Another Deploy-Application run is active on this VM - aborting.' }
+If (Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'Deploy-Application|Invoke-AppDeployToolkit' }) { Throw 'Another WingetFW deployment is running on this VM - aborting.' }
 New-Item -ItemType Directory -Path $resultDir, $tmpDir, $spaceDir, $toolkitLogDir -Force | Out-Null
 Remove-Item (Join-Path $resultDir '*'), (Join-Path $tmpDir '*'), (Join-Path $spaceDir '*') -Force -Recurse -ErrorAction SilentlyContinue
 
 Function Write-Result([String]$Text) { Add-Content -Path $resultLog -Value $Text -Encoding UTF8; Write-Output $Text }
 
-# Deploy-Application.exe (PSADT v3) strips double quotes and runs the args through -Command, so values with
+# Both exes run the args through powershell.exe -Command (v3 also strips double quotes), so values with
 # spaces or PowerShell special characters ({ } $ ; ( ) @ & ...) must use single quotes
 Function Join-ArgString([String[]]$ArgList) {
     ($ArgList | ForEach-Object { If ($_ -match '[\s''"{}$;()@&|<>,`]') { "'" + ($_ -replace "'", "''") + "'" } Else { $_ } }) -join ' '
@@ -192,7 +205,7 @@ Function Invoke-Test {
     $entries = @([regex]::Matches($raw, '(?s)<!\[LOG\[(.*?)\]LOG\]!><time="([^"]*)"[^>]*component="([^"]*)"[^>]*type="(\d)"') | ForEach-Object {
         [PSCustomObject]@{ Message = $_.Groups[1].Value.Trim(); Time = $_.Groups[2].Value.Substring(0, 12); Component = $_.Groups[3].Value; Type = [Int]$_.Groups[4].Value }
     })
-    $executes = @($entries | Where-Object { $_.Component -eq 'Execute-Process' } | ForEach-Object { If ($_.Message -match ':: Executing \[.*?winget\.exe (.*)\]\.\.\.$') { $Matches[1].Trim() } })
+    $executes = @($entries | Where-Object { $_.Component -in @('Execute-Process', 'Start-ADTProcess') } | ForEach-Object { If ($_.Message -match ':: Executing \[.*?winget\.exe"? (.*)\]\.\.\.$') { $Matches[1].Trim() } })
 
     $checks = New-Object System.Collections.Generic.List[Object]
     If ($null -eq $ExpectExit) { $checks.Add([PSCustomObject]@{ Ok = $true; Text = "exit code $(Format-ExitCode $exitCode) (informational, any accepted)" }) }
@@ -216,7 +229,7 @@ Function Invoke-Test {
     $checks | ForEach-Object { Write-Result ('   [{0}] {1}' -f $(If ($_.Ok) { 'OK  ' } Else { 'FAIL' }), $_.Text) }
     Write-Result "Result      : $(If ($pass) { 'PASS' } Else { 'FAIL' })"
     Write-Result 'Toolkit log excerpt:'
-    $excerpt = @($entries | Where-Object { $_.Component -in @('WingetFW-Test', 'Start-WinGetPackageFM', 'Execute-Process', 'Exit-Script') -or $_.Type -ge 2 } |
+    $excerpt = @($entries | Where-Object { $_.Component -in @('WingetFW-Test', 'Start-WinGetPackageFM', 'Execute-Process', 'Exit-Script', 'Start-ADTProcess', 'Close-ADTSession') -or $_.Type -ge 2 } |
         Where-Object { $_.Message -notmatch '^(Installing|Done installing|UserMode:)' } |
         ForEach-Object { '{0} [{1}]{2} {3}' -f $_.Time, $_.Component, $(If ($_.Type -eq 3) { ' [Error]' } ElseIf ($_.Type -eq 2) { ' [Warning]' } Else { '' }), (($_.Message -split "`r?`n" | Where-Object { $_.Trim() } | Select-Object -First 4) -join ' | ') })
     $excerpt | ForEach-Object { Write-Result "   $_" }
@@ -232,7 +245,7 @@ Function Invoke-Test {
 
 # ---------------------------------------------------------------- setup
 Write-Result "WingetFW $appVersion test run $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') on $env:COMPUTERNAME (runner user: $env:USERNAME)"
-Write-Result "Package       : $exe"
+Write-Result "Package       : $exe (PSADT $psadtVersion)"
 Write-Result "SYSTEM winget : $wingetSystem"
 $wingetVersion = (Invoke-WingetAsSystem '--version' -Quiet).Output.Trim()
 $osVersion = (Get-CimInstance Win32_OperatingSystem | ForEach-Object { "$($_.Caption) $($_.Version)" })
@@ -304,12 +317,19 @@ Invoke-Test -Id 'V09' -Title 'Upgrade: -rename not supported' -ArgList @('Instal
 Invoke-Test -Id 'V10' -Title 'Install: -header without -source' -ArgList @('Install', '-id', '7zip.7zip', '-header', 'X-WingetFW-Test: 1') -ExpectExit 60001 -ExpectLog @('-header requires -source')
 Invoke-Test -Id 'N01' -Title 'Install: no package specified fails with 69001' -ArgList @('Install', '-silent') -ExpectExit 69001 -ExpectLog @('No package specified')
 
-# ---------------------------------------------------------------- Deploy-Application.exe quoting (known PSADT v3 behaviour)
-Invoke-Test -Id 'Q01' -Title 'Deploy-Application.exe: double-quoted value with spaces is split - script does not start, exit 0' -ArgList @('Install', '-id', '7zip.7zip', '-name', '7 Zip') `
-    -RawArgs '-DeploymentType Install -id 7zip.7zip -name "7 Zip" -DeployMode Silent' -ExpectExit 0 -ExpectNotLog @('Start-WinGetPackageFM', 'cannot be used together', 'Installation completed')
-Invoke-Test -Id 'Q02' -Title "Deploy-Application.exe: single-quoted value with spaces is passed correctly" -ArgList @('Install', '-id', '7zip.7zip', '-name', '7 Zip') `
+# ---------------------------------------------------------------- exe quoting (known behaviour of Deploy-Application.exe / Invoke-AppDeployToolkit.exe)
+If ($isV4) {
+    # Invoke-AppDeployToolkit.exe builds powershell.exe -Command "try { & '<script>' <args> } ...", so a double quote ends that string
+    Invoke-Test -Id 'Q01' -Title "$($exeName): double-quoted value with spaces breaks the command - script does not start, exit 1" -ArgList @('Install', '-id', '7zip.7zip', '-name', '7 Zip') `
+        -RawArgs '-DeploymentType Install -id 7zip.7zip -name "7 Zip" -DeployMode Silent' -ExpectExit 1 -ExpectNotLog @('Start-WinGetPackageFM', 'cannot be used together', 'completed in')
+}
+Else {
+    Invoke-Test -Id 'Q01' -Title "$($exeName): double-quoted value with spaces is split - script does not start, exit 0" -ArgList @('Install', '-id', '7zip.7zip', '-name', '7 Zip') `
+        -RawArgs '-DeploymentType Install -id 7zip.7zip -name "7 Zip" -DeployMode Silent' -ExpectExit 0 -ExpectNotLog @('Start-WinGetPackageFM', 'cannot be used together', 'Installation completed')
+}
+Invoke-Test -Id 'Q02' -Title "$($exeName): single-quoted value with spaces is passed correctly" -ArgList @('Install', '-id', '7zip.7zip', '-name', '7 Zip') `
     -RawArgs "-DeploymentType Install -id 7zip.7zip -name '7 Zip' -DeployMode Silent" -ExpectExit 60001 -ExpectLog @('cannot be used together\. Use only one of -wingetmanifest, -id, -name, -moniker')
-Invoke-Test -Id 'Q03' -Title 'Deploy-Application.exe: unquoted {GUID} loses its braces (PowerShell script block)' -ArgList @('Uninstall', '-productcode', '{00000000-0000-0000-0000-000000000000}') `
+Invoke-Test -Id 'Q03' -Title "$($exeName): unquoted {GUID} loses its braces (PowerShell script block)" -ArgList @('Uninstall', '-productcode', '{00000000-0000-0000-0000-000000000000}') `
     -RawArgs '-DeploymentType Uninstall -productcode {00000000-0000-0000-0000-000000000000} -silent -DeployMode Silent' -ExpectExit @(-1978335212) `
     -Flags @(, @('--product-code 00000000-0000-0000-0000-000000000000')) -NotFlags @(, @('{00000000'))
 
@@ -418,7 +438,7 @@ Write-Result "PASS $(@($script:results | Where-Object Result -eq 'PASS').Count) 
 
 [PSCustomObject]@{
     RunDate = (Get-Date -Format 'yyyy-MM-dd HH:mm'); Computer = $env:COMPUTERNAME; Os = $osVersion; RunnerUser = $env:USERNAME
-    WingetVersion = $wingetVersion; WingetPath = $wingetSystem; PackageVersion = $appVersion; PsExec = $PsExecPath
+    WingetVersion = $wingetVersion; WingetPath = $wingetSystem; PackageVersion = $appVersion; PackageExe = $exeName; PsadtVersion = $psadtVersion; PsExec = $PsExecPath
     SevenZipLatest = $latest; SevenZipOlder = $old; AdminSettingsEnabled = @($adminSettings | Where-Object { -not $before.adminSettings.$_ })
     Tests = $script:results
 } | ConvertTo-Json -Depth 6 | Set-Content $resultJson -Encoding UTF8

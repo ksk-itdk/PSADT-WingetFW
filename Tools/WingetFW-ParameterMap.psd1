@@ -1,10 +1,14 @@
 # WingetFW parameter map used by Update-WingetFWIntuneApps.ps1.
-# Describes how Deploy-Application.exe command lines from older WingetFW versions are converted to the current version,
-# and the option rules the current version enforces (keep in sync with Start-WinGetPackageFM in AppDeployToolkitExtensions.ps1).
+# Describes how Deploy-Application.exe command lines from older WingetFW versions are converted to the current version (5.0.0, Invoke-AppDeployToolkit.exe),
+# and the option rules the current version enforces (keep in sync with Start-WinGetPackageFM in PSAppDeployToolkit.Extensions.psm1).
 @{
-    # Parameters of the current Deploy-Application.ps1 and their type
+    # Setup file of the current WingetFW package, and the setup file of older versions it replaces
+    ExeName = 'Invoke-AppDeployToolkit.exe'
+    OldExeNames = @('Deploy-Application.exe')
+
+    # Parameters of the current Invoke-AppDeployToolkit.ps1 and their type
     Parameters = @{
-        DeploymentType = 'String'; DeployMode = 'String'; AllowRebootPassThru = 'Switch'; TerminalServerMode = 'Switch'; DisableLogging = 'Switch'
+        DeploymentType = 'String'; DeployMode = 'String'; SuppressRebootPassThru = 'Switch'; TerminalServerMode = 'Switch'; DisableLogging = 'Switch'
         Mode = 'String'; Action = 'String'; OverrideAPPName = 'String'; ForceRepair = 'Switch'
         wingetmanifest = 'String'; id = 'String'; name = 'String'; moniker = 'String'; version = 'String'; source = 'String'
         scope = 'String'; architecture = 'String'; installertype = 'String'; exact = 'Switch'; interactive = 'Switch'; silent = 'Switch'
@@ -21,6 +25,7 @@
     OldParameters = @{
         WingetID = 'String'; WingetCM = 'String'; WingetOverride = 'String'; WingetScope = 'String'   # 3.x
         testverbose = 'Switch'; wait = 'Switch'                                                         # 4.0.0 - 4.0.6
+        AllowRebootPassThru = 'Switch'                                                                  # 3.x - 4.0.8 (PSADT 3)
     }
 
     # Old name -> new name (value is kept)
@@ -33,6 +38,7 @@
     # Removed without replacement
     RemovedParameters = @{
         wait = 'removed in 4.0.7 (winget --wait waits for a key press)'
+        AllowRebootPassThru = 'PSADT 4 passes reboot exit codes (3010, 1641) by default; use -SuppressRebootPassThru to turn it off'
     }
 
     # 3.x parameters that held raw winget arguments; they are split into WingetFW parameters with WingetOptions
@@ -110,7 +116,7 @@
     }
 
     # Parameters that control PSADT/WingetFW and are not passed to winget (allowed with every action)
-    FrameworkParameters = @('DeploymentType', 'DeployMode', 'AllowRebootPassThru', 'TerminalServerMode', 'DisableLogging', 'Mode', 'Action', 'OverrideAPPName', 'ForceRepair', 'acceptpackageagreements', 'acceptsourceagreements')
+    FrameworkParameters = @('DeploymentType', 'DeployMode', 'SuppressRebootPassThru', 'TerminalServerMode', 'DisableLogging', 'Mode', 'Action', 'OverrideAPPName', 'ForceRepair', 'acceptpackageagreements', 'acceptsourceagreements')
 
     # Parameters that select the package (at least one is needed, 69001 otherwise)
     PackageParameters = @('wingetmanifest', 'id', 'name', 'moniker', 'productcode', 'importfile')

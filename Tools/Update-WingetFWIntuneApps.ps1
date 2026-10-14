@@ -10,9 +10,10 @@
     and test it on a single app before updating more apps.
 
     Step 1 (-Export): connects to Intune (Microsoft Graph), finds all Win32 apps whose install command
-    runs Deploy-Application.exe with a WingetFW package parameter, converts the install and uninstall
-    command lines to the parameters of the new WingetFW version and writes everything to a CSV file.
-    Nothing is changed in Intune.
+    runs Deploy-Application.exe (WingetFW 3.x - 4.0.8) or Invoke-AppDeployToolkit.exe (WingetFW 5.0.0 or later)
+    with a WingetFW package parameter, converts the install and uninstall command lines to the parameters
+    of the new WingetFW version and writes everything to a CSV file. Deploy-Application.exe is replaced by
+    Invoke-AppDeployToolkit.exe. Nothing is changed in Intune.
 
     Review the CSV. Set Update to No (or delete the row) for apps that must not be updated. The
     InstallCommandNew and UninstallCommandNew columns can be edited by hand.
@@ -36,16 +37,16 @@
     Update the apps marked Update = Yes in the CSV file.
 
 .PARAMETER ConvertCommandLine
-    Convert one Deploy-Application.exe command line and show the result. No connection to Intune.
+    Convert one WingetFW command line and show the result. No connection to Intune.
 
 .PARAMETER CsvPath
     CSV file to write (Export) or read (Apply). Export default: .\WingetFW-IntuneApps-<date>.csv.
 
 .PARAMETER IntuneWinFile
-    The new WingetFW .intunewin file (setup file Deploy-Application.exe).
+    The new WingetFW .intunewin file (setup file Invoke-AppDeployToolkit.exe).
 
 .PARAMETER TargetVersion
-    WingetFW version of the new package. Default: $appVersion from ..\Toolkit\WinGetFW\Deploy-Application.ps1.
+    WingetFW version of the new package. Default: the newest AppVersion in ..\Toolkit\WinGetFW*\Invoke-AppDeployToolkit.ps1.
 
 .PARAMETER TenantId
     Tenant ID or domain. Optional for the interactive login, required with -ClientId.
@@ -69,7 +70,7 @@
     Interactive login, writes .\WingetFW-IntuneApps-<date>.csv.
 
 .EXAMPLE
-    .\Update-WingetFWIntuneApps.ps1 -Apply -CsvPath .\WingetFW-IntuneApps-20261011-1200.csv -IntuneWinFile .\Deploy-Application.intunewin -WhatIf
+    .\Update-WingetFWIntuneApps.ps1 -Apply -CsvPath .\WingetFW-IntuneApps-20261011-1200.csv -IntuneWinFile .\Invoke-AppDeployToolkit.intunewin -WhatIf
 
     Shows what would be updated without changing anything.
 
@@ -84,9 +85,16 @@
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 0.1.0 (beta)
+    Version      : 0.2.0 (beta)
 
     Release notes
+    0.2.0  - WingetFW 5.0.0 (PSAppDeployToolkit 4): Deploy-Application.exe is replaced by Invoke-AppDeployToolkit.exe,
+             apps with Invoke-AppDeployToolkit.exe are found too, and the .intunewin setup file must be
+             Invoke-AppDeployToolkit.exe.
+           - -AllowRebootPassThru is removed (PSADT 4 passes reboot exit codes by default).
+           - ServiceUI.exe in a command line is reported as an error (not in the 5.0.0 package).
+           - The default target version is the newest AppVersion in ..\Toolkit\WinGetFW*.
+           - The -Mode User / NonInteractive warning is removed (5.0.0 shows no error dialog).
     0.1.0  - First version (beta, not fully tested): export to CSV, apply from CSV, single command line conversion.
 
 .LINK
@@ -227,17 +235,25 @@ Function Convert-WingetFWCommandLine {
     }
     If ([String]::IsNullOrWhiteSpace($CommandLine)) { Return $result }
 
-    $match = [regex]::Match($CommandLine, '(?i)"?Deploy-Application(\.exe)?"?')
+    $match = [regex]::Match($CommandLine, '(?i)"?(Deploy-Application|Invoke-AppDeployToolkit)(\.exe)?"?')
     If (-not $match.Success) {
-        $result.Errors.Add('Deploy-Application.exe not found in the command line')
+        $result.Errors.Add('Deploy-Application.exe or Invoke-AppDeployToolkit.exe not found in the command line')
         Return $result
     }
     # Text before the exe (for example ServiceUI.exe -process:explorer.exe) is kept as it is
     $prefix = $CommandLine.Substring(0, $match.Index)
     $exe = $match.Value
     $argText = $CommandLine.Substring($match.Index + $match.Length)
+    $isOldExe = $match.Groups[1].Value -ieq 'Deploy-Application'
+    If ($isOldExe) {
+        $exe = $Map.ExeName
+        $result.Changes.Add("$($match.Value.Trim('"')) replaced by $($Map.ExeName) (WingetFW 5.0.0, PSAppDeployToolkit 4)")
+    }
+    If ($prefix -match '(?i)ServiceUI') {
+        $result.Errors.Add("ServiceUI.exe is not in the WingetFW 5.0.0 package; remove it from the command line or add it to the package")
+    }
 
-    # Deploy-Application.exe passes the arguments to powershell.exe -Command, so the PowerShell parser reads them the same way
+    # Both exes pass the arguments to powershell.exe -Command, so the PowerShell parser reads them the same way
     $parseErrors = $null
     $ast = [System.Management.Automation.Language.Parser]::ParseInput("x $argText", [ref]$null, [ref]$parseErrors)
     If ($parseErrors) {
@@ -281,7 +297,7 @@ Function Convert-WingetFWCommandLine {
     $isV3 = [Bool]($names | Where-Object { $_ -in $Map.V3Parameters })
     $isOld4 = [Bool]($names | Where-Object { $_ -in @('testverbose', 'wait') }) -or [Bool]($items | Where-Object { $_.Name -eq 'scope' -and $_.Value -in $Map.RemovedScopeValues })
     $isNew4 = [Bool]($names | Where-Object { $_ -in $Map.V407Parameters })
-    $result.DetectedVersion = If ($KnownVersion) { $KnownVersion } ElseIf ($isV3) { '3.x' } ElseIf ($isOld4) { '4.0.0 - 4.0.6' } ElseIf ($isNew4) { '4.0.7 or later' } Else { '4.x' }
+    $result.DetectedVersion = If ($KnownVersion) { $KnownVersion } ElseIf (-not $isOldExe) { '5.0.0 or later' } ElseIf ($isV3) { '3.x' } ElseIf ($isOld4) { '4.0.0 - 4.0.6' } ElseIf ($isNew4) { '4.0.7 - 4.0.8' } Else { '4.x' }
 
     # Convert old parameters
     $converted = @()
@@ -379,14 +395,12 @@ Function Convert-WingetFWCommandLine {
     }
     $package = @($converted | Where-Object { $_.Name -in $Map.PackageParameters -and $_.Value } | Select-Object -First 1)
     If ($package) { $result.Package = $package[0].Value } Else { $result.Errors.Add('No package parameter (id, name, moniker, wingetmanifest, productcode or importfile)') }
-    $mode = & $get 'Mode'
-    $deployMode = & $get 'DeployMode'
-    If ($mode -and $mode.Value -ieq 'User' -and (-not $deployMode -or $deployMode.Value -ine 'NonInteractive')) {
-        $result.Warnings.Add("-Mode User without -DeployMode 'NonInteractive': an error shows a dialog that waits up to 6900 seconds")
+    If ($isOldExe -and 'AllowRebootPassThru' -notin $names) {
+        $result.Changes.Add('Reboot exit codes (3010, 1641) are now passed to Intune; add -SuppressRebootPassThru to keep the old behaviour')
     }
 
     $result.New = ("$prefix$exe " + (($converted | ForEach-Object { Format-Argument $_ }) -join ' ')).TrimEnd()
-    If ($result.New -ne $CommandLine -and $result.Changes.Count -eq 0) { $result.Changes.Add('Values written in single quotes (Deploy-Application.exe removes double quotes)') }
+    If ($result.New -ne $CommandLine -and $result.Changes.Count -eq 0) { $result.Changes.Add('Values written in single quotes (the exe fails on double-quoted values with spaces)') }
     Return $result
 }
 #endregion
@@ -398,12 +412,15 @@ Function Write-Status([String]$Message) {
 
 Function Get-TargetVersion {
     If ($TargetVersion) { Return $TargetVersion }
-    $deployScript = Join-Path $PSScriptRoot '..\Toolkit\WinGetFW\Deploy-Application.ps1'
-    If (Test-Path -LiteralPath $deployScript) {
-        $version = [regex]::Match((Get-Content -LiteralPath $deployScript -Raw), "\`$appVersion = '([^']+)'").Groups[1].Value
-        If ($version) { Return $version }
-    }
-    Throw "WingetFW version not found in $deployScript. Use -TargetVersion."
+    $toolkit = Join-Path $PSScriptRoot '..\Toolkit'
+    $versions = Get-ChildItem -LiteralPath $toolkit -Directory -Filter 'WinGetFW*' -ErrorAction SilentlyContinue | ForEach-Object {
+        $v4 = Join-Path $_.FullName 'Invoke-AppDeployToolkit.ps1'
+        $v3 = Join-Path $_.FullName 'Deploy-Application.ps1'
+        If (Test-Path -LiteralPath $v4) { [regex]::Match((Get-Content -LiteralPath $v4 -Raw), "(?m)^\s*AppVersion = '([^']+)'").Groups[1].Value }
+        ElseIf (Test-Path -LiteralPath $v3) { [regex]::Match((Get-Content -LiteralPath $v3 -Raw), "\`$appVersion = '([^']+)'").Groups[1].Value }
+    } | Where-Object { $_ -as [version] } | Sort-Object { [version]$_ }
+    If ($versions) { Return @($versions)[-1] }
+    Throw "WingetFW version not found in $toolkit\WinGetFW*. Use -TargetVersion."
 }
 
 Function Get-NotesVersion([String]$Notes) {
@@ -494,7 +511,7 @@ Function Get-WingetFWApps {
     } While ($uri)
     Write-Status "$($apps.Count) Win32 apps in Intune"
     $pattern = '(?i)(^|\s)-(' + (@($map.PackageParameters) + @($map.V3Parameters | Where-Object { $_ -eq 'WingetID' }) -join '|') + ')\b'
-    Return @($apps | Where-Object { $_.installCommandLine -match '(?i)Deploy-Application' -and $_.installCommandLine -match $pattern })
+    Return @($apps | Where-Object { $_.installCommandLine -match '(?i)Deploy-Application|Invoke-AppDeployToolkit' -and $_.installCommandLine -match $pattern })
 }
 
 Function Get-IntuneWinPackage([String]$Path) {
@@ -652,7 +669,7 @@ If ($Apply) {
     }
     $package = Get-IntuneWinPackage $IntuneWinFile
     Try {
-        If ($package.SetupFile -ne 'Deploy-Application.exe') { Throw "Setup file of $IntuneWinFile is '$($package.SetupFile)', expected Deploy-Application.exe" }
+        If ($package.SetupFile -ne $map.ExeName) { Throw "Setup file of $IntuneWinFile is '$($package.SetupFile)', expected $($map.ExeName)" }
         Connect-Intune 'DeviceManagementApps.ReadWrite.All'
         $results = ForEach ($row in $rows) {
             $status = ''

@@ -1,6 +1,8 @@
 # WingetFW tests
 
-Test suite for the WingetFW package (`Toolkit/WinGetFW`, PSADT v3). It runs every WingetFW parameter for all winget actions on a sandbox VM through `Deploy-Application.exe`, the same way Intune runs it. Each run is then checked against the toolkit log and the state of the machine.
+Test suite for the WingetFW package. It runs every WingetFW parameter for all winget actions on a sandbox VM through `Invoke-AppDeployToolkit.exe` (5.0.0) or `Deploy-Application.exe` (4.0.8), the same way Intune runs it. Each run is then checked against the toolkit log and the state of the machine.
+
+> The suite tests **WingetFW 5.0.0** (`Toolkit/WinGetFW5.0.0`) by default. Use `-Package WinGetFW` to test **WingetFW 4.0.8** ([README-4.0.8.md](../README-4.0.8.md)).
 
 Results of the last run: [TEST-RESULTS.md](TEST-RESULTS.md)
 
@@ -19,7 +21,8 @@ Results of the last run: [TEST-RESULTS.md](TEST-RESULTS.md)
 
 ```powershell
 cd PSADT-WingetFW\Tests
-.\Invoke-WingetFWVmTest.ps1                 # full run, about 10 minutes, do not interrupt
+.\Invoke-WingetFWVmTest.ps1                 # full run of WingetFW 5.0.0, about 12 minutes, do not interrupt
+.\Invoke-WingetFWVmTest.ps1 -Package WinGetFW   # full run of WingetFW 4.0.8
 .\Invoke-WingetFWVmTest.ps1 -ReportOnly     # only rebuild TEST-RESULTS.md from results\*.json
 ```
 

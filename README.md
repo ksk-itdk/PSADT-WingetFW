@@ -8,48 +8,66 @@
 
 PSADT-WingetFW is a framework for using Winget with PSADT without having to create a script for each application.
 
+This README is for **WingetFW 5.0.0** (PSAppDeployToolkit 4.1.8, `Toolkit\WinGetFW5.0.0`, `Invoke-AppDeployToolkit.exe`). Older versions:
+- [README-4.0.8.md](README-4.0.8.md): WingetFW 4.0.8 (PSAppDeployToolkit 3.9.3, `Toolkit\WinGetFW`, `Deploy-Application.exe`)
+- [README-3.0.2.md](README-3.0.2.md): WingetFW 3.0.2
+
+## PACKAGE
+Create the `.intunewin` from the `Toolkit\WinGetFW5.0.0` folder with `Invoke-AppDeployToolkit.exe` as the setup file.
+
+| Path | Content |
+|---|---|
+| `Invoke-AppDeployToolkit.exe` / `.ps1` | Setup file and deployment script with the WingetFW parameters |
+| `PSAppDeployToolkit.Extensions\` | WingetFW functions (`Install-WinGetFM`, `Get-WinGetVersionFM`, `Start-WinGetPackageFM`, `Resolve-WingetPath`) |
+| `PSAppDeployToolkit.Extensions\Config\WingetFW.psd1` | WingetFW settings, see [CONFIGURATION](#configuration) |
+| `Config\config.psd1`, `Assets\` | PSAppDeployToolkit settings, logo and banner |
+| `PSAppDeployToolkit\` | PSAppDeployToolkit 4.1.8 module (do not change) |
+
 ## EXAMPLES
 ### EXAMPLE 1
+User mode (Intune install behavior User).
 ```
-Deploy-Application.exe -DeploymentType 'Install' -id 'Postman.Postman' -Mode 'User'
+Invoke-AppDeployToolkit.exe -DeploymentType 'Install' -id 'Postman.Postman' -Mode 'User'
 ```
 
 ![alt text](https://github.com/kriskristensen3/PSADT-WingetFW/blob/main/Images/exampleInstallCommand03.png?raw=true)
+<sup>The screenshots show the 4.x command line with `Deploy-Application.exe`.</sup>
 ### EXAMPLE 2
+Machine scope (Intune install behavior System).
 ```
-ServiceUI.exe -process:explorer.exe Deploy-Application.exe -DeploymentType 'Install' -id 'Neovim.Neovim' -Scope 'machine'
+Invoke-AppDeployToolkit.exe -DeploymentType 'Install' -id 'Neovim.Neovim' -scope 'Machine'
 ```
 ![alt text](https://github.com/kriskristensen3/PSADT-WingetFW/blob/main/Images/exampleInstallCommand02.png?raw=true)
 ### EXAMPLE 3
-User mode with no error dialog (recommended for Intune install behavior User).
+Uninstall.
 ```
-Deploy-Application.exe -DeploymentType 'Install' -id 'Postman.Postman' -Mode 'User' -DeployMode 'NonInteractive'
+Invoke-AppDeployToolkit.exe -DeploymentType 'Uninstall' -id 'Postman.Postman' -Mode 'User'
 ```
 ### EXAMPLE 4
 Upgrade to the latest version.
 ```
-Deploy-Application.exe -DeploymentType 'Install' -Action 'upgrade' -id '7zip.7zip' -exact -silent
+Invoke-AppDeployToolkit.exe -DeploymentType 'Install' -Action 'upgrade' -id '7zip.7zip' -exact -silent
 ```
 ### EXAMPLE 5
 Uninstall by product code. The GUID must be in single quotes.
 ```
-Deploy-Application.exe -DeploymentType 'Uninstall' -productcode '{23170F69-40C1-2702-2604-000001000000}' -silent
+Invoke-AppDeployToolkit.exe -DeploymentType 'Uninstall' -productcode '{23170F69-40C1-2702-2604-000001000000}' -silent
 ```
 ### EXAMPLE 6
 Install the packages in a winget export file.
 ```
-Deploy-Application.exe -DeploymentType 'Install' -Action 'import' -importfile 'C:\Temp\my apps.json' -ignoreunavailable
+Invoke-AppDeployToolkit.exe -DeploymentType 'Install' -Action 'import' -importfile 'C:\Temp\my apps.json' -ignoreunavailable
 ```
 ### EXAMPLE 7
 Repair with winget repair, or with uninstall and install again (-ForceRepair).
 ```
-Deploy-Application.exe -DeploymentType 'Repair' -id '7zip.7zip' -exact -silent
-Deploy-Application.exe -DeploymentType 'Repair' -ForceRepair -id '7zip.7zip' -exact -silent -scope 'Machine'
+Invoke-AppDeployToolkit.exe -DeploymentType 'Repair' -id '7zip.7zip' -exact -silent
+Invoke-AppDeployToolkit.exe -DeploymentType 'Repair' -ForceRepair -id '7zip.7zip' -exact -silent -scope 'Machine'
 ```
 
 ## COMMAND LINE QUOTING
-`Deploy-Application.exe` (PSADT v3) removes double quotes and passes the arguments to `powershell.exe -Command`.
-- A value in double quotes that contains spaces is split. `Deploy-Application.ps1` does not start, but the exit code is **0**.
+`Invoke-AppDeployToolkit.exe` passes the arguments to `powershell.exe -Command "try { & 'Invoke-AppDeployToolkit.ps1' <arguments> } ..."`.
+- A value in double quotes that contains spaces breaks the command: `Invoke-AppDeployToolkit.ps1` does not start and the exit code is **1**.
 - An unquoted `{GUID}` loses its braces.
 
 Use **single quotes** for values with spaces or special characters, for example `-log 'C:\Logs\my app.log'` or `-productcode '{GUID}'`.
@@ -60,9 +78,9 @@ Use **single quotes** for values with spaces or special characters, for example 
 | Admin (default) | System | `C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_*\winget.exe` (newest version) | Installs winget and the winget source if they are missing or older than the minimum version. |
 | User | User | winget of the logged-on user | Only checks the winget version, does not install winget. If winget is not found (for example right after the user's first logon), it requests the App Installer registration and retries for up to about 20 seconds. |
 
-User mode:
-- Only works with packages that can install without admin rights: the manifest has `Scope: user`, or it is a portable package. Example: `Postman.Postman` works, `7zip.7zip` does not (`Scope: machine`, `ElevationRequirement: elevatesSelf`).
-- Use `-DeployMode 'NonInteractive'`. With `Silent` or `Interactive`, an error shows a PSADT dialog and the script waits until it is closed or until `InstallationUI_Timeout` (6900 seconds) before it exits. This is longer than the default Intune install timeout.
+User mode only works with packages that can install without admin rights: the manifest has `Scope: user`, or it is a portable package. Example: `Postman.Postman` works, `7zip.7zip` does not (`Scope: machine`, `ElevationRequirement: elevatesSelf`).
+
+An error does not show a dialog in 5.0.0, so `-DeployMode 'NonInteractive'` is no longer needed in user mode.
 
 ## REPAIR AND FORCEREPAIR
 - `-DeploymentType 'Repair'` runs `winget repair`. Not all packages support it. Example: the 7-Zip MSI returns `0x8A15007B` (repair failed).
@@ -106,47 +124,56 @@ Some options only work when a winget admin setting is enabled on the device (`wi
 | `-proxy` | `ProxyCommandLineOptions` |
 
 ## CONFIGURATION
-`Toolkit\WinGetFW\AppDeployToolkit\AppDeployToolkitExtensionsConfig.xml`:
+`Toolkit\WinGetFW5.0.0\PSAppDeployToolkit.Extensions\Config\WingetFW.psd1`:
 
 | Setting | Value in package | Description |
 |---|---|---|
-| `WingetFW_TlsCheck` | False | Admin mode: check `SecurityProtocol` before downloads and add TLS 1.2 if it is missing. |
-| `WingetFW_VCRedistCheck` | False | Admin mode: install the VC++ 2015-2022 runtime (x64/x86) if it is missing. winget.exe run as SYSTEM fails with `0xC000007B` without it. |
+| `WingetFW_TlsCheck` | `$false` | Admin mode: check `SecurityProtocol` before downloads and add TLS 1.2 if it is missing. |
+| `WingetFW_VCRedistCheck` | `$false` | Admin mode: install the VC++ 2015-2022 runtime (x64/x86) if it is missing. winget.exe run as SYSTEM fails with `0xC000007B` without it. |
 
 If the file or a setting is missing, the check runs.
+
+PSAppDeployToolkit's own settings (log folder, company name, logo) are in `Toolkit\WinGetFW5.0.0\Config\config.psd1`.
 
 ## EXIT CODES
 | Exit code | Meaning |
 |---|---|
 | 0 | Success. With install, also when the package is already installed (winget `0x8A150061` or `0x8A15002B`); the log says "is already installed, nothing to install". |
+| 1641, 3010 | Success, a reboot is required. Passed to Intune unless `-SuppressRebootPassThru` is used. |
 | 60001 | An option rule was broken (see [OPTION RULES](#option-rules)) or another error occurred. The reason is in the log. |
+| 60008 | PSAppDeployToolkit could not start (module or session). |
 | 69001 | No package specified. Use `-id`, `-name`, `-moniker`, `-wingetmanifest`, `-productcode` or `-importfile`. |
-| Other | The winget return code is passed through, for example `-1978335135` (`0x8A150061`, package already installed). See [winget return codes](https://github.com/microsoft/winget-cli/blob/master/doc/windows/package-manager/winget/returnCodes.md). |
+| Other | The winget return code is passed through, for example `-1978335212` (`0x8A150014`, no installed package found). See [winget return codes](https://github.com/microsoft/winget-cli/blob/master/doc/windows/package-manager/winget/returnCodes.md). |
 
 ## LOG FILE
-```
-C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\<OverrideAPPName|id|name>_WingetFW_<version>_EN_01_PSAppDeployToolkit_<DeploymentType>.log
-```
-The log contains the WingetFW parameters, the final winget command line and the winget exit code. Use `-OverrideAPPName` to change the first part of the file name. Use `-log` for winget's own log file.
+| Mode | Log file |
+|---|---|
+| Admin | `C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\<OverrideAPPName\|id\|name>_WingetFW_<version>_EN_01_PSAppDeployToolkit_<DeploymentType>.log` |
+| User | `C:\ProgramData\Logs\Software\<OverrideAPPName\|id\|name>_WingetFW_<version>_EN_01_PSAppDeployToolkit_<DeploymentType>_<user name>.log` |
+
+The folders are `LogPath` and `LogPathNoAdminRights` in `Config\config.psd1`. The log contains the WingetFW parameters, the final winget command line, winget's output and the winget exit code. Use `-OverrideAPPName` to change the first part of the file name. Use `-log` for winget's own log file.
 
 ## UPGRADING INTUNE APPS
 > **BETA:** `Tools\Update-WingetFWIntuneApps.ps1` is not fully tested yet. Use it at your own risk, run `-Apply` with `-WhatIf` first and test it on a single app before updating more apps.
-`Tools\Update-WingetFWIntuneApps.ps1` updates existing WingetFW apps in Intune to a new WingetFW package. It needs PowerShell 7, the `Microsoft.Graph.Authentication` module and the permission `DeviceManagementApps.Read.All` (export) or `DeviceManagementApps.ReadWrite.All` (apply). It logs in with a popup, or with an app registration (`-TenantId`, `-ClientId`, `-ClientSecret`).
+`Tools\Update-WingetFWIntuneApps.ps1` updates existing WingetFW apps (3.x, 4.x and 5.x) in Intune to a new WingetFW package. It needs PowerShell 7, the `Microsoft.Graph.Authentication` module and the permission `DeviceManagementApps.Read.All` (export) or `DeviceManagementApps.ReadWrite.All` (apply). It logs in with a popup, or with an app registration (`-TenantId`, `-ClientId`, `-ClientSecret`).
 
-1. Export: finds all Win32 apps that run `Deploy-Application.exe` with a WingetFW package parameter and writes a CSV with the old and new command lines, the changes, warnings, errors and the detection script used. Nothing is changed in Intune.
+1. Export: finds all Win32 apps that run `Deploy-Application.exe` or `Invoke-AppDeployToolkit.exe` with a WingetFW package parameter and writes a CSV with the old and new command lines, the changes, warnings, errors and the detection script used. Nothing is changed in Intune.
    ```
    .\Update-WingetFWIntuneApps.ps1 -Export
    ```
 2. Review the CSV. Set `Update` to `No` (or delete the row) for apps that must not be updated. Rows with errors are set to `No`. The new command lines can be edited.
-3. Apply: uploads the new `.intunewin` as a new content version of each app, sets the new command lines and writes `WingetFW <version>` to the app notes. Assignments, app ID and detection rules are kept. Use `-WhatIf` first.
+3. Apply: uploads the new `.intunewin` (setup file `Invoke-AppDeployToolkit.exe`) as a new content version of each app, sets the new command lines and writes `WingetFW <version>` to the app notes. Assignments, app ID and detection rules are kept. Use `-WhatIf` first.
    ```
-   .\Update-WingetFWIntuneApps.ps1 -Apply -CsvPath .\WingetFW-IntuneApps-<date>.csv -IntuneWinFile .\Deploy-Application.intunewin -WhatIf
+   .\Update-WingetFWIntuneApps.ps1 -Apply -CsvPath .\WingetFW-IntuneApps-<date>.csv -IntuneWinFile .\Invoke-AppDeployToolkit.intunewin -WhatIf
    ```
 
 The conversion of old parameters is in `Tools\WingetFW-ParameterMap.psd1`, for example:
 
 | Old | New |
 |---|---|
+| `Deploy-Application.exe` (3.x, 4.x) | `Invoke-AppDeployToolkit.exe` |
+| `-AllowRebootPassThru` (3.x, 4.x) | removed (reboot exit codes are passed by default, see `-SuppressRebootPassThru`) |
+| `ServiceUI.exe ...` before the exe | error: `ServiceUI.exe` is not in the 5.0.0 package |
 | `-WingetID` (3.x) | `-id` |
 | `-WingetOverride` (3.x) | `-override` |
 | `-WingetScope '--scope machine'` (3.x) | `-scope 'Machine'` |
@@ -160,7 +187,7 @@ The conversion of old parameters is in `Tools\WingetFW-ParameterMap.psd1`, for e
 Use `-ConvertCommandLine '<command line>'` to see the conversion of one command line without connecting to Intune.
 
 ## TESTS
-The test suite and the latest results are in [Tests/README.md](Tests/README.md) and [Tests/TEST-RESULTS.md](Tests/TEST-RESULTS.md).
+The test suite and the latest results are in [Tests/README.md](Tests/README.md) and [Tests/TEST-RESULTS.md](Tests/TEST-RESULTS.md). The latest run tested WingetFW 5.0.0: 39 of 39 tests passed.
 
 ## PARAMETERS
 ### -DeploymentType
@@ -182,12 +209,20 @@ Default value: Admin
 ```
 
 ### -DeployMode
-Standard PSADT parameter. Use NonInteractive with -Mode User, see [ADMIN AND USER MODE](#admin-and-user-mode).
+Standard PSADT parameter. WingetFW shows no dialogs, so the default is fine in most cases.
 ```
 Type: String
-Accepted values: Interactive, Silent, NonInteractive
+Accepted values: Auto, Interactive, NonInteractive, Silent
 Required: False
-Default value: Interactive
+Default value: Auto
+```
+
+### -SuppressRebootPassThru
+Standard PSADT parameter. Returns 0 instead of a reboot exit code (3010, 1641) to Intune.
+```
+Type: Switch
+Required: False
+Default value: None
 ```
 
 ### -Action

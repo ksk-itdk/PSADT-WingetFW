@@ -5,7 +5,7 @@
     Runs the WingetFW test suite on the sandbox VM and writes TEST-RESULTS.md.
 
 .DESCRIPTION
-    1. Copies the WinGetFW package (Toolkit\WinGetFW) and Invoke-WingetFWTestSuite.ps1 to the VM over SSH (key login).
+    1. Copies the WingetFW package (Toolkit\<Package>) and Invoke-WingetFWTestSuite.ps1 to the VM over SSH (key login).
     2. Runs the suite on the VM (Admin tests as SYSTEM via PsExec, User tests as the SSH user).
     3. Copies WingetFW-TestResults.log/.json back to Tests\results.
     4. Generates Tests\TEST-RESULTS.md from the JSON.
@@ -24,6 +24,9 @@
 .PARAMETER RemoteRoot
     Folder on the VM used for the test run (outside user profiles, SYSTEM must read it).
 
+.PARAMETER Package
+    Package folder in Toolkit to test: WinGetFW5.0.0 (WingetFW 5.0.0, PSADT 4) or WinGetFW (WingetFW 4.0.8, PSADT 3).
+
 .PARAMETER ReportOnly
     Skip the VM run, only rebuild TEST-RESULTS.md from Tests\results\WingetFW-TestResults.json.
 
@@ -31,13 +34,20 @@
     .\Invoke-WingetFWVmTest.ps1
 
 .EXAMPLE
+    .\Invoke-WingetFWVmTest.ps1 -Package WinGetFW
+
+    Tests WingetFW 4.0.8 (Deploy-Application.exe).
+
+.EXAMPLE
     .\Invoke-WingetFWVmTest.ps1 -ReportOnly
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 1.1.1
+    Version      : 1.2.0
 
     Release notes
+    1.2.0  - -Package selects the package folder to test; default WinGetFW5.0.0 (Invoke-AppDeployToolkit.exe).
+           - The report shows the package exe and PSADT version.
     1.1.1  - Maintainer set to KSKITDK, GitHub link added.
     1.1.0  - Report lists Postman.Postman as test package.
     1.0.0  - First version.
@@ -60,12 +70,15 @@ Param (
     [String]$RemoteRoot = 'C:\temp\wingetfw-vmtest',
 
     [Parameter()]
+    [String]$Package = 'WinGetFW5.0.0',
+
+    [Parameter()]
     [Switch]$ReportOnly
 )
 
 $ErrorActionPreference = 'Stop'
 $testsDir   = $PSScriptRoot
-$packageDir = Join-Path (Split-Path $testsDir -Parent) 'Toolkit\WinGetFW'
+$packageDir = Join-Path (Split-Path $testsDir -Parent) "Toolkit\$Package"
 $resultsDir = Join-Path $testsDir 'results'
 $jsonFile   = Join-Path $resultsDir 'WingetFW-TestResults.json'
 $reportFile = Join-Path $testsDir 'TEST-RESULTS.md'
@@ -76,12 +89,12 @@ $sshOpts    = @('-i', $KeyFile, '-o', 'IdentitiesOnly=yes', '-o', 'BatchMode=yes
 If (-not $ReportOnly) {
     New-Item -ItemType Directory -Path $resultsDir -Force | Out-Null
     Write-Host "Copying package and suite to $target`:$RemoteRoot"
-    & ssh @sshOpts $target "if exist `"$RemoteRoot\WinGetFW`" rmdir /s /q `"$RemoteRoot\WinGetFW`" & if not exist `"$RemoteRoot`" mkdir `"$RemoteRoot`""
+    & ssh @sshOpts $target "if exist `"$RemoteRoot\$Package`" rmdir /s /q `"$RemoteRoot\$Package`" & if not exist `"$RemoteRoot`" mkdir `"$RemoteRoot`""
     & scp @sshOpts -q -r $packageDir (Join-Path $testsDir 'Invoke-WingetFWTestSuite.ps1') "$($target):$remoteFwd/"
     If ($LASTEXITCODE -ne 0) { Throw "scp failed ($LASTEXITCODE)" }
 
     Write-Host 'Running test suite on the VM (takes several minutes, do not interrupt)'
-    & ssh @sshOpts $target "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$RemoteRoot\Invoke-WingetFWTestSuite.ps1`" -Root `"$RemoteRoot`"" 2>&1 |
+    & ssh @sshOpts $target "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$RemoteRoot\Invoke-WingetFWTestSuite.ps1`" -Root `"$RemoteRoot`" -PackageFolder `"$Package`"" 2>&1 |
         Where-Object { $_ -notmatch 'CLIXML|<Objs|</Objs>' } | Tee-Object -FilePath (Join-Path $resultsDir 'console.txt')
     & scp @sshOpts -q "$($target):$remoteFwd/results/WingetFW-TestResults.log" "$($target):$remoteFwd/results/WingetFW-TestResults.json" "$resultsDir/"
     If ($LASTEXITCODE -ne 0) { Throw "Could not copy results back ($LASTEXITCODE)" }
@@ -104,7 +117,8 @@ $md.Add('| Item | Value |')
 $md.Add('|---|---|')
 $md.Add("| Run date | $($run.RunDate) |")
 $md.Add("| Machine | $($run.Computer) ($($run.Os)) |")
-$md.Add("| WingetFW package | $($run.PackageVersion) (PSADT v3, ``Deploy-Application.exe``) |")
+$packageText = If ($run.PSObject.Properties['PackageExe']) { "PSADT $($run.PsadtVersion), ``$($run.PackageExe)``" } Else { 'PSADT v3, `Deploy-Application.exe`' }
+$md.Add("| WingetFW package | $($run.PackageVersion) ($packageText) |")
 $md.Add("| winget | $($run.WingetVersion) ``$($run.WingetPath)`` |")
 $md.Add("| Admin-mode tests | run as SYSTEM via ``$($run.PsExec) -s`` |")
 $md.Add("| User-mode tests | run as ``$($run.RunnerUser)`` without PsExec |")
@@ -124,7 +138,7 @@ ForEach ($t in $tests) {
 $md.Add('')
 $md.Add('## Parameter coverage')
 $md.Add('')
-$md.Add('Each Deploy-Application.ps1 parameter and the tests that used it.')
+$md.Add('Each WingetFW parameter and the tests that used it.')
 $md.Add('')
 $md.Add('| Parameter | Tests |')
 $md.Add('|---|---|')
