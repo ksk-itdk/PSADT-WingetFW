@@ -40,9 +40,11 @@
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 1.6.0
+    Version      : 1.7.0
 
     Release notes
+    1.7.0  - C01-C04: conflicting apps removed in PreInstall with Uninstall-ADTApplication (product code, name,
+             not installed, failed uninstall stops the deployment).
     1.6.0  - M09 uses a real read-only SMB share (\\localhost\WingetFWMods). The blob simulator runs on HTTPS
              (https://localhost:8443, test TLS certificate trusted on the VM) and returns 403 without the right SAS.
            - M15: a wrong SAS (403) stops the deployment with 60001.
@@ -634,6 +636,49 @@ Invoke-Test -Id 'M15' -Title 'Mods: Azure blob ScriptRoot with a wrong SAS - 403
            Set-WingetFWTestSetting Policy ScriptRoot @('https://localhost:8443/mods/prod?sv=1&sp=rl&sig=WRONG'); Set-WingetFWTestSetting Policy AllowedScriptSources @('https://localhost:8443/mods/') } `
     -ExpectExit 60001 -ExpectLog @('\(403\)', "can't be reached and UseCachedScriptsWhenOffline is off") -ExpectNotLog @('Running winget Install', 'WRONG')
 Stop-BlobServer | Out-Null
+
+# ---------------------------------------------------------------- conflicting apps: PreInstall with Uninstall-ADTApplication (Admin mode)
+# The target app is portable jq; the conflicting app is 7-Zip (older MSI version, installed in the Pre step)
+$jqMod = Join-Path $modsDir 'winget\jqlang.jq.ps1'
+Function Install-7ZipMsi {
+    Invoke-WingetAsSystem 'uninstall --id 7zip.7zip --exact --silent --all-versions --accept-source-agreements --disable-interactivity' -Quiet | Out-Null
+    $r = Invoke-WingetAsSystem "install --id 7zip.7zip --exact --version $old --installer-type wix --silent --accept-package-agreements --accept-source-agreements --disable-interactivity" -Quiet
+    "7-Zip $old MSI installed (exit $(Format-ExitCode $r.ExitCode)), product code $((Get-7Zip).ProductCode)"
+}
+Function New-ConflictMod([String]$Removal) {
+    $lines = @(
+        'function PreInstall {'
+        "    Add-Content -LiteralPath '$traceFile' -Value 'app PreInstall'"
+        "    $Removal"
+        '}'
+        "function PostInstall { Add-Content -LiteralPath '$traceFile' -Value 'app PostInstall' }"
+        "function NotInstalled { Add-Content -LiteralPath '$traceFile' -Value 'app NotInstalled' }"
+    )
+    Set-TestMod $jqMod ($lines -join "`r`n")
+    "app mod PreInstall: $Removal"
+}
+$jqMachine = { $d = Get-JqMachineFolder; [PSCustomObject]@{ Ok = [Bool]$d; Text = "jq machine folder: $($d.FullName)" } }
+
+Invoke-Test -Id 'C01' -Title 'Conflicting apps: PreInstall removes the 7-Zip MSI by product code, then jq is installed' -ArgList @('Install', '-id', 'jqlang.jq', '-exact', '-scope', 'Machine') `
+    -Pre { Reset-WingetFWSettings; Reset-WingetFWMods; Install-7ZipMsi; New-ConflictMod "Uninstall-ADTApplication -ProductCode '$((Get-7Zip).ProductCode)'" } `
+    -Flags @(, @('--id jqlang.jq')) `
+    -State { $z = Get-7Zip; $t = Test-ModTrace @('app PreInstall', 'app PostInstall'); [PSCustomObject]@{ Ok = (-not $z -and $t.Ok -and (& $jqMachine).Ok); Text = "7-Zip removed: $(-not $z); $((& $jqMachine).Text); $($t.Text)" } }
+Invoke-Test -Id 'C02' -Title 'Conflicting apps: PreInstall removes 7-Zip by name (wildcard)' -ArgList @('Install', '-id', 'jqlang.jq', '-exact', '-scope', 'Machine') `
+    -Pre { Reset-WingetFWMods; Install-7ZipMsi; New-ConflictMod "Uninstall-ADTApplication -Name '7-Zip*' -NameMatch Wildcard" } `
+    -Flags @(, @('--id jqlang.jq')) -State { $z = Get-7Zip; [PSCustomObject]@{ Ok = -not $z; Text = "7-Zip removed: $(-not $z)" } }
+Invoke-Test -Id 'C03' -Title 'Conflicting apps: an app that is not installed is skipped, the install continues' -ArgList @('Install', '-id', 'jqlang.jq', '-exact', '-scope', 'Machine') `
+    -Pre { Reset-WingetFWMods; New-ConflictMod "Uninstall-ADTApplication -Name 'WingetFW Nothing*' -NameMatch Wildcard" } `
+    -Flags @(, @('--id jqlang.jq')) -State { Test-ModTrace @('app PreInstall', 'app PostInstall') }
+# A fake installed app whose uninstall always fails with 1603
+$brokenKey = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\WingetFWTestBroken'
+Invoke-Test -Id 'C04' -Title 'Conflicting apps: a failed uninstall in PreInstall stops the deployment before winget runs' -ArgList @('Install', '-id', 'jqlang.jq', '-exact', '-scope', 'Machine') `
+    -Pre { Reset-WingetFWMods; New-Item -Path $brokenKey -Force | Out-Null
+           ForEach ($n in @('UninstallString', 'QuietUninstallString')) { New-ItemProperty -Path $brokenKey -Name $n -Value '"C:\Windows\System32\cmd.exe" /c exit 1603' -Force | Out-Null }
+           New-ItemProperty -Path $brokenKey -Name 'DisplayName' -Value 'WingetFW Test Broken' -Force | Out-Null; New-ItemProperty -Path $brokenKey -Name 'DisplayVersion' -Value '1.0' -Force | Out-Null
+           New-ConflictMod "Uninstall-ADTApplication -Name 'WingetFW Test Broken' -NameMatch Exact" } `
+    -ExpectExit 60001 -ExpectNotLog @('Running winget Install') -State { Test-ModTrace @('app PreInstall') }
+Remove-Item $brokenKey -Force -ErrorAction SilentlyContinue
+Invoke-WingetAsSystem 'uninstall --id jqlang.jq --exact --silent --accept-source-agreements --disable-interactivity' -Quiet | Out-Null
 Reset-WingetFWSettings
 Reset-WingetFWMods
 

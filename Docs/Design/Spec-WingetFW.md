@@ -96,7 +96,7 @@ else `DefaultSource`, else `winget`). Apps installed without `-id` only use the 
 
 | Part | Content |
 |---|---|
-| `$Settings` | Optional hashtable with a section per action (Install, Uninstall, Repair, Upgrade): `Override`, `Custom`, `Scope`, `Locale`, `Architecture`, `Source`, `SkipDependencies`, `UninstallFirst`. Same names and option rules as the command line. |
+| `$Settings` | Optional hashtable with a section per action (Install, Uninstall, Repair, Upgrade): `Override`, `Custom`, `Scope`, `Locale`, `Architecture`, `Source`, `SkipDependencies`. Same names and option rules as the command line. |
 | Install sections | `PreInstall`, `Install`, `PostInstall`, `NotInstalled` |
 | Uninstall sections | `PreUninstall`, `Uninstall`, `PostUninstall`, `NotUninstalled` |
 | Repair sections | `PreRepair`, `Repair`, `PostRepair`, `NotRepaired` |
@@ -148,13 +148,9 @@ be signed or allowed by a path rule.
 
 ## 7. Conflicting apps
 
-`UninstallFirst` in the mod file's `$Settings.Install`: a list of entries, each one of
-- a winget ID,
-- an MSI product code,
-- a DisplayName pattern with its uninstall command.
-
-Each entry found on the device is removed before the install and logged. A failed removal stops the
-install with that exit code. Default: none.
+Removed in `PreInstall` of the app mod with PSADT `Uninstall-ADTApplication` (by name or MSI product code).
+The mod template and `Docs\Mods.md` have an example. No separate setting: a mod section already does this, with
+PSADT's logging and exit codes.
 
 ## 8. Exit codes
 
@@ -192,13 +188,13 @@ The installed version is always read live from winget.
 | 1 | WingetFW.Core: settings reader, logging, event log channel, state files. | Pester: every settings level combination |
 | 2 | ADMX/ADML, device settings (4.1), sources (5). | VM: policy beats command line beats mod beats local key beats config |
 | 3 | Mods: template, discovery, fetch/cache, load checks, sections, 69002. | VM: local/UNC/blob, unsigned rejected, unknown source rejected, load check rejects top-level code |
-| 4 | Conflicting apps (`UninstallFirst`). | VM: old MSI removed before install |
+| 4 | Conflicting apps: `PreInstall` example with `Uninstall-ADTApplication` in the template and docs. | VM: old MSI removed in PreInstall before install |
 | 5 | Docs: `Docs\Configuration.md` (ADMX reference), `Docs\Mods.md` (mod template guide), `Docs\Signing.md`, links in README. | Reviewed |
 
 ## 11. Tests
 
 - Pester (CI): settings order, option rules, mod parsing and load check, state file write.
-- VM suite (release): existing 39 tests plus mods, policy, sources and UninstallFirst.
+- VM suite (release): existing 39 tests plus mods, policy, sources and conflicting apps.
 
 ## 12. Open points
 

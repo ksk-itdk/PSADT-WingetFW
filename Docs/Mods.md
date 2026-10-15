@@ -63,6 +63,25 @@ $Settings = @{
 
 `$Settings` in the global mod is not used. `-ForceRepair` uses `$Settings.Repair` for both steps; options uninstall does not support are skipped there.
 
+## CONFLICTING APPS
+Remove apps that conflict with the app in `PreInstall` of the app mod, for example an old MSI version that winget
+does not know, or a product that can't be installed next to this one. PSAppDeployToolkit's `Uninstall-ADTApplication`
+finds the app in Programs and Features and uses its uninstall string (`msiexec /x` for MSI):
+
+```powershell
+function PreInstall
+{
+    # By name; -ArgumentList replaces the uninstall arguments, for example for an EXE uninstaller that is not silent
+    Uninstall-ADTApplication -Name 'Contoso Viewer*' -NameMatch Wildcard -ArgumentList '/S'
+
+    # By MSI product code
+    Uninstall-ADTApplication -ProductCode '{26A24AE4-039D-4CA4-87B4-2F64180451F0}'
+}
+```
+
+- Nothing happens when the app is not installed.
+- When the uninstall fails, the deployment stops with exit code 60001 before winget runs; the uninstaller's own exit code is in the log.
+
 ## RULES FOR A MOD FILE
 WingetFW checks every file before it runs anything in it. A file that breaks a rule stops the deployment with exit code 60001:
 - Only function definitions and one `$Settings = @{ ... }` at the top level. Any other code, a `param` block or `using` is refused.

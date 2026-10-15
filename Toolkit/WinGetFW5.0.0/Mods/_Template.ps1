@@ -59,6 +59,10 @@ function PreInstall
 {
     # Example: close the app first.
     # Show-ADTInstallationWelcome -CloseProcesses @{ Name = '7zFM' } -Silent
+
+    # Example: remove a conflicting app first (nothing happens when it is not installed).
+    # Uninstall-ADTApplication -Name 'Contoso Viewer*' -NameMatch Wildcard -ArgumentList '/S'
+    # Uninstall-ADTApplication -ProductCode '{26A24AE4-039D-4CA4-87B4-2F64180451F0}'
 }
 
 function Install

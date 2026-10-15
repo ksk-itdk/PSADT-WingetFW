@@ -17,7 +17,7 @@ A phase starts when the phases it depends on are done.
 | 3 | CON-2 | Intune publish | CON-1 |
 | 4 | FW-3 | Mods: template, fetch/cache, load checks, sections, 69002 | FW-2 |
 | 4 | CON-3 | Inventory and WingetFW upgrade of apps | CON-2 |
-| 5 | FW-4 | Conflicting apps (`UninstallFirst`) | FW-3 |
+| 5 | FW-4 | Conflicting apps (`PreInstall` example) | FW-3 |
 | 5 | UPD-1 | Engine, ESP check, manual mode | FW-3 |
 | 6 | FW-5 | Docs: Docs\Configuration.md (ADMX reference), Docs\Mods.md, Docs\Signing.md, README links | FW-4 |
 | 6 | CON-4 | Mod editor, signing, effective settings view | FW-3, CON-3 |
@@ -59,7 +59,7 @@ flowchart LR
 - [x] FW-1 WingetFW.Core - done when Pester covers every settings level combination
 - [x] FW-2 ADMX and settings - done when the VM shows policy > command line > mod > local key > config
 - [x] FW-3 Mods - done when the VM runs local/UNC/blob mods and rejects unsigned, unknown-source and top-level-code files
-- [ ] FW-4 Conflicting apps - done when the VM removes an old MSI before install
+- [x] FW-4 Conflicting apps - done when the VM removes an old MSI in PreInstall before install
 - [ ] FW-5 Docs - done when reviewed
 
 ### WingetFW Console
