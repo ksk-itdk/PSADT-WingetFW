@@ -40,9 +40,12 @@
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 1.3.0
+    Version      : 1.4.0
 
     Release notes
+    1.4.0  - S01-S12: settings from policy (HKLM\SOFTWARE\Policies\WingetFW), command line, local key
+             (HKLM\SOFTWARE\WingetFW) and config file: order, DefaultSilent, DefaultSource, AllowedSources,
+             Sources, TlsCheck. The keys and the config file are reset before every S test and at the end.
     1.3.0  - Runs against WingetFW 5.0.0 (Invoke-AppDeployToolkit.exe, PSADT 4) or 4.0.8 (Deploy-Application.exe);
              the package folder is set with -PackageFolder. The Q tests check the quoting of the exe used.
     1.2.1  - The toolkit log folder is created at the start, so the suite also runs on a clean VM.
@@ -303,6 +306,40 @@ $installed = { $z = Get-7Zip; [PSCustomObject]@{ Ok = [Bool]$z; Text = "7-Zip in
 $notInstalled = { $z = Get-7Zip; [PSCustomObject]@{ Ok = -not $z; Text = "7-Zip not installed$(If ($z) { " (found $($z.Version))" })" } }
 $noPackageAgreement = @('--accept-package-agreements')
 
+# WingetFW settings levels used by the S tests; reset here too, in case an earlier run was aborted
+$policyKey = 'HKLM:\SOFTWARE\Policies\WingetFW'
+$localKey = 'HKLM:\SOFTWARE\WingetFW'
+$configFile = Join-Path $pkgDir 'PSAppDeployToolkit.Extensions\Config\WingetFW.psd1'
+$configOriginal = If (Test-Path $configFile) { [IO.File]::ReadAllText($configFile) } Else { $null }
+Function Reset-WingetFWSettings {
+    Remove-Item $policyKey, $localKey -Recurse -Force -ErrorAction SilentlyContinue
+    If ($null -ne $configOriginal) { [IO.File]::WriteAllText($configFile, $configOriginal) }
+}
+# Arrays and tables are written like ADMX list elements: a subkey with values 1, 2, 3 ... or name = value
+Function Set-WingetFWTestSetting([ValidateSet('Policy', 'Local')][String]$Level, [String]$Name, [Object]$Value) {
+    $key = If ($Level -eq 'Policy') { $policyKey } Else { $localKey }
+    New-Item -Path $key -Force | Out-Null
+    If ($Value -is [Collections.IDictionary]) {
+        $sub = New-Item -Path (Join-Path $key $Name) -Force
+        ForEach ($k in $Value.Keys) { New-ItemProperty -Path $sub.PSPath -Name $k -Value $Value[$k] -Force | Out-Null }
+        $text = ($Value.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }) -join '; '
+    }
+    ElseIf ($Value -is [Array]) {
+        $sub = New-Item -Path (Join-Path $key $Name) -Force
+        For ($i = 0; $i -lt $Value.Count; $i++) { New-ItemProperty -Path $sub.PSPath -Name ($i + 1) -Value $Value[$i] -Force | Out-Null }
+        $text = $Value -join '; '
+    }
+    ElseIf ($Value -is [Int]) { New-ItemProperty -Path $key -Name $Name -Value $Value -PropertyType DWord -Force | Out-Null; $text = "$Value (DWORD)" }
+    Else { New-ItemProperty -Path $key -Name $Name -Value $Value -PropertyType String -Force | Out-Null; $text = $Value }
+    "$Level $Name = $text"
+}
+Function Set-WingetFWTestConfig([Hashtable]$Settings) {
+    $lines = @('@{', '    TlsCheck = $false', '    VCRedistCheck = $false') + @($Settings.GetEnumerator() | ForEach-Object { "    $($_.Key) = '$($_.Value)'" }) + @('}')
+    [IO.File]::WriteAllText($configFile, ($lines -join "`r`n"))
+    "config file: $(($Settings.GetEnumerator() | ForEach-Object { "$($_.Key) = $($_.Value)" }) -join '; ')"
+}
+Reset-WingetFWSettings
+
 # ---------------------------------------------------------------- validation: must stop before winget runs
 # Conflict messages list the parameters in binding order, so only the fixed 'Use only one of' part is checked
 Invoke-Test -Id 'V01' -Title 'Install: -id + -name conflict' -ArgList @('Install', '-id', '7zip.7zip', '-name', '7-Zip') -ExpectExit 60001 -ExpectLog @('cannot be used together\. Use only one of -wingetmanifest, -id, -name, -moniker')
@@ -396,6 +433,42 @@ Invoke-Test -Id 'P04' -Title 'Uninstall: portable jq with -purge (all files remo
     -Pre { Set-Content (Join-Path $jqLocation 'created-by-app.txt') 'test'; "created $jqLocation\created-by-app.txt" } `
     -Flags @(, @('--purge')) -State { $left = @(Get-ChildItem $jqLocation -Recurse -File -ErrorAction SilentlyContinue); [PSCustomObject]@{ Ok = ($left.Count -eq 0); Text = "files left in $($jqLocation): $($left.Count)" } }
 
+# ---------------------------------------------------------------- settings: policy > command line > local key > config file > default (Admin mode)
+# S01-S05 use dummy proxies (127.0.0.x:9), so winget is expected to fail; the tests check which proxy winget gets
+Invoke-Test -Id 'S01' -Title 'Settings: policy Proxy beats -proxy on the command line (informational exit)' -ArgList @('Install', '-id', '7zip.7zip', '-exact', '-silent', '-proxy', 'http://127.0.0.3:9') `
+    -Pre { Reset-WingetFWSettings; Set-WingetFWTestSetting Policy Proxy 'http://127.0.0.2:9' } -ExpectExit $null `
+    -Flags @(, @('--proxy http://127.0.0.2:9')) -NotFlags @(, @('127.0.0.3')) -ExpectLog @('Setting \[Proxy\] = \[http://127\.0\.0\.2:9\] from \[Policy\]')
+Invoke-Test -Id 'S02' -Title 'Settings: -proxy on the command line beats the local key (informational exit)' -ArgList @('Install', '-id', '7zip.7zip', '-exact', '-silent', '-proxy', 'http://127.0.0.3:9') `
+    -Pre { Reset-WingetFWSettings; Set-WingetFWTestSetting Local Proxy 'http://127.0.0.4:9' } -ExpectExit $null `
+    -Flags @(, @('--proxy http://127.0.0.3:9')) -NotFlags @(, @('127.0.0.4')) -ExpectLog @('Setting \[Proxy\] = \[http://127\.0\.0\.3:9\] from \[CommandLine\]')
+Invoke-Test -Id 'S03' -Title 'Settings: local key Proxy beats the config file (informational exit)' -ArgList @('Install', '-id', '7zip.7zip', '-exact', '-silent') `
+    -Pre { Reset-WingetFWSettings; Set-WingetFWTestSetting Local Proxy 'http://127.0.0.4:9'; Set-WingetFWTestConfig @{ Proxy = 'http://127.0.0.5:9' } } -ExpectExit $null `
+    -Flags @(, @('--proxy http://127.0.0.4:9')) -NotFlags @(, @('127.0.0.5')) -ExpectLog @('Setting \[Proxy\] = \[http://127\.0\.0\.4:9\] from \[Local\]')
+Invoke-Test -Id 'S04' -Title 'Settings: Proxy from the config file (informational exit)' -ArgList @('Install', '-id', '7zip.7zip', '-exact', '-silent') `
+    -Pre { Reset-WingetFWSettings; Set-WingetFWTestConfig @{ Proxy = 'http://127.0.0.5:9' } } -ExpectExit $null `
+    -Flags @(, @('--proxy http://127.0.0.5:9')) -ExpectLog @('Setting \[Proxy\] = \[http://127\.0\.0\.5:9\] from \[Config\]')
+Invoke-Test -Id 'S05' -Title 'Settings: policy Proxy beats -noproxy (informational exit)' -ArgList @('Install', '-id', '7zip.7zip', '-exact', '-silent', '-noproxy') `
+    -Pre { Reset-WingetFWSettings; Set-WingetFWTestSetting Policy Proxy 'http://127.0.0.2:9' } -ExpectExit $null `
+    -Flags @(, @('--proxy http://127.0.0.2:9')) -NotFlags @(, @('--no-proxy')) -ExpectLog @('Ignoring -noproxy, Proxy is set by policy')
+Invoke-Test -Id 'S06' -Title 'Settings: DefaultSilent (built-in default) adds --silent when no -silent/-interactive/-override is given' -ArgList @('Install', '-id', '7zip.7zip', '-exact') `
+    -Pre { Reset-WingetFWSettings; 'no WingetFW settings' } -Flags @(, @('--silent')) -ExpectLog @('Adding -silent \(DefaultSilent from \[Default\]\)') -State $installed
+Invoke-Test -Id 'S07' -Title 'Settings: policy DefaultSilent disabled - no --silent' -ArgList @('Install', '-id', '7zip.7zip', '-exact') `
+    -Pre { Reset-WingetFWSettings; Set-WingetFWTestSetting Policy DefaultSilent 0 } -NotFlags @(, @('--silent')) -ExpectLog @('Setting \[DefaultSilent\] = \[False\] from \[Policy\]') -State $installed
+Invoke-Test -Id 'S08' -Title 'Settings: policy DefaultSource is used for install without -source' -ArgList @('Install', '-id', '7zip.7zip', '-exact', '-silent') `
+    -Pre { Reset-WingetFWSettings; Set-WingetFWTestSetting Policy DefaultSource 'winget' } -Flags @(, @('--source winget')) -ExpectLog @('Using source \[winget\] \(DefaultSource from \[Policy\]\)') -State $installed
+Invoke-Test -Id 'S09' -Title 'Settings: DefaultSource is not used for uninstall' -ArgList @('Uninstall', '-id', '7zip.7zip', '-exact', '-silent') `
+    -Pre { Reset-WingetFWSettings; Set-WingetFWTestSetting Policy DefaultSource 'winget' } -NotFlags @(, @('--source', '--accept-package-agreements')) -State $notInstalled
+Invoke-Test -Id 'S10' -Title 'Settings: policy AllowedSources stops a source that is not in the list (60001)' -ArgList @('Install', '-id', '7zip.7zip', '-exact', '-silent', '-source', 'msstore') `
+    -Pre { Reset-WingetFWSettings; Set-WingetFWTestSetting Policy AllowedSources @('winget') } -ExpectExit 60001 `
+    -ExpectLog @('Source \[msstore\] is not allowed\. Allowed sources: winget \(AllowedSources from \[Policy\]\)') -ExpectNotLog @('Running winget Install')
+Invoke-Test -Id 'S11' -Title 'Settings: policy Sources - a REST source that cannot be reached is logged as a warning, the install continues' -ArgList @('Install', '-id', '7zip.7zip', '-exact', '-silent') `
+    -Pre { Reset-WingetFWSettings; Set-WingetFWTestSetting Policy Sources @{ WingetFWTest = 'https://127.0.0.1:9/api' } } `
+    -ExpectLog @('winget source export --name WingetFWTest', 'winget source add --name WingetFWTest --arg https://127\.0\.0\.1:9/api --type Microsoft\.Rest', 'Could not add source \[WingetFWTest\]') `
+    -Flags @(, @('--id 7zip.7zip')) -State $installed
+Invoke-Test -Id 'S12' -Title 'Settings: policy TlsCheck enabled beats TlsCheck = $false in the config file' -ArgList @('Install', '-id', '7zip.7zip', '-exact', '-silent') `
+    -Pre { Reset-WingetFWSettings; Set-WingetFWTestSetting Policy TlsCheck 1 } -ExpectLog @('Setting \[TlsCheck\] = \[True\] from \[Policy\]', 'SecurityProtocol is') -State $installed
+Reset-WingetFWSettings
+
 # ---------------------------------------------------------------- User mode (current user, no PsExec)
 Invoke-Test -Id 'U01' -Title 'User mode: install portable jq user scope' -Mode User -ArgList @('Install', '-id', 'jqlang.jq', '-exact', '-silent', '-scope', 'User') `
     -Flags @(, @('--scope user')) -State { $d = Get-JqUserFolder; [PSCustomObject]@{ Ok = [Bool]$d; Text = "user package folder: $($d.FullName)" } }
@@ -427,6 +500,8 @@ Invoke-Test -Id 'U06' -Title 'User mode: uninstall jq' -Mode User -ArgList @('Un
 Write-Result ''
 Write-Result 'TEARDOWN'
 $adminSettings | Where-Object { -not $before.adminSettings.$_ } | ForEach-Object { Invoke-WingetAsSystem "settings --disable $_" | Out-Null }
+Reset-WingetFWSettings
+Invoke-WingetAsSystem 'source remove --name WingetFWTest' | Out-Null
 Remove-Item $stateFile -Force -ErrorAction SilentlyContinue
 Remove-Item $tmpDir -Recurse -Force -ErrorAction SilentlyContinue
 

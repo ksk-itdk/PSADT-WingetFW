@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- WingetFW policies. Import in Intune (Devices > Configuration > Import ADMX) or copy to PolicyDefinitions for GPO. -->
+<policyDefinitions xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" revision="1.0" schemaVersion="1.0" xmlns="http://schemas.microsoft.com/GroupPolicy/2006/07/PolicyDefinitions">
+  <policyNamespaces>
+    <target prefix="wingetfw" namespace="KSKITDK.Policies.WingetFW" />
+  </policyNamespaces>
+  <resources minRequiredRevision="1.0" />
+  <supportedOn>
+    <definitions>
+      <definition name="SUPPORTED_WingetFW_5_0" displayName="$(string.SUPPORTED_WingetFW_5_0)" />
+    </definitions>
+  </supportedOn>
+  <categories>
+    <category name="WingetFW" displayName="$(string.Cat_WingetFW)" />
+  </categories>
+  <policies>
+    <policy name="DefaultSilent" class="Machine" displayName="$(string.DefaultSilent)" explainText="$(string.DefaultSilent_Help)" key="Software\Policies\WingetFW" valueName="DefaultSilent">
+      <parentCategory ref="WingetFW" />
+      <supportedOn ref="SUPPORTED_WingetFW_5_0" />
+      <enabledValue><decimal value="1" /></enabledValue>
+      <disabledValue><decimal value="0" /></disabledValue>
+    </policy>
+    <policy name="DefaultSource" class="Machine" displayName="$(string.DefaultSource)" explainText="$(string.DefaultSource_Help)" key="Software\Policies\WingetFW" presentation="$(presentation.DefaultSource)">
+      <parentCategory ref="WingetFW" />
+      <supportedOn ref="SUPPORTED_WingetFW_5_0" />
+      <elements>
+        <text id="DefaultSource" valueName="DefaultSource" required="true" maxLength="255" />
+      </elements>
+    </policy>
+    <policy name="AllowedSources" class="Machine" displayName="$(string.AllowedSources)" explainText="$(string.AllowedSources_Help)" key="Software\Policies\WingetFW\AllowedSources" presentation="$(presentation.AllowedSources)">
+      <parentCategory ref="WingetFW" />
+      <supportedOn ref="SUPPORTED_WingetFW_5_0" />
+      <elements>
+        <list id="AllowedSources" key="Software\Policies\WingetFW\AllowedSources" valuePrefix="" />
+      </elements>
+    </policy>
+    <policy name="Sources" class="Machine" displayName="$(string.Sources)" explainText="$(string.Sources_Help)" key="Software\Policies\WingetFW\Sources" presentation="$(presentation.Sources)">
+      <parentCategory ref="WingetFW" />
+      <supportedOn ref="SUPPORTED_WingetFW_5_0" />
+      <elements>
+        <list id="Sources" key="Software\Policies\WingetFW\Sources" explicitValue="true" />
+      </elements>
+    </policy>
+    <policy name="Proxy" class="Machine" displayName="$(string.Proxy)" explainText="$(string.Proxy_Help)" key="Software\Policies\WingetFW" presentation="$(presentation.Proxy)">
+      <parentCategory ref="WingetFW" />
+      <supportedOn ref="SUPPORTED_WingetFW_5_0" />
+      <elements>
+        <text id="Proxy" valueName="Proxy" required="true" maxLength="2048" />
+        <text id="ProxyBypass" valueName="ProxyBypass" maxLength="2048" />
+      </elements>
+    </policy>
+    <policy name="TlsCheck" class="Machine" displayName="$(string.TlsCheck)" explainText="$(string.TlsCheck_Help)" key="Software\Policies\WingetFW" valueName="TlsCheck">
+      <parentCategory ref="WingetFW" />
+      <supportedOn ref="SUPPORTED_WingetFW_5_0" />
+      <enabledValue><decimal value="1" /></enabledValue>
+      <disabledValue><decimal value="0" /></disabledValue>
+    </policy>
+    <policy name="VCRedistCheck" class="Machine" displayName="$(string.VCRedistCheck)" explainText="$(string.VCRedistCheck_Help)" key="Software\Policies\WingetFW" valueName="VCRedistCheck">
+      <parentCategory ref="WingetFW" />
+      <supportedOn ref="SUPPORTED_WingetFW_5_0" />
+      <enabledValue><decimal value="1" /></enabledValue>
+      <disabledValue><decimal value="0" /></disabledValue>
+    </policy>
+  </policies>
+</policyDefinitions>

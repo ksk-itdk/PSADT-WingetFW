@@ -103,6 +103,7 @@ Only one VM run can run at a time.
 | Exe quoting | Q01-Q03 | How `Deploy-Application.exe` passes arguments to PowerShell (see Known issues). |
 | Functional | F01-F15 | Install, upgrade, repair, force repair, uninstall and import with 7-Zip (`7zip.7zip`): older MSI (WiX) version, local manifest, import file, EXE with `-override`, product code, moniker, name, proxy, `-OverrideAPPName`, install of an already installed package (exit 0). |
 | Portable | P01-P04 | `-rename`, `-location`, `-preserve` and `-purge` with the portable package `jqlang.jq`. |
+| Settings | S01-S12 | Setting levels policy > command line > local key > config file (with `Proxy`), `DefaultSilent`, `DefaultSource`, `AllowedSources`, `Sources` and `TlsCheck`. The suite writes `HKLM\SOFTWARE\Policies\WingetFW`, `HKLM\SOFTWARE\WingetFW` and the package config file on the VM, and resets them before every S test and at the end. |
 | User mode | U01-U06 | `-Mode User` without PsExec: install and uninstall `jqlang.jq` (portable) and `Postman.Postman` (EXE installer with `Scope: user`). U05 simulates the first-logon race: `LOCALAPPDATA` points to a folder where `Microsoft\WindowsApps` is linked in (junction) as soon as WingetFW has logged retry attempt 2, so the retry is always tested. The junction is removed with `rmdir`, which removes only the link. |
 
 Paths with spaces are used on purpose (`C:\temp\wingetfw-vmtest\path with spaces\...`) to test the quoting of `-log`, `-wingetmanifest`, `-importfile` and `-location`.

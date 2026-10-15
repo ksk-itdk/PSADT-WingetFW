@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<policyDefinitionResources xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" revision="1.0" schemaVersion="1.0" xmlns="http://schemas.microsoft.com/GroupPolicy/2006/07/PolicyDefinitions">
+  <displayName>WingetFW</displayName>
+  <description>Settings for WingetFW (PSADT-WingetFW).</description>
+  <resources>
+    <stringTable>
+      <string id="SUPPORTED_WingetFW_5_0">WingetFW 5.0.0 or later</string>
+      <string id="Cat_WingetFW">WingetFW</string>
+
+      <string id="DefaultSilent">Add -silent by default</string>
+      <string id="DefaultSilent_Help">Adds -silent to winget install, uninstall, upgrade and repair when the command line has none of -silent, -interactive and -override.
+
+Enabled: -silent is added.
+Disabled: -silent is not added; winget shows the installer progress.
+Not configured: the next setting level is used (command line, mod file, local key HKLM\SOFTWARE\WingetFW, config file). Built-in default: enabled.
+
+Configure WingetFW policies from Intune or from GPO, not both.</string>
+
+      <string id="DefaultSource">Default winget source</string>
+      <string id="DefaultSource_Help">winget source used for install and upgrade when the command line has no -source, for example winget, msstore or the name of an internal REST source.
+
+Not used for uninstall and repair, because these work on installed packages.
+
+Not configured: winget searches all its sources.</string>
+
+      <string id="AllowedSources">Allowed winget sources</string>
+      <string id="AllowedSources_Help">Sources WingetFW may use. When -source or -dependencysource names a source that is not in the list, WingetFW stops with exit code 60001 before winget runs.
+
+Enter one source name per line, for example winget and msstore.
+
+Not configured: all sources are allowed. The App Installer policies (Allowed sources, Additional sources) still apply to winget itself.</string>
+
+      <string id="Sources">Internal REST sources</string>
+      <string id="Sources_Help">winget REST sources that WingetFW adds when it runs in Admin mode (SYSTEM) and the source is missing or has another URL.
+
+Value name: source name, for example ContosoRest.
+Value: source URL, for example https://winget.contoso.com/api
+
+The sources are added with type Microsoft.Rest. A source that can't be added is logged as a warning; the deployment continues.</string>
+
+      <string id="Proxy">Proxy</string>
+      <string id="Proxy_Help">Proxy for winget and for the downloads WingetFW makes itself (winget bootstrap, VC++ runtime).
+
+Proxy URL: for example http://proxy.contoso.com:8080. winget gets --proxy; in Admin mode WingetFW enables the winget admin setting ProxyCommandLineOptions.
+Bypass list: host names that do not use the proxy, separated by semicolons, for example *.contoso.com;localhost. Only used for WingetFW's own downloads; winget has no bypass list.
+
+This policy beats -proxy and -noproxy on the command line. Installers that download files by themselves use the WinHTTP proxy (netsh winhttp).</string>
+
+      <string id="TlsCheck">Check TLS 1.2 before downloads</string>
+      <string id="TlsCheck_Help">Admin mode: checks the .NET SecurityProtocol before WingetFW downloads files and adds TLS 1.2 when it is missing.
+
+Not configured: the next setting level is used. Built-in default: enabled; the package config file sets it to disabled.</string>
+
+      <string id="VCRedistCheck">Install the VC++ runtime for winget</string>
+      <string id="VCRedistCheck_Help">Admin mode: installs the Visual C++ 2015-2022 runtime (x64/x86) when it is missing. winget.exe run as SYSTEM fails with 0xC000007B without it.
+
+Not configured: the next setting level is used. Built-in default: enabled; the package config file sets it to disabled.</string>
+    </stringTable>
+    <presentationTable>
+      <presentation id="DefaultSource">
+        <textBox refId="DefaultSource">
+          <label>Source name:</label>
+        </textBox>
+      </presentation>
+      <presentation id="AllowedSources">
+        <listBox refId="AllowedSources">Allowed source names</listBox>
+      </presentation>
+      <presentation id="Sources">
+        <listBox refId="Sources">REST sources (value name = source name, value = URL)</listBox>
+      </presentation>
+      <presentation id="Proxy">
+        <textBox refId="Proxy">
+          <label>Proxy URL:</label>
+        </textBox>
+        <textBox refId="ProxyBypass">
+          <label>Bypass list (separated by semicolons):</label>
+        </textBox>
+      </presentation>
+    </presentationTable>
+  </resources>
+</policyDefinitionResources>

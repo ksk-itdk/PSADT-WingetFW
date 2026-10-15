@@ -21,9 +21,12 @@
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 1.0.0
+    Version      : 1.1.0
 
     Release notes
+    1.1.0  - Get-WingetFWSetting reads ADMX list keys: a subkey with values 1, 2, 3 ... is returned as an
+             ordered array, a subkey with named values as an ordered name/value table.
+           - Get-WingetFWSetting -AsBoolean converts 1/0, true/false and DWORD values to $true/$false.
     1.0.0  - First version (phase FW-1): settings reader, logging, event log and state files.
 
 .LINK
@@ -58,10 +61,27 @@ function Get-WingetFWRegistryValue
     param ([string]$Path, [string]$Name)
 
     $item = Get-ItemProperty -LiteralPath $Path -Name $Name -ErrorAction SilentlyContinue
-    if (-not $item) { return }
-    $value = $item.$Name
-    # The comma keeps a REG_MULTI_SZ value as an array, also with one element.
-    if ($value -is [array]) { , $value } else { $value }
+    if ($item)
+    {
+        $value = $item.$Name
+        # The comma keeps a REG_MULTI_SZ value as an array, also with one element.
+        if ($value -is [array]) { return , $value }
+        return $value
+    }
+
+    # ADMX list elements write a subkey: values 1, 2, 3 ... (list) or name = value (explicitValue)
+    $listPath = Join-Path -Path $Path -ChildPath $Name
+    if (-not (Test-Path -LiteralPath $listPath)) { return }
+    $key = Get-Item -LiteralPath $listPath
+    $names = @($key.GetValueNames() | Where-Object { $_ })
+    if (-not $names.Count) { return }
+    if (-not @($names | Where-Object { $_ -notmatch '^\d+$' }).Count)
+    {
+        return , @($names | Sort-Object -Property { [int]$_ } | ForEach-Object { $key.GetValue($_) })
+    }
+    $map = [ordered]@{}
+    foreach ($valueName in $names) { $map[$valueName] = $key.GetValue($valueName) }
+    $map
 }
 
 function Protect-WingetFWFolder
@@ -167,6 +187,8 @@ function Get-WingetFWSetting
         Order: Policy key, command line, mod file, local key, config file, default.
         Returns an object with Name, Value and Source (Policy, CommandLine, Mod, Local, Config, Default or None).
         The value and its source are logged; SAS signatures (sig=...) are masked in the log.
+        In the registry a setting is a value, or a subkey with the same name (ADMX list): values 1, 2, 3 ...
+        give an ordered array, named values give an ordered name/value table.
     .PARAMETER Name
         Setting name, the same at every level.
     .PARAMETER CommandLine
@@ -181,8 +203,10 @@ function Get-WingetFWSetting
         Policy registry key. Default HKLM:\SOFTWARE\Policies\WingetFW.
     .PARAMETER LocalPath
         Local registry key. Default HKLM:\SOFTWARE\WingetFW.
+    .PARAMETER AsBoolean
+        Return the value as $true or $false: 1, 'true', 'yes', 'on' and $true are $true, everything else $false.
     .EXAMPLE
-        Get-WingetFWSetting -Name 'DefaultSilent' -CommandLine $PSBoundParameters -Config $config -Default 1
+        Get-WingetFWSetting -Name 'DefaultSilent' -CommandLine $PSBoundParameters -Config $config -Default $true -AsBoolean
     #>
     [CmdletBinding()]
     [OutputType([pscustomobject])]
@@ -209,7 +233,10 @@ function Get-WingetFWSetting
         [string]$PolicyPath = 'HKLM:\SOFTWARE\Policies\WingetFW',
 
         [Parameter()]
-        [string]$LocalPath = 'HKLM:\SOFTWARE\WingetFW'
+        [string]$LocalPath = 'HKLM:\SOFTWARE\WingetFW',
+
+        [Parameter()]
+        [switch]$AsBoolean
     )
 
     $source = 'None'
@@ -225,7 +252,15 @@ function Get-WingetFWSetting
         elseif ($PSBoundParameters.ContainsKey('Default') -and $null -ne $Default) { $value = $Default; $source = 'Default' }
     }
 
-    $text = if ($source -eq 'None') { '<not set>' } else { (@($value) -join '; ') -replace '(?i)(sig=)[^&;\s]+', '$1***' }
+    if ($AsBoolean -and $source -ne 'None')
+    {
+        $value = if ($value -is [string]) { $value.Trim() -in @('1', 'true', '$true', 'yes', 'on') } else { [bool]$value }
+    }
+
+    $text = if ($source -eq 'None') { '<not set>' }
+    elseif ($value -is [System.Collections.IDictionary]) { @($value.GetEnumerator() | ForEach-Object { '{0}={1}' -f $_.Key, $_.Value }) -join '; ' }
+    else { @($value) -join '; ' }
+    $text = $text -replace '(?i)(sig=)[^&;\s]+', '$1***'
     Write-WingetFWLog -Message "Setting [$Name] = [$text] from [$source]" -Source 'Get-WingetFWSetting'
     [pscustomobject]@{ Name = $Name; Value = $value; Source = $source }
 }

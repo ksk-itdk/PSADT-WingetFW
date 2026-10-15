@@ -125,6 +125,7 @@ Default value: None
 
 ### -source
 Restricts the search to the source name provided. Must be followed by the source name.
+Without `-source`, install and upgrade use the `DefaultSource` setting if it is set. A source that is not in `AllowedSources` stops with 60001. See [Configuration](Configuration.md).
 ```
 Type: String
 Required: False
@@ -177,6 +178,7 @@ Default value: None
 
 ### -silent
 Runs the installer in silent mode. Cannot be used with -interactive or -override.
+When none of -silent, -interactive and -override is used, WingetFW adds -silent unless the `DefaultSilent` setting is disabled. See [Configuration](Configuration.md).
 ```
 Type: Switch
 Required: False
@@ -364,7 +366,8 @@ Default value: None
 ```
 
 ### -proxy
-Set a proxy to use for this execution. Requires the winget admin setting ProxyCommandLineOptions. Cannot be used with -noproxy.
+Set a proxy to use for this execution. Requires the winget admin setting ProxyCommandLineOptions (WingetFW enables it in Admin mode). Cannot be used with -noproxy.
+A `Proxy` policy beats -proxy and -noproxy; `Proxy` in the local key or config file is used when there is no -proxy or -noproxy. See [Configuration](Configuration.md).
 ```
 Type: String
 Required: False

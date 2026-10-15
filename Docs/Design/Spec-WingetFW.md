@@ -61,10 +61,10 @@ Policy beats everything, so an admin can force a value centrally.
 | `TrustedSigners` | list of thumbprints | - | Used with `RequireSignedScripts = TrustedSigners`. |
 | `AllowedScriptSources` | list of path/URL prefixes | package folder, `C:\ProgramData\WingetFW\Scripts` | Every mod location must match one. Stops mods from unknown shares or URLs. |
 | `DefaultSilent` | bool | true | Adds `-silent` when none of `-silent`, `-interactive`, `-override` is set. |
-| `DefaultSource` | string | winget | Source used when none is given, for example `winget`, `msstore` or an internal REST source. |
-| `AllowedSources` | list | all | Sources WingetFW may use. Respects the App Installer ADMX (Allowed/Additional Sources). |
-| `Sources` | list of name + URL + type | - | Internal REST sources that WingetFW adds as SYSTEM if missing. |
-| `Proxy` / `ProxyBypass` | string | - | Proxy for winget (`--proxy`, needs the winget admin setting `ProxyCommandLineOptions`, which WingetFW enables) and for WingetFW's own downloads (mods, winget bootstrap, VC++). PSADT has no proxy setting. Installers that download by themselves use the WinHTTP proxy (`netsh winhttp`). |
+| `DefaultSource` | string | not set | Source for install and upgrade when none is given, for example `winget`, `msstore` or an internal REST source. Not used for uninstall and repair, they work on installed packages. |
+| `AllowedSources` | list | all | Sources WingetFW may use (`-source`, `-dependencysource`); others stop with 60001. The App Installer ADMX (Allowed/Additional Sources) still applies to winget. |
+| `Sources` | list of name = URL | - | Internal REST sources (type `Microsoft.Rest`) that WingetFW adds as SYSTEM if missing or with another URL. |
+| `Proxy` / `ProxyBypass` | string | - | Proxy for winget (`--proxy`, needs the winget admin setting `ProxyCommandLineOptions`, which WingetFW enables in Admin mode) and for WingetFW's own downloads (mods, winget bootstrap, VC++). `-proxy` on the command line only applies to winget. `ProxyBypass` only applies to WingetFW's own downloads. PSADT has no proxy setting. Installers that download by themselves use the WinHTTP proxy (`netsh winhttp`). |
 | `TlsCheck` | bool | false in package | Existing: add TLS 1.2 before downloads. |
 | `VCRedistCheck` | bool | false in package | Existing: install the VC++ runtime for winget as SYSTEM. |
 

@@ -7,7 +7,9 @@
     that install winget and run winget install, uninstall, upgrade, repair and import:
       Install-WinGetFM, Get-WinGetVersionFM, Start-WinGetPackageFM, Resolve-WingetPath
 
-    Settings are read from Config\WingetFW.psd1 in this folder. A missing file or setting counts as enabled.
+    Settings are read with Get-WingetFWSetting (WingetFW.Core, nested module) in this order: policy
+    (HKLM\SOFTWARE\Policies\WingetFW), command line, mod file, local key (HKLM\SOFTWARE\WingetFW),
+    Config\WingetFW.psd1 in this folder, built-in default.
 
 .NOTES
     Maintained by: KSKITDK
@@ -17,6 +19,9 @@
     5.0.0  - First version as a PSAppDeployToolkit 4.1 extension module (was AppDeployToolkitExtensions.ps1
              in WingetFW 4.0.8). The WingetFW logic is unchanged.
            - Settings moved from AppDeployToolkitExtensionsConfig.xml to Config\WingetFW.psd1.
+           - Settings from policy and the local key through WingetFW.Core: DefaultSilent, DefaultSource,
+             AllowedSources, Sources (REST sources added in Admin mode), Proxy, ProxyBypass, TlsCheck,
+             VCRedistCheck. Config keys renamed to TlsCheck and VCRedistCheck.
 
 .LINK
     https://github.com/ksk-itdk/PSADT-WingetFW
@@ -135,7 +140,17 @@ This function does not return any objects.
 		$AppInstaller = Get-WinGetVersionFM -UserMode $UserMode
 		If($UserMode -eq "Admin"){
 			
-			If ($Script:WingetFWConfig.WingetFW_TlsCheck -ne $false) {
+			$proxySetting = Get-WingetFWSetting -Name 'Proxy' -Config $Script:WingetFWConfig
+			If ($proxySetting.Value) {
+				# WebProxy bypass entries are regular expressions matched against scheme://host[:port]
+				$bypassSetting = Get-WingetFWSetting -Name 'ProxyBypass' -Config $Script:WingetFWConfig
+				$bypassList = @(([string]$bypassSetting.Value) -split ';' | ForEach-Object { $_.Trim() } | Where-Object { $_ } | ForEach-Object { '://' + [regex]::Escape($_).Replace('\*', '[^/]*') + '(:\d+)?$' })
+				[System.Net.WebRequest]::DefaultWebProxy = New-Object -TypeName System.Net.WebProxy -ArgumentList ([string]$proxySetting.Value), $true, ([string[]]$bypassList)
+				Write-ADTLogEntry -Message "WingetFW downloads use proxy [$($proxySetting.Value)], bypass [$($bypassSetting.Value)]" -Source 'Install-WinGetFM'
+			}
+			
+			$tlsCheck = Get-WingetFWSetting -Name 'TlsCheck' -Config $Script:WingetFWConfig -Default $true -AsBoolean
+			If ($tlsCheck.Value) {
 				$TlsProtocol = [Net.ServicePointManager]::SecurityProtocol
 				Write-ADTLogEntry -Message "SecurityProtocol is [$TlsProtocol]" -Source 'Install-WinGetFM'
 				If ([int]$TlsProtocol -eq 0) {
@@ -152,10 +167,11 @@ This function does not return any objects.
 					Write-ADTLogEntry -Message "TLS 1.2 missing, SecurityProtocol set to [$([Net.ServicePointManager]::SecurityProtocol)]" -Source 'Install-WinGetFM'
 				}
 			}Else{
-				Write-ADTLogEntry -Message "TLS check disabled in Config\WingetFW.psd1 (WingetFW_TlsCheck)" -Source 'Install-WinGetFM'
+				Write-ADTLogEntry -Message "TLS check disabled (TlsCheck from [$($tlsCheck.Source)])" -Source 'Install-WinGetFM'
 			}
 			
-			If ($Script:WingetFWConfig.WingetFW_VCRedistCheck -ne $false) {
+			$vcRedistCheck = Get-WingetFWSetting -Name 'VCRedistCheck' -Config $Script:WingetFWConfig -Default $true -AsBoolean
+			If ($vcRedistCheck.Value) {
 				# VC++ 2015-2022 runtime matching the OS (x64/x86); winget.exe run as SYSTEM can't use the MSIX VCLibs and crashes with 0xC000007B without it
 				$VCArch = If ([Environment]::Is64BitOperatingSystem) { 'x64' } Else { 'x86' }
 				# Registry64 gives the native view on 64-bit Windows (also from a 32-bit process) and the normal view on 32-bit Windows
@@ -180,7 +196,7 @@ This function does not return any objects.
 				}
 				$RegLM.Close()
 			}Else{
-				Write-ADTLogEntry -Message "VC++ runtime check disabled in Config\WingetFW.psd1 (WingetFW_VCRedistCheck)" -Source 'Install-WinGetFM'
+				Write-ADTLogEntry -Message "VC++ runtime check disabled (VCRedistCheck from [$($vcRedistCheck.Source)])" -Source 'Install-WinGetFM'
 			}
 			
 			If([version]$AppInstaller.WingetVersion -lt [version]$MinimumVersion) {
@@ -271,6 +287,7 @@ This function does not return any objects.
 				Write-ADTLogEntry -Message "$Error[0].Exception" -Source 'Install-WinGetFM'
 				Break
 			}
+			Add-WingetFWSourceFM
         }
 		If($UserMode -eq "User"){
 			Write-ADTLogEntry -Message "UserMode $UserMode" -Source 'Install-WinGetFM'
@@ -817,6 +834,41 @@ This function does not return any objects.
 			Throw "-header requires -source. winget rejects --header without --source."
 		}
 		
+		# Settings: policy, command line, local key, config file, default (Get-WingetFWSetting in WingetFW.Core)
+		$proxySetting = Get-WingetFWSetting -Name 'Proxy' -CommandLine $(If ($proxy) { @{ Proxy = $proxy } } Else { @{} }) -Config $Script:WingetFWConfig
+		If ($proxySetting.Source -eq 'Policy' -and $noproxy) {
+			Write-ADTLogEntry -Message "Ignoring -noproxy, Proxy is set by policy" -Source 'Start-WinGetPackageFM' -Severity 2
+			$noproxy = [switch]$false
+		}
+		If ($proxySetting.Value -and -not $noproxy) { $proxy = [string]$proxySetting.Value }
+		
+		If ('silent' -in $supportedOptions[$Action] -and -not ($silent -or $interactive -or $override)) {
+			$silentSetting = Get-WingetFWSetting -Name 'DefaultSilent' -Config $Script:WingetFWConfig -Default $true -AsBoolean
+			If ($silentSetting.Value) {
+				$silent = [switch]$true
+				Write-ADTLogEntry -Message "Adding -silent (DefaultSilent from [$($silentSetting.Source)])" -Source 'Start-WinGetPackageFM'
+			}
+		}
+		
+		# Uninstall and repair work on installed packages, so the default source only applies to install and upgrade
+		If (-not $source -and $Action -in @('Install', 'Upgrade') -and ($id -or $name -or $moniker)) {
+			$sourceSetting = Get-WingetFWSetting -Name 'DefaultSource' -Config $Script:WingetFWConfig
+			If ($sourceSetting.Value) {
+				$source = [string]$sourceSetting.Value
+				Write-ADTLogEntry -Message "Using source [$source] (DefaultSource from [$($sourceSetting.Source)])" -Source 'Start-WinGetPackageFM'
+			}
+		}
+		
+		$allowedSetting = Get-WingetFWSetting -Name 'AllowedSources' -Config $Script:WingetFWConfig
+		If ($allowedSetting.Value) {
+			$allowedSources = @($allowedSetting.Value)
+			ForEach ($usedSource in @($source, $dependencysource) | Where-Object { $_ }) {
+				If ($usedSource -notin $allowedSources) {
+					Throw "Source [$usedSource] is not allowed. Allowed sources: $($allowedSources -join ', ') (AllowedSources from [$($allowedSetting.Source)])"
+				}
+			}
+		}
+		
 		$argsWinGet = $null
 		Switch ($scope) {
             'User' {
@@ -1134,6 +1186,13 @@ This function does not return any objects.
 		Write-Verbose "Action: $($Action)"
 		Write-ADTLogEntry -Message "UserMode: $($UserMode)" -Source "Start-WinGetPackageFM"
 		$wingetpath = Resolve-WingetPath -UserMode $UserMode
+		If ($proxy -and $UserMode -eq 'Admin') {
+			# winget only accepts --proxy when the admin setting ProxyCommandLineOptions is enabled
+			$wingetSettings = Invoke-WingetFM -WingetPath $wingetpath -Arguments 'settings export'
+			If ($wingetSettings.Output -notmatch '"ProxyCommandLineOptions"\s*:\s*true') {
+				$null = Invoke-WingetFM -WingetPath $wingetpath -Arguments 'settings --enable ProxyCommandLineOptions'
+			}
+		}
 		$package = @($id, $name, $moniker, $productcode, $wingetmanifest, $importfile) | Where-Object { $_ } | Select-Object -First 1
 		Write-ADTLogEntry -Message "Running winget $Action for [$package]" -Source "Start-WinGetPackageFM"
 		If ($Action -eq 'Install') {
@@ -1159,6 +1218,136 @@ This function does not return any objects.
 		
     End {
         Complete-ADTFunction -Cmdlet $PSCmdlet
+    }
+}
+#endregion
+
+#region Function Invoke-WingetFM
+Function Invoke-WingetFM {
+    <#
+.SYNOPSIS
+
+    Runs a winget helper command (settings, source) and returns the exit code and output.
+
+.DESCRIPTION
+
+    Used for winget calls around the package action. The package action itself runs with Start-ADTProcess.
+    Each call is logged as "winget <arguments> -> exit code <code>". winget is stopped after 120 seconds.
+
+.PARAMETER WingetPath
+
+    Folder of winget.exe (Resolve-WingetPath).
+
+.PARAMETER Arguments
+
+    winget arguments.
+
+.OUTPUTS
+
+    PSCustomObject with ExitCode and Output.
+
+.LINK
+
+    https://github.com/ksk-itdk/PSADT-WingetFW
+#>
+
+    [CmdletBinding()]
+    Param (
+        [Parameter(Mandatory = $true)]
+        [String]$WingetPath,
+
+        [Parameter(Mandatory = $true)]
+        [String]$Arguments
+    )
+
+    $startInfo = New-Object -TypeName System.Diagnostics.ProcessStartInfo
+    $startInfo.FileName = Join-Path -Path $WingetPath -ChildPath 'winget.exe'
+    $startInfo.Arguments = $Arguments
+    $startInfo.UseShellExecute = $false
+    $startInfo.CreateNoWindow = $true
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    $startInfo.StandardOutputEncoding = [System.Text.Encoding]::UTF8
+    $process = [System.Diagnostics.Process]::Start($startInfo)
+    $errorTask = $process.StandardError.ReadToEndAsync()
+    $output = $process.StandardOutput.ReadToEnd()
+    If (-not $process.WaitForExit(120000)) {
+        $process.Kill()
+        Write-ADTLogEntry -Message "winget $Arguments did not finish within 120 seconds and was stopped" -Source 'Invoke-WingetFM' -Severity 2
+    }
+    $output = ($output + $errorTask.Result) -replace '[\b]', ''
+    $exitCode = $process.ExitCode
+    Write-ADTLogEntry -Message ("winget $Arguments -> exit code $exitCode" + $(If ($exitCode -lt 0) { ' (0x{0:X8})' -f $exitCode })) -Source 'Invoke-WingetFM'
+    [PSCustomObject]@{ ExitCode = $exitCode; Output = $output }
+}
+#endregion
+
+#region Function Add-WingetFWSourceFM
+Function Add-WingetFWSourceFM {
+    <#
+.SYNOPSIS
+
+    Admin mode: adds the REST sources from the Sources setting when they are missing or have another URL.
+
+.DESCRIPTION
+
+    Sources is a list of name = URL (policy HKLM\SOFTWARE\Policies\WingetFW\Sources, local key or config file).
+    The names must only contain letters, digits, '.', '_' and '-', the URLs must start with https://.
+    A source that can't be added is logged as a warning; the deployment continues.
+
+.LINK
+
+    https://github.com/ksk-itdk/PSADT-WingetFW
+#>
+
+    [CmdletBinding()]
+    Param ()
+
+    $sourcesSetting = Get-WingetFWSetting -Name 'Sources' -Config $Script:WingetFWConfig
+    If ($null -eq $sourcesSetting.Value) { Return }
+    If ($sourcesSetting.Value -isnot [System.Collections.IDictionary]) {
+        Write-ADTLogEntry -Message "Sources must be a list of name = URL, ignoring it" -Source 'Add-WingetFWSourceFM' -Severity 2
+        Return
+    }
+    Try {
+        $wingetpath = Resolve-WingetPath -UserMode 'Admin'
+    }
+    Catch {
+        Write-ADTLogEntry -Message "Sources not added, winget not found: $($_.Exception.Message)" -Source 'Add-WingetFWSourceFM' -Severity 2
+        Return
+    }
+    ForEach ($entry in @($sourcesSetting.Value.GetEnumerator())) {
+        $sourceName = [string]$entry.Key
+        $sourceUrl = [string]$entry.Value
+        If ($sourceName -notmatch '^[\w.-]+$' -or $sourceUrl -notmatch '^https://[^\s"]+$') {
+            Write-ADTLogEntry -Message "Skipping source [$sourceName] = [$sourceUrl]: the name may only contain letters, digits, '.', '_' and '-', and the URL must start with https://" -Source 'Add-WingetFWSourceFM' -Severity 2
+            Continue
+        }
+        $export = Invoke-WingetFM -WingetPath $wingetpath -Arguments "source export --name $sourceName"
+        If ($export.ExitCode -eq 0) {
+            $currentUrl = $null
+            Try {
+                $json = $export.Output.Substring($export.Output.IndexOf('{'), $export.Output.LastIndexOf('}') - $export.Output.IndexOf('{') + 1)
+                $currentUrl = ($json | ConvertFrom-Json).Arg
+            }
+            Catch {
+                Write-ADTLogEntry -Message "Could not read the URL of source [$sourceName]: $($_.Exception.Message)" -Source 'Add-WingetFWSourceFM' -Severity 2
+            }
+            If ($currentUrl -eq $sourceUrl) {
+                Write-ADTLogEntry -Message "Source [$sourceName] already added with [$sourceUrl]" -Source 'Add-WingetFWSourceFM'
+                Continue
+            }
+            Write-ADTLogEntry -Message "Source [$sourceName] has URL [$currentUrl], replacing it with [$sourceUrl]" -Source 'Add-WingetFWSourceFM'
+            $null = Invoke-WingetFM -WingetPath $wingetpath -Arguments "source remove --name $sourceName"
+        }
+        $add = Invoke-WingetFM -WingetPath $wingetpath -Arguments "source add --name $sourceName --arg $sourceUrl --type Microsoft.Rest --accept-source-agreements --disable-interactivity"
+        If ($add.ExitCode -eq 0) {
+            Write-ADTLogEntry -Message "Source [$sourceName] added with [$sourceUrl]" -Source 'Add-WingetFWSourceFM'
+        }
+        Else {
+            $lastLine = @($add.Output -split '\r?\n' | Where-Object { $_.Trim() }) | Select-Object -Last 1
+            Write-ADTLogEntry -Message "Could not add source [$sourceName] with [$sourceUrl]: $lastLine" -Source 'Add-WingetFWSourceFM' -Severity 2
+        }
     }
 }
 #endregion

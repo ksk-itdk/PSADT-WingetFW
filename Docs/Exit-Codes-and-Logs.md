@@ -7,7 +7,7 @@
 |---|---|
 | 0 | Success. With install, also when the package is already installed (winget `0x8A150061` or `0x8A15002B`); the log says "is already installed, nothing to install". |
 | 1641, 3010 | Success, a reboot is required. Passed to Intune unless `-SuppressRebootPassThru` is used. |
-| 60001 | An option rule was broken (see [OPTION RULES](Parameters.md#option-rules)) or another error occurred. The reason is in the log. |
+| 60001 | An option rule was broken (see [OPTION RULES](Parameters.md#option-rules)), a source is not in `AllowedSources` (see [Configuration](Configuration.md)), or another error occurred. The reason is in the log. |
 | 60008 | PSAppDeployToolkit could not start (module or session). |
 | 69001 | No package specified. Use `-id`, `-name`, `-moniker`, `-wingetmanifest`, `-productcode` or `-importfile`. |
 | Other | The winget return code is passed through, for example `-1978335212` (`0x8A150014`, no installed package found). See [winget return codes](https://github.com/microsoft/winget-cli/blob/master/doc/windows/package-manager/winget/returnCodes.md). |

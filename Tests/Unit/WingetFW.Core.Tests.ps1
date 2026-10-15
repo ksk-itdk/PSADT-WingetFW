@@ -10,9 +10,10 @@
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 1.0.0
+    Version      : 1.1.0
 
     Release notes
+    1.1.0  - ADMX list keys (ordered list, name/value table), empty list key, -AsBoolean.
     1.0.0  - First version (phase FW-1).
 
 .LINK
@@ -109,6 +110,52 @@ Describe 'Get-WingetFWSetting' {
         Should -Invoke -ModuleName 'WingetFW.Core' -CommandName 'Write-WingetFWLog' -Times 1 -Exactly -ParameterFilter {
             $Message -match 'sig=\*\*\*' -and $Message -notmatch 'SECRETVALUE'
         }
+    }
+
+    It 'Reads an ADMX list key (values 1, 2, 3 ...) as an ordered array' {
+        $listKey = New-Item -Path (Join-Path -Path $policyPath -ChildPath 'AllowedSources') -Force
+        foreach ($entry in @(@('2', 'msstore'), @('10', 'contoso'), @('1', 'winget')))
+        {
+            $null = New-ItemProperty -Path $listKey.PSPath -Name $entry[0] -Value $entry[1]
+        }
+        $result = Get-WingetFWSetting -Name 'AllowedSources' -PolicyPath $policyPath -LocalPath $localPath
+        $result.Source | Should -Be 'Policy'
+        $result.Value | Should -Be @('winget', 'msstore', 'contoso')
+    }
+
+    It 'Reads an ADMX list key with named values as a name/value table' {
+        $listKey = New-Item -Path (Join-Path -Path $localPath -ChildPath 'Sources') -Force
+        $null = New-ItemProperty -Path $listKey.PSPath -Name 'ContosoRest' -Value 'https://winget.contoso.com/api'
+        $result = Get-WingetFWSetting -Name 'Sources' -PolicyPath $policyPath -LocalPath $localPath
+        $result.Source | Should -Be 'Local'
+        $result.Value | Should -BeOfType [System.Collections.IDictionary]
+        $result.Value['ContosoRest'] | Should -Be 'https://winget.contoso.com/api'
+        Should -Invoke -ModuleName 'WingetFW.Core' -CommandName 'Write-WingetFWLog' -Times 1 -Exactly -ParameterFilter { $Message -match 'ContosoRest=https://winget\.contoso\.com/api' }
+    }
+
+    It 'Ignores an empty list key' {
+        $null = New-Item -Path (Join-Path -Path $policyPath -ChildPath 'AllowedSources') -Force
+        (Get-WingetFWSetting -Name 'AllowedSources' -PolicyPath $policyPath -LocalPath $localPath -Config @{ AllowedSources = @('winget') }).Source | Should -Be 'Config'
+    }
+
+    It '-AsBoolean turns <Raw> into <Expected>' -ForEach @(
+        @{ Raw = 1; Expected = $true }
+        @{ Raw = 0; Expected = $false }
+        @{ Raw = '1'; Expected = $true }
+        @{ Raw = '0'; Expected = $false }
+        @{ Raw = 'true'; Expected = $true }
+        @{ Raw = 'False'; Expected = $false }
+        @{ Raw = $true; Expected = $true }
+        @{ Raw = $false; Expected = $false }
+    ) {
+        $result = Get-WingetFWSetting -Name 'DefaultSilent' -Config @{ DefaultSilent = $Raw } -PolicyPath $policyPath -LocalPath $localPath -AsBoolean
+        $result.Value | Should -BeOfType [bool]
+        $result.Value | Should -Be $Expected
+    }
+
+    It '-AsBoolean converts a DWORD from the policy key' {
+        $null = New-ItemProperty -Path $policyPath -Name 'TlsCheck' -Value 0 -PropertyType DWord
+        (Get-WingetFWSetting -Name 'TlsCheck' -PolicyPath $policyPath -LocalPath $localPath -Default $true -AsBoolean).Value | Should -BeFalse
     }
 }
 
