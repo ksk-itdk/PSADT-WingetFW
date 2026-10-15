@@ -60,7 +60,7 @@ flowchart LR
 - [x] FW-2 ADMX and settings - done when the VM shows policy > command line > mod > local key > config
 - [x] FW-3 Mods - done when the VM runs local/UNC/blob mods and rejects unsigned, unknown-source and top-level-code files
 - [x] FW-4 Conflicting apps - done when the VM removes an old MSI in PreInstall before install
-- [ ] FW-5 Docs - done when reviewed
+- [x] FW-5 Docs - done when reviewed
 
 ### WingetFW Console
 

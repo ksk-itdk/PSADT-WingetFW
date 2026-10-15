@@ -106,8 +106,8 @@ Cache: `C:\ProgramData\WingetFW\Cache` (SYSTEM and Administrators only) in admin
 ## SECURITY
 - Mod files run as SYSTEM in admin mode. Only people who may run code as SYSTEM on your devices should be able to change them: use a share or container that only admins can write to, and `AllowedScriptSources`.
 - The policy key can be read by every user, so a SAS in `ScriptRoot` is visible to users. Use a read-only SAS (read + list for Mirror) and signed mod files. WingetFW masks the SAS signature in its log.
-- Signing: a self-signed or internal code signing certificate, trusted by the devices (Intune: Trusted certificate profile to Trusted Root and Trusted Publishers). Sign with `Set-AuthenticodeSignature -FilePath <file> -Certificate <cert> -TimestampServer <url>`.
-- WDAC with Intune as managed installer: files fetched while Intune runs WingetFW are trusted; mod files fetched another way must be signed or allowed by a path rule.
+- Signing: see [Signing mod files](Signing.md) for the certificate, the Intune profile and the settings.
+- WDAC: WDAC script rules do not apply to mod files; turn on `RequireSignedScripts`, see [Signing mod files](Signing.md#wdac).
 
 ## EXAMPLE
 `\\fs01\WingetFW\Mods\winget\7zip.7zip.ps1`:

@@ -29,10 +29,11 @@ This README is for **WingetFW 5.0.0** (PSAppDeployToolkit 4.1.8, `Toolkit\WinGet
 | [Getting started](Docs/Getting-Started.md) | Package content, examples, command line quoting, admin and user mode, repair and ForceRepair |
 | [Parameters](Docs/Parameters.md) | All parameters, option rules, winget admin settings |
 | [Configuration](Docs/Configuration.md) | Setting levels (policy, command line, local key, config file), all settings, ADMX for Intune and GPO |
-| [Mod files](Docs/Mods.md) | Pre/post sections per app or for all apps, `$Settings`, locations, signing |
+| [Mod files](Docs/Mods.md) | Pre/post sections per app or for all apps, `$Settings`, locations, conflicting apps |
+| [Signing mod files](Docs/Signing.md) | Code signing certificate, Intune profile, `RequireSignedScripts`, WDAC |
 | [Exit codes and logs](Docs/Exit-Codes-and-Logs.md) | Exit codes, log files |
 | [Upgrading Intune apps](Docs/Upgrading-Intune-Apps.md) | `Tools\Update-WingetFWIntuneApps.ps1` (beta) |
-| [Tests](Tests/README.md) | Test suite. Latest run of WingetFW 5.0.0: 39 of 39 tests passed ([results](Tests/TEST-RESULTS.md)) |
+| [Tests](Tests/README.md) | Test suite. Latest run of WingetFW 5.0.0: 70 of 70 tests passed ([results](Tests/TEST-RESULTS.md)) |
 | [Changelog](CHANGELOG.txt) | Changes per version |
 | [Contributing](CONTRIBUTING.md) | Notes for changing the code |
 | [Design](Docs/Design/Phases.md) | Specs and phase plan for WingetFW, WingetFW Console and WingetFW-Update |

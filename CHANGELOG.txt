@@ -10,7 +10,7 @@
 - Added the ADMX/ADML in the Policies folder for Intune (Import ADMX) and GPO
 - Added the settings DefaultSilent (adds -silent when none of -silent, -interactive, -override is used; on by default), DefaultSource (install and upgrade), AllowedSources (other sources stop with 60001), Sources (REST sources added in Admin mode), Proxy and ProxyBypass (winget --proxy and WingetFW's own downloads; ProxyCommandLineOptions is enabled in Admin mode)
 - Changed the config keys WingetFW_TlsCheck and WingetFW_VCRedistCheck to TlsCheck and VCRedistCheck; both can now also come from policy or the local key
-- Changed the README into a short front page; the documentation is in the Docs folder
+- Changed the README into a short front page; the documentation is in the Docs folder (Getting started, Parameters, Configuration, Mod files, Signing mod files, Exit codes and logs, Upgrading Intune apps)
 - Added mod files: PowerShell files with Pre, During, Post and Not sections that run around winget, per app (<ScriptRoot>\<source>\<id>.ps1) or for all apps (_WingetFW.ps1). $Settings in the app mod sets winget options per action (the command line beats it). A Pre section that returns $false skips the action with exit code 69002. Template: Mods\_Template.ps1
 - Added the mod settings ScriptRoot (local folder, UNC share or Azure blob URL; default the package Mods folder), ScriptSyncMode (OnDemand, Mirror), UseCachedScriptsWhenOffline, AllowedScriptSources, RequireSignedScripts (Off, Signed, TrustedSigners) and TrustedSigners, also in the ADMX
 - Added a load check for mod files: only function definitions and $Settings with fixed values at the top level; other files stop with 60001
