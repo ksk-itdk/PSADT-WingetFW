@@ -235,7 +235,8 @@ Describe 'Import-WingetFWMod' {
             $mods = Import-WingetFWMod -Id '7zip.7zip' @common
             $mods.App | Should -Not -BeNullOrEmpty
             @(Get-ChildItem -LiteralPath $cache -Recurse -File).Count | Should -Be 3
-            Should -Invoke -ModuleName 'WingetFW.Core' -CommandName 'Invoke-WebRequest' -Times 1 -Exactly -ParameterFilter { $Uri -match 'restype=container&comp=list&prefix=prod%2F' }
+            # AbsoluteUri keeps %2F; Uri.ToString() unescapes it in Windows PowerShell 5.1
+            Should -Invoke -ModuleName 'WingetFW.Core' -CommandName 'Invoke-WebRequest' -Times 1 -Exactly -ParameterFilter { ([Uri]$Uri).AbsoluteUri -match 'restype=container&comp=list&prefix=prod%2F' }
         }
 
         It 'Mirror: skips blob names that leave the cache folder' {
