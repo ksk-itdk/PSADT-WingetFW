@@ -40,9 +40,12 @@
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 1.4.0
+    Version      : 1.5.0
 
     Release notes
+    1.5.0  - M01-M13: mod files (order of the sections, $Settings, 69002, failure sections, load check, signature,
+             AllowedScriptSources, UNC, Azure blob simulated with a local web server, Mirror, offline cache,
+             user mode). A test code signing certificate is added to LocalMachine and removed at the end.
     1.4.0  - S01-S12: settings from policy (HKLM\SOFTWARE\Policies\WingetFW), command line, local key
              (HKLM\SOFTWARE\WingetFW) and config file: order, DefaultSilent, DefaultSource, AllowedSources,
              Sources, TlsCheck. The keys and the config file are reset before every S test and at the end.
@@ -318,7 +321,8 @@ Function Reset-WingetFWSettings {
 # Arrays and tables are written like ADMX list elements: a subkey with values 1, 2, 3 ... or name = value
 Function Set-WingetFWTestSetting([ValidateSet('Policy', 'Local')][String]$Level, [String]$Name, [Object]$Value) {
     $key = If ($Level -eq 'Policy') { $policyKey } Else { $localKey }
-    New-Item -Path $key -Force | Out-Null
+    # New-Item -Force on an existing registry key recreates it and drops its values
+    If (-not (Test-Path $key)) { New-Item -Path $key -Force | Out-Null }
     If ($Value -is [Collections.IDictionary]) {
         $sub = New-Item -Path (Join-Path $key $Name) -Force
         ForEach ($k in $Value.Keys) { New-ItemProperty -Path $sub.PSPath -Name $k -Value $Value[$k] -Force | Out-Null }
@@ -469,6 +473,142 @@ Invoke-Test -Id 'S12' -Title 'Settings: policy TlsCheck enabled beats TlsCheck =
     -Pre { Reset-WingetFWSettings; Set-WingetFWTestSetting Policy TlsCheck 1 } -ExpectLog @('Setting \[TlsCheck\] = \[True\] from \[Policy\]', 'SecurityProtocol is') -State $installed
 Reset-WingetFWSettings
 
+# ---------------------------------------------------------------- mod files (Admin mode unless noted)
+$modsDir = Join-Path $pkgDir 'Mods'
+$traceFile = Join-Path $Root 'mod-trace.txt'
+$blobDir = Join-Path $Root 'blob'
+$blobLog = Join-Path $Root 'blob-requests.txt'
+$blobUrl = 'http://127.0.0.1:8085/mods/prod?sv=1&sp=rl&sig=SECRET'
+Function Reset-WingetFWMods {
+    Get-ChildItem $modsDir -Force | Where-Object { $_.Name -ne '_Template.ps1' } | Remove-Item -Recurse -Force
+    Remove-Item $traceFile -Force -ErrorAction SilentlyContinue
+}
+# Each section writes "<label> <section> [exit code]" to the trace file
+Function New-TraceMod([String]$Path, [String]$Label, [String[]]$Sections, [String]$Settings) {
+    $lines = @()
+    If ($Settings) { $lines += $Settings }
+    ForEach ($s in $Sections) { $lines += 'function {0} {{ Add-Content -LiteralPath ''{1}'' -Value ("{2} {0} $($WingetFW.ExitCode)").TrimEnd() }}' -f $s, $traceFile, $Label }
+    New-Item -ItemType Directory -Path (Split-Path $Path -Parent) -Force | Out-Null
+    Set-Content -Path $Path -Value $lines -Encoding UTF8
+    "mod $Path ($($Sections -join ', '))"
+}
+Function Get-ModTrace { If (Test-Path $traceFile) { @(Get-Content $traceFile) } Else { @() } }
+Function Set-TestMod([String]$Path, [String]$Content) {
+    New-Item -ItemType Directory -Path (Split-Path $Path -Parent) -Force | Out-Null
+    Set-Content -Path $Path -Value $Content -Encoding UTF8
+}
+Function Test-ModTrace([String[]]$Expected) {
+    $t = @(Get-ModTrace)
+    $ok = $t.Count -eq $Expected.Count -and -not @(For ($i = 0; $i -lt $Expected.Count; $i++) { If ($t[$i] -notlike $Expected[$i]) { $i } }).Count
+    [PSCustomObject]@{ Ok = $ok; Text = "mod trace: $($t -join ' > ') (expected: $($Expected -join ' > '))" }
+}
+$installSections = @('PreInstall', 'Install', 'PostInstall', 'NotInstalled')
+$appMod = Join-Path $modsDir 'winget\7zip.7zip.ps1'
+$globalMod = Join-Path $modsDir '_WingetFW.ps1'
+
+$blobServer = @'
+param($Root, $Prefix, $Log)
+$listener = New-Object System.Net.HttpListener
+$listener.Prefixes.Add($Prefix)
+$listener.Start()
+While ($listener.IsListening) {
+    $context = $listener.GetContext()
+    $request = $context.Request
+    $response = $context.Response
+    Add-Content -LiteralPath $Log -Value $request.RawUrl
+    $path = [Uri]::UnescapeDataString($request.Url.AbsolutePath)
+    If ($path -eq '/stop') { $response.Close(); $listener.Stop(); Break }
+    If ($request.QueryString['comp'] -eq 'list') {
+        $base = Join-Path $Root $path.Trim('/')
+        $names = @(Get-ChildItem -LiteralPath $base -Recurse -File | ForEach-Object { $_.FullName.Substring($base.Length + 1).Replace('\', '/') } | Where-Object { $_.StartsWith([string]$request.QueryString['prefix']) })
+        $bytes = [Text.Encoding]::UTF8.GetBytes('<?xml version="1.0" encoding="utf-8"?><EnumerationResults><Blobs>' + (($names | ForEach-Object { "<Blob><Name>$_</Name></Blob>" }) -join '') + '</Blobs><NextMarker /></EnumerationResults>')
+        $response.ContentType = 'application/xml'
+    }
+    Else {
+        $file = Join-Path $Root $path.TrimStart('/').Replace('/', '\')
+        If (Test-Path -LiteralPath $file -PathType Leaf) { $bytes = [IO.File]::ReadAllBytes($file); $response.ContentType = 'application/octet-stream' }
+        Else { $response.StatusCode = 404; $bytes = [Text.Encoding]::UTF8.GetBytes('not found') }
+    }
+    $response.OutputStream.Write($bytes, 0, $bytes.Length)
+    $response.Close()
+}
+'@
+Function Start-BlobServer {
+    $script = Join-Path $tmpDir 'blob-server.ps1'
+    Set-Content -Path $script -Value $blobServer -Encoding UTF8
+    Remove-Item $blobLog -Force -ErrorAction SilentlyContinue
+    Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$script`" -Root `"$blobDir`" -Prefix http://127.0.0.1:8085/ -Log `"$blobLog`"" -WindowStyle Hidden
+    For ($i = 0; $i -lt 20; $i++) {
+        Try { Invoke-WebRequest 'http://127.0.0.1:8085/ping' -UseBasicParsing -TimeoutSec 2 | Out-Null; Break }
+        Catch { If ($_.Exception.Response) { Break }; Start-Sleep -Milliseconds 500 }
+    }
+    'blob server started on http://127.0.0.1:8085/ (folder ' + $blobDir + ')'
+}
+Function Stop-BlobServer { Try { Invoke-WebRequest 'http://127.0.0.1:8085/stop' -UseBasicParsing -TimeoutSec 5 | Out-Null } Catch { }; 'blob server stopped' }
+
+# Test code signing certificate, trusted in LocalMachine Root and TrustedPublisher for the M07 test
+$signCert = New-SelfSignedCertificate -Type CodeSigningCert -Subject 'CN=WingetFW Test Signing' -CertStoreLocation Cert:\LocalMachine\My -NotAfter (Get-Date).AddDays(2)
+ForEach ($storeName in @('Root', 'TrustedPublisher')) {
+    $store = New-Object Security.Cryptography.X509Certificates.X509Store($storeName, 'LocalMachine'); $store.Open('ReadWrite'); $store.Add($signCert); $store.Close()
+}
+Write-Result "  test signing certificate: $($signCert.Thumbprint)"
+Remove-Item 'C:\ProgramData\WingetFW\Cache' -Recurse -Force -ErrorAction SilentlyContinue
+Reset-WingetFWMods
+
+Invoke-Test -Id 'M01' -Title 'Mods: global and app sections run in order around winget; $Settings.Install.Custom is used' -ArgList @('Install', '-id', '7zip.7zip', '-exact', '-silent') `
+    -Pre { Reset-WingetFWSettings; Reset-WingetFWMods; New-TraceMod $globalMod 'global' $installSections; New-TraceMod $appMod 'app' $installSections '$Settings = @{ Install = @{ Custom = ''WINGETFW=1'' } }' } `
+    -Flags @(, @('--custom "WINGETFW=1"')) -ExpectLog @('Using -custom .WINGETFW=1. from the mod file', 'Loaded Global mod', 'Loaded App mod') `
+    -State { Test-ModTrace @('global PreInstall', 'app PreInstall', 'app Install *', 'global Install *', 'app PostInstall *', 'global PostInstall *') }
+Invoke-Test -Id 'M02' -Title 'Mods: -custom on the command line beats $Settings in the mod file' -ArgList @('Install', '-id', '7zip.7zip', '-exact', '-silent', '-custom', 'CMD=1') `
+    -Pre { Reset-WingetFWMods; New-TraceMod $appMod 'app' @('PreInstall') '$Settings = @{ Install = @{ Custom = ''WINGETFW=1'' } }' } `
+    -Flags @(, @('--custom "CMD=1"')) -NotFlags @(, @('WINGETFW=1')) -ExpectLog @('-custom on the command line beats Custom in the mod file')
+Invoke-Test -Id 'M03' -Title 'Mods: PreInstall returns $false - winget does not run, exit code 69002' -ArgList @('Install', '-id', '7zip.7zip', '-exact', '-silent') `
+    -Pre { Reset-WingetFWMods; Set-TestMod $appMod 'function PreInstall { $false }'; 'app mod: PreInstall returns $false' } `
+    -ExpectExit 69002 -ExpectLog @('returned \$false, skipping winget Install \(exit code 69002\)') -ExpectNotLog @('Running winget Install')
+Invoke-Test -Id 'M04' -Title 'Mods: winget fails - During and NotInstalled run, PostInstall does not, the winget exit code is returned' -ArgList @('Install', '-id', 'WingetFW.DoesNotExist', '-exact', '-silent') `
+    -Pre { Reset-WingetFWMods; New-TraceMod (Join-Path $modsDir 'winget\WingetFW.DoesNotExist.ps1') 'app' $installSections } `
+    -ExpectExit @(-1978335212) -State { Test-ModTrace @('app PreInstall', 'app Install -1978335212', 'app NotInstalled -1978335212') }
+Invoke-Test -Id 'M05' -Title 'Mods: a mod file with code at the top level is refused (60001)' -ArgList @('Install', '-id', '7zip.7zip', '-exact', '-silent') `
+    -Pre { Reset-WingetFWMods; Set-TestMod $appMod "Write-Output 'runs at load'`nfunction PreInstall { }"; 'app mod with top-level code' } `
+    -ExpectExit 60001 -ExpectLog @('runs code when the file is loaded') -ExpectNotLog @('Running winget Install')
+Invoke-Test -Id 'M06' -Title 'Mods: RequireSignedScripts Signed refuses an unsigned mod file (60001)' -ArgList @('Install', '-id', '7zip.7zip', '-exact', '-silent') `
+    -Pre { Reset-WingetFWMods; New-TraceMod $appMod 'app' @('PreInstall'); Set-WingetFWTestSetting Policy RequireSignedScripts 'Signed' } `
+    -ExpectExit 60001 -ExpectLog @('is not validly signed \(NotSigned\)') -ExpectNotLog @('Running winget Install')
+Invoke-Test -Id 'M07' -Title 'Mods: RequireSignedScripts TrustedSigners runs a mod file signed by a trusted signer' -ArgList @('Install', '-id', '7zip.7zip', '-exact', '-silent') `
+    -Pre { Reset-WingetFWSettings; Reset-WingetFWMods; New-TraceMod $appMod 'app' @('PreInstall')
+           $sig = Set-AuthenticodeSignature -FilePath $appMod -Certificate $signCert; "signed: $($sig.Status)"
+           Set-WingetFWTestSetting Policy RequireSignedScripts 'TrustedSigners'; Set-WingetFWTestSetting Policy TrustedSigners @($signCert.Thumbprint) } `
+    -ExpectLog @('is signed by \[CN=WingetFW Test Signing\]') -State { Test-ModTrace @('app PreInstall') }
+Invoke-Test -Id 'M08' -Title 'Mods: a ScriptRoot that is not in AllowedScriptSources is refused (60001)' -ArgList @('Install', '-id', '7zip.7zip', '-exact', '-silent') `
+    -Pre { Reset-WingetFWSettings; Reset-WingetFWMods; New-Item -ItemType Directory -Path (Join-Path $Root 'othermods') -Force | Out-Null; Set-WingetFWTestSetting Policy ScriptRoot @((Join-Path $Root 'othermods')) } `
+    -ExpectExit 60001 -ExpectLog @('is not in AllowedScriptSources') -ExpectNotLog @('Running winget Install')
+Invoke-Test -Id 'M09' -Title 'Mods: ScriptRoot on a UNC share (\\localhost\C$)' -ArgList @('Install', '-id', '7zip.7zip', '-exact', '-silent') `
+    -Pre { Reset-WingetFWSettings; Reset-WingetFWMods; $unc = Join-Path $Root 'uncmods'; Remove-Item $unc -Recurse -Force -ErrorAction SilentlyContinue
+           New-TraceMod (Join-Path $unc 'winget\7zip.7zip.ps1') 'unc' @('PreInstall')
+           Set-WingetFWTestSetting Policy ScriptRoot @('\\localhost\C$\temp\wingetfw-vmtest\uncmods'); Set-WingetFWTestSetting Policy AllowedScriptSources @('\\localhost\C$\temp\wingetfw-vmtest\') } `
+    -ExpectLog @('Loaded App mod \[\\\\localhost\\C\$\\temp\\wingetfw-vmtest\\uncmods\\winget\\7zip\.7zip\.ps1\]') -State { Test-ModTrace @('unc PreInstall') }
+Invoke-Test -Id 'M10' -Title 'Mods: Azure blob ScriptRoot (simulated), OnDemand; the SAS is masked in the log' -ArgList @('Install', '-id', '7zip.7zip', '-exact', '-silent') `
+    -Pre { Reset-WingetFWSettings; Reset-WingetFWMods; Remove-Item $blobDir -Recurse -Force -ErrorAction SilentlyContinue
+           New-TraceMod (Join-Path $blobDir 'mods\prod\_WingetFW.ps1') 'blobglobal' @('PreInstall'); New-TraceMod (Join-Path $blobDir 'mods\prod\winget\7zip.7zip.ps1') 'blob' @('PreInstall')
+           Start-BlobServer; Set-WingetFWTestSetting Policy ScriptRoot @($blobUrl); Set-WingetFWTestSetting Policy AllowedScriptSources @('http://127.0.0.1:8085/mods/') } `
+    -ExpectLog @('Loaded App mod \[http://127\.0\.0\.1:8085/mods/prod/winget/7zip\.7zip\.ps1\?sv=1&sp=rl&sig=\*\*\*\]') -ExpectNotLog @('SECRET') `
+    -State { Test-ModTrace @('blobglobal PreInstall', 'blob PreInstall') }
+Invoke-Test -Id 'M11' -Title 'Mods: Azure blob ScriptRoot (simulated), Mirror lists the container and copies all mod files' -ArgList @('Install', '-id', '7zip.7zip', '-exact', '-silent') `
+    -Pre { Remove-Item $traceFile -Force -ErrorAction SilentlyContinue; Set-WingetFWTestSetting Policy ScriptSyncMode 'Mirror' } `
+    -ExpectLog @('Mirrored 2 mod file\(s\)') -ExpectNotLog @('SECRET') `
+    -State { $listed = [Bool](Get-Content $blobLog | Where-Object { $_ -match 'comp=list' -and $_ -match 'sig=SECRET' }); $t = Test-ModTrace @('blobglobal PreInstall', 'blob PreInstall'); [PSCustomObject]@{ Ok = ($listed -and $t.Ok); Text = "container listed with SAS: $listed; $($t.Text)" } }
+Invoke-Test -Id 'M12' -Title 'Mods: ScriptRoot cannot be reached and UseCachedScriptsWhenOffline is off (60001)' -ArgList @('Install', '-id', '7zip.7zip', '-exact', '-silent') `
+    -Pre { Stop-BlobServer; Remove-Item $traceFile -Force -ErrorAction SilentlyContinue; Remove-ItemProperty -Path $policyKey -Name 'ScriptSyncMode' -ErrorAction SilentlyContinue; 'ScriptSyncMode OnDemand' } `
+    -ExpectExit 60001 -ExpectLog @("can't be reached and UseCachedScriptsWhenOffline is off") -ExpectNotLog @('Running winget Install', 'SECRET')
+Invoke-Test -Id 'M13' -Title 'Mods: ScriptRoot cannot be reached - UseCachedScriptsWhenOffline uses the cached copies' -ArgList @('Install', '-id', '7zip.7zip', '-exact', '-silent') `
+    -Pre { Remove-Item $traceFile -Force -ErrorAction SilentlyContinue; Set-WingetFWTestSetting Policy UseCachedScriptsWhenOffline 1 } `
+    -ExpectLog @('using the cached copy') -State { Test-ModTrace @('blobglobal PreInstall', 'blob PreInstall') }
+Invoke-Test -Id 'M14' -Title 'Mods: user mode runs the global mod (NotUninstalled when jq is not installed for the user)' -Mode User -ArgList @('Uninstall', '-id', 'jqlang.jq', '-exact', '-silent', '-scope', 'User') `
+    -Pre { Reset-WingetFWSettings; Reset-WingetFWMods; New-TraceMod $globalMod 'global' @('PreUninstall', 'PostUninstall', 'NotUninstalled') } `
+    -ExpectExit @(-1978335212) -State { Test-ModTrace @('global PreUninstall', 'global NotUninstalled -1978335212') }
+Reset-WingetFWSettings
+Reset-WingetFWMods
+
 # ---------------------------------------------------------------- User mode (current user, no PsExec)
 Invoke-Test -Id 'U01' -Title 'User mode: install portable jq user scope' -Mode User -ArgList @('Install', '-id', 'jqlang.jq', '-exact', '-silent', '-scope', 'User') `
     -Flags @(, @('--scope user')) -State { $d = Get-JqUserFolder; [PSCustomObject]@{ Ok = [Bool]$d; Text = "user package folder: $($d.FullName)" } }
@@ -502,6 +642,12 @@ Write-Result 'TEARDOWN'
 $adminSettings | Where-Object { -not $before.adminSettings.$_ } | ForEach-Object { Invoke-WingetAsSystem "settings --disable $_" | Out-Null }
 Reset-WingetFWSettings
 Invoke-WingetAsSystem 'source remove --name WingetFWTest' | Out-Null
+Stop-BlobServer | Out-Null
+ForEach ($storeName in @('My', 'Root', 'TrustedPublisher')) {
+    $store = New-Object Security.Cryptography.X509Certificates.X509Store($storeName, 'LocalMachine'); $store.Open('ReadWrite')
+    @($store.Certificates | Where-Object { $_.Subject -eq 'CN=WingetFW Test Signing' }) | ForEach-Object { $store.Remove($_) }
+    $store.Close()
+}
 Remove-Item $stateFile -Force -ErrorAction SilentlyContinue
 Remove-Item $tmpDir -Recurse -Force -ErrorAction SilentlyContinue
 

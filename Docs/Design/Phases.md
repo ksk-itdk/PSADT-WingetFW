@@ -58,7 +58,7 @@ flowchart LR
 - [x] FW-0 CI and release workflow - done when the pipeline is green on GitHub
 - [x] FW-1 WingetFW.Core - done when Pester covers every settings level combination
 - [x] FW-2 ADMX and settings - done when the VM shows policy > command line > mod > local key > config
-- [ ] FW-3 Mods - done when the VM runs local/UNC/blob mods and rejects unsigned, unknown-source and top-level-code files
+- [x] FW-3 Mods - done when the VM runs local/UNC/blob mods and rejects unsigned, unknown-source and top-level-code files
 - [ ] FW-4 Conflicting apps - done when the VM removes an old MSI before install
 - [ ] FW-5 Docs - done when reviewed
 

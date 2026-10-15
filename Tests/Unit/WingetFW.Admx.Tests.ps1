@@ -67,6 +67,6 @@ Describe 'WingetFW ADMX/ADML' {
                     elseif ($element.key) { Split-Path -Path $element.key -Leaf }
                 }
             })
-        $names | Sort-Object | Should -Be (@('AllowedSources', 'DefaultSilent', 'DefaultSource', 'Proxy', 'ProxyBypass', 'Sources', 'TlsCheck', 'VCRedistCheck') | Sort-Object)
+        $names | Sort-Object | Should -Be (@('AllowedScriptSources', 'AllowedSources', 'DefaultSilent', 'DefaultSource', 'Proxy', 'ProxyBypass', 'RequireSignedScripts', 'ScriptRoot', 'ScriptSyncMode', 'Sources', 'TlsCheck', 'TrustedSigners', 'UseCachedScriptsWhenOffline', 'VCRedistCheck') | Sort-Object)
     }
 }

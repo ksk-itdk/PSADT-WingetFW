@@ -16,14 +16,20 @@
     State    : Get-WingetFWState / Set-WingetFWState read and write one JSON file per app.
                Machine: ProgramData\WingetFW\State (SYSTEM and Administrators write, Users read).
                User   : LOCALAPPDATA\WingetFW\State.
+    Mods     : Import-WingetFWMod finds, fetches, checks and loads the global and the app mod file;
+               Invoke-WingetFWModSection runs one section (PreInstall, Install, PostInstall ...).
+               Cache: ProgramData\WingetFW\Cache (SYSTEM and Administrators only) or LOCALAPPDATA\WingetFW\Cache.
 
     Works in Windows PowerShell 5.1 and PowerShell 7.
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 1.1.0
+    Version      : 1.2.0
 
     Release notes
+    1.2.0  - Import-WingetFWMod and Invoke-WingetFWModSection (phase FW-3): ScriptRoot (local, UNC, Azure blob),
+             ScriptSyncMode OnDemand/Mirror, UseCachedScriptsWhenOffline, AllowedScriptSources,
+             RequireSignedScripts/TrustedSigners, load check (only functions and $Settings at the top level).
     1.1.0  - Get-WingetFWSetting reads ADMX list keys: a subkey with values 1, 2, 3 ... is returned as an
              ordered array, a subkey with named values as an ordered name/value table.
            - Get-WingetFWSetting -AsBoolean converts 1/0, true/false and DWORD values to $true/$false.
@@ -86,8 +92,8 @@ function Get-WingetFWRegistryValue
 
 function Protect-WingetFWFolder
 {
-    # SYSTEM and Administrators full control, Users read, owner Administrators, no inherited rules.
-    param ([string]$Path)
+    # SYSTEM and Administrators full control, Users read (not with -NoUsers), owner Administrators, no inherited rules.
+    param ([string]$Path, [switch]$NoUsers)
 
     if (-not (Test-Path -LiteralPath $Path -PathType Container))
     {
@@ -100,7 +106,9 @@ function Protect-WingetFWFolder
     $acl = New-Object -TypeName Security.AccessControl.DirectorySecurity
     $acl.SetOwner((New-Object -TypeName Security.Principal.SecurityIdentifier -ArgumentList $Script:SidAdministrators))
     $acl.SetAccessRuleProtection($true, $false)
-    foreach ($rule in @(@($Script:SidSystem, 'FullControl'), @($Script:SidAdministrators, 'FullControl'), @($Script:SidUsers, 'ReadAndExecute')))
+    $rules = @(@($Script:SidSystem, 'FullControl'), @($Script:SidAdministrators, 'FullControl'))
+    if (-not $NoUsers) { $rules += , @($Script:SidUsers, 'ReadAndExecute') }
+    foreach ($rule in $rules)
     {
         $sid = New-Object -TypeName Security.Principal.SecurityIdentifier -ArgumentList $rule[0]
         $acl.AddAccessRule((New-Object -TypeName Security.AccessControl.FileSystemAccessRule -ArgumentList $sid, $rule[1], 'ContainerInherit, ObjectInherit', 'None', 'Allow'))
@@ -260,7 +268,7 @@ function Get-WingetFWSetting
     $text = if ($source -eq 'None') { '<not set>' }
     elseif ($value -is [System.Collections.IDictionary]) { @($value.GetEnumerator() | ForEach-Object { '{0}={1}' -f $_.Key, $_.Value }) -join '; ' }
     else { @($value) -join '; ' }
-    $text = $text -replace '(?i)(sig=)[^&;\s]+', '$1***'
+    $text = ConvertTo-WingetFWLogText $text
     Write-WingetFWLog -Message "Setting [$Name] = [$text] from [$source]" -Source 'Get-WingetFWSetting'
     [pscustomobject]@{ Name = $Name; Value = $value; Source = $source }
 }
@@ -545,4 +553,476 @@ function Set-WingetFWState
 
 #endregion
 
-Export-ModuleMember -Function 'Get-WingetFWSetting', 'Write-WingetFWLog', 'Register-WingetFWEventLog', 'Write-WingetFWEvent', 'Get-WingetFWState', 'Set-WingetFWState'
+#region Mods
+
+function ConvertTo-WingetFWLogText
+{
+    param ([string]$Text)
+    $Text -replace '(?i)(sig=)[^&;\s]+', '$1***'
+}
+
+function Test-WingetFWUrl
+{
+    param ([string]$Location)
+    $Location -match '^https?://'
+}
+
+function Get-WingetFWNormalizedLocation
+{
+    # Lower-case URL without query or full path, ending with a separator, for prefix checks.
+    param ([string]$Location)
+    if (Test-WingetFWUrl -Location $Location)
+    {
+        return (([Uri]$Location).GetLeftPart([UriPartial]::Path).TrimEnd('/') + '/').ToLowerInvariant()
+    }
+    ([IO.Path]::GetFullPath($Location).TrimEnd('\') + '\').ToLowerInvariant()
+}
+
+function Test-WingetFWAllowedLocation
+{
+    param ([string]$Location, [string[]]$Allowed)
+    $normalized = Get-WingetFWNormalizedLocation -Location $Location
+    foreach ($prefix in @($Allowed | Where-Object { $_ }))
+    {
+        if ((Test-WingetFWUrl -Location $prefix) -ne (Test-WingetFWUrl -Location $Location)) { continue }
+        if ($normalized.StartsWith((Get-WingetFWNormalizedLocation -Location $prefix), [StringComparison]::Ordinal)) { return $true }
+    }
+    $false
+}
+
+function Get-WingetFWCacheName
+{
+    # One cache folder per ScriptRoot, named by a hash of the root without the SAS query.
+    param ([string]$Root)
+    $sha = [Security.Cryptography.SHA256]::Create()
+    try
+    {
+        $hash = $sha.ComputeHash([Text.Encoding]::UTF8.GetBytes((Get-WingetFWNormalizedLocation -Location $Root)))
+    }
+    finally
+    {
+        $sha.Dispose()
+    }
+    -join ($hash[0..7] | ForEach-Object { $_.ToString('x2') })
+}
+
+function Get-WingetFWModUri
+{
+    param ([string]$Root, [string]$RelativePath)
+    $uri = [Uri]$Root
+    $path = @($RelativePath -split '[\\/]' | ForEach-Object { [Uri]::EscapeDataString($_) }) -join '/'
+    '{0}/{1}{2}' -f $uri.GetLeftPart([UriPartial]::Path).TrimEnd('/'), $path, $uri.Query
+}
+
+function Invoke-WingetFWDownload
+{
+    # Returns Found (file written to OutFile), NotFound (HTTP 404) or Unreachable.
+    param ([string]$Uri, [string]$OutFile)
+    $ProgressPreference = 'SilentlyContinue'
+    $folder = Split-Path -Path $OutFile -Parent
+    if (-not (Test-Path -LiteralPath $folder -PathType Container)) { $null = New-Item -Path $folder -ItemType Directory -Force }
+    $temp = "$OutFile.download"
+    try
+    {
+        $null = Invoke-WebRequest -Uri $Uri -OutFile $temp -UseBasicParsing -ErrorAction Stop
+        Move-Item -LiteralPath $temp -Destination $OutFile -Force
+        'Found'
+    }
+    catch
+    {
+        Remove-Item -LiteralPath $temp -Force -ErrorAction SilentlyContinue
+        $status = 0
+        if ($_.Exception.PSObject.Properties['Response'] -and $_.Exception.Response) { $status = [int]$_.Exception.Response.StatusCode }
+        if ($status -eq 404) { return 'NotFound' }
+        Write-WingetFWLog -Message "Download of [$(ConvertTo-WingetFWLogText $Uri)] failed: $($_.Exception.Message)" -Severity 2 -Source 'Import-WingetFWMod'
+        'Unreachable'
+    }
+}
+
+function Test-WingetFWRelativePath
+{
+    param ([string]$RelativePath)
+    $RelativePath -and -not [IO.Path]::IsPathRooted($RelativePath) -and -not @($RelativePath -split '[\\/]' | Where-Object { $_ -in @('', '.', '..') -or $_ -match ':' }).Count
+}
+
+function Get-WingetFWBlobList
+{
+    # Blob names below the ScriptRoot URL (Azure Blob "List Blobs", needs read + list); $null when it can't be read.
+    param ([string]$Root)
+    $uri = [Uri]$Root
+    $segments = @($uri.AbsolutePath.Trim('/') -split '/')
+    $prefix = @($segments | Select-Object -Skip 1) -join '/'
+    if ($prefix) { $prefix += '/' }
+    $base = '{0}://{1}/{2}' -f $uri.Scheme, $uri.Authority, $segments[0]
+    $query = $uri.Query.TrimStart('?')
+    $names = New-Object -TypeName System.Collections.Generic.List[string]
+    $marker = ''
+    do
+    {
+        $listUri = '{0}?restype=container&comp=list&prefix={1}' -f $base, [Uri]::EscapeDataString($prefix)
+        if ($marker) { $listUri += '&marker=' + [Uri]::EscapeDataString($marker) }
+        if ($query) { $listUri += '&' + $query }
+        try
+        {
+            $response = Invoke-WebRequest -Uri $listUri -UseBasicParsing -ErrorAction Stop
+        }
+        catch
+        {
+            Write-WingetFWLog -Message "Listing [$(ConvertTo-WingetFWLogText $Root)] failed: $($_.Exception.Message)" -Severity 2 -Source 'Import-WingetFWMod'
+            return $null
+        }
+        $content = $response.Content
+        if ($content -is [byte[]]) { $content = [Text.Encoding]::UTF8.GetString($content) }
+        [xml]$xml = $content.TrimStart([char]0xFEFF)
+        foreach ($blob in @($xml.EnumerationResults.Blobs.Blob))
+        {
+            if ($blob -and $blob.Name.StartsWith($prefix)) { $names.Add($blob.Name.Substring($prefix.Length)) }
+        }
+        $marker = [string]$xml.EnumerationResults.NextMarker
+    }
+    while ($marker)
+    , $names.ToArray()
+}
+
+function Sync-WingetFWModRoot
+{
+    # Mirror: copies all .ps1 files of a ScriptRoot to its cache folder and removes the others. $false = can't be reached.
+    param ([string]$Root, [string]$CacheDir)
+    $copied = New-Object -TypeName System.Collections.Generic.List[string]
+    if (Test-WingetFWUrl -Location $Root)
+    {
+        $names = Get-WingetFWBlobList -Root $Root
+        if ($null -eq $names) { return $false }
+        foreach ($name in @($names | Where-Object { $_ -like '*.ps1' }))
+        {
+            $relative = $name -replace '/', '\'
+            if (-not (Test-WingetFWRelativePath -RelativePath $relative)) { continue }
+            $status = Invoke-WingetFWDownload -Uri (Get-WingetFWModUri -Root $Root -RelativePath $relative) -OutFile (Join-Path -Path $CacheDir -ChildPath $relative)
+            if ($status -eq 'Unreachable') { return $false }
+            if ($status -eq 'Found') { $copied.Add($relative.ToLowerInvariant()) }
+        }
+    }
+    else
+    {
+        if (-not (Test-Path -LiteralPath $Root -PathType Container)) { return $false }
+        $rootFull = (Get-Item -LiteralPath $Root).FullName.TrimEnd('\')
+        foreach ($file in @(Get-ChildItem -LiteralPath $Root -Recurse -File -Filter '*.ps1'))
+        {
+            $relative = $file.FullName.Substring($rootFull.Length + 1)
+            $target = Join-Path -Path $CacheDir -ChildPath $relative
+            $targetFolder = Split-Path -Path $target -Parent
+            if (-not (Test-Path -LiteralPath $targetFolder -PathType Container)) { $null = New-Item -Path $targetFolder -ItemType Directory -Force }
+            Copy-Item -LiteralPath $file.FullName -Destination $target -Force
+            $copied.Add($relative.ToLowerInvariant())
+        }
+    }
+    if (Test-Path -LiteralPath $CacheDir -PathType Container)
+    {
+        $cacheFull = (Get-Item -LiteralPath $CacheDir).FullName.TrimEnd('\')
+        foreach ($cached in @(Get-ChildItem -LiteralPath $CacheDir -Recurse -File))
+        {
+            if (-not $copied.Contains($cached.FullName.Substring($cacheFull.Length + 1).ToLowerInvariant()))
+            {
+                Remove-Item -LiteralPath $cached.FullName -Force
+            }
+        }
+    }
+    Write-WingetFWLog -Message "Mirrored $($copied.Count) mod file(s) from [$(ConvertTo-WingetFWLogText $Root)]" -Source 'Import-WingetFWMod'
+    $true
+}
+
+function Get-WingetFWModFromRoot
+{
+    # Returns Status (Found, NotFound, Unreachable), Bytes and Origin of one mod file in one ScriptRoot.
+    param ([string]$Root, [string]$RelativePath, [string]$CacheDir, [string]$SyncMode)
+    $cacheFile = Join-Path -Path $CacheDir -ChildPath $RelativePath
+    $isUrl = Test-WingetFWUrl -Location $Root
+    $origin = if ($isUrl) { ConvertTo-WingetFWLogText (Get-WingetFWModUri -Root $Root -RelativePath $RelativePath) } else { Join-Path -Path $Root -ChildPath $RelativePath }
+    $notFound = @{ Status = 'NotFound'; Bytes = $null; Origin = $origin }
+
+    if ($SyncMode -eq 'Mirror')
+    {
+        if (-not (Test-Path -LiteralPath $cacheFile -PathType Leaf)) { return $notFound }
+        return @{ Status = 'Found'; Bytes = [IO.File]::ReadAllBytes($cacheFile); Origin = $origin }
+    }
+    if ($isUrl)
+    {
+        $status = Invoke-WingetFWDownload -Uri (Get-WingetFWModUri -Root $Root -RelativePath $RelativePath) -OutFile $cacheFile
+        if ($status -eq 'Found') { return @{ Status = 'Found'; Bytes = [IO.File]::ReadAllBytes($cacheFile); Origin = $origin } }
+        if ($status -eq 'NotFound') { Remove-Item -LiteralPath $cacheFile -Force -ErrorAction SilentlyContinue; return $notFound }
+        return @{ Status = 'Unreachable'; Bytes = $null; Origin = $origin }
+    }
+    if (-not (Test-Path -LiteralPath $Root -PathType Container)) { return @{ Status = 'Unreachable'; Bytes = $null; Origin = $origin } }
+    if (-not (Test-Path -LiteralPath $origin -PathType Leaf))
+    {
+        Remove-Item -LiteralPath $cacheFile -Force -ErrorAction SilentlyContinue
+        return $notFound
+    }
+    # Read once; the same bytes are checked, cached and loaded
+    $bytes = [IO.File]::ReadAllBytes($origin)
+    $cacheFolder = Split-Path -Path $cacheFile -Parent
+    if (-not (Test-Path -LiteralPath $cacheFolder -PathType Container)) { $null = New-Item -Path $cacheFolder -ItemType Directory -Force }
+    [IO.File]::WriteAllBytes($cacheFile, $bytes)
+    @{ Status = 'Found'; Bytes = $bytes; Origin = $origin }
+}
+
+function ConvertTo-WingetFWMod
+{
+    # Signature check, load check and loading of one mod file.
+    param ([byte[]]$Bytes, [string]$Origin, [string]$Name, [string]$RequireSigned, [string[]]$TrustedSigners)
+
+    if ($RequireSigned -ne 'Off')
+    {
+        # Get-AuthenticodeSignature -Content only accepts UTF-16 text, so the same bytes are checked from a temp file
+        $tempFile = Join-Path -Path ([IO.Path]::GetTempPath()) -ChildPath ('WingetFW-{0}.ps1' -f [guid]::NewGuid().ToString('N'))
+        try
+        {
+            [IO.File]::WriteAllBytes($tempFile, $Bytes)
+            $signature = Get-AuthenticodeSignature -LiteralPath $tempFile
+        }
+        finally
+        {
+            Remove-Item -LiteralPath $tempFile -Force -ErrorAction SilentlyContinue
+        }
+        if ($signature.Status -ne 'Valid') { throw "Mod file [$Origin] is not validly signed ($($signature.Status)). RequireSignedScripts is $RequireSigned." }
+        $thumbprint = $signature.SignerCertificate.Thumbprint
+        if ($RequireSigned -eq 'TrustedSigners' -and $thumbprint -notin $TrustedSigners)
+        {
+            throw "Mod file [$Origin] is signed by [$($signature.SignerCertificate.Subject)] ($thumbprint), which is not in TrustedSigners."
+        }
+        Write-WingetFWLog -Message "Mod file [$Origin] is signed by [$($signature.SignerCertificate.Subject)] ($thumbprint)" -Source 'Import-WingetFWMod'
+    }
+
+    $reader = New-Object -TypeName IO.StreamReader -ArgumentList (New-Object -TypeName IO.MemoryStream -ArgumentList (, $Bytes)), (New-Object -TypeName Text.UTF8Encoding -ArgumentList $false), $true
+    try { $text = $reader.ReadToEnd() } finally { $reader.Dispose() }
+
+    $tokens = $null
+    $parseErrors = $null
+    $ast = [System.Management.Automation.Language.Parser]::ParseInput($text, [ref]$tokens, [ref]$parseErrors)
+    if ($parseErrors.Count) { throw "Mod file [$Origin] has a syntax error on line $($parseErrors[0].Extent.StartLineNumber): $($parseErrors[0].Message)" }
+    if ($ast.UsingStatements.Count -or $ast.ParamBlock -or $ast.BeginBlock -or $ast.ProcessBlock -or $ast.DynamicParamBlock)
+    {
+        throw "Mod file [$Origin] is refused: only function definitions and `$Settings are allowed (no using, param, begin or process blocks)."
+    }
+    $settings = @{}
+    $functions = New-Object -TypeName System.Collections.Generic.List[string]
+    $hasSettings = $false
+    foreach ($statement in @($ast.EndBlock.Statements))
+    {
+        if ($statement -is [System.Management.Automation.Language.FunctionDefinitionAst])
+        {
+            $functions.Add($statement.Name)
+            continue
+        }
+        $isSettings = $statement -is [System.Management.Automation.Language.AssignmentStatementAst] -and
+            $statement.Operator -eq 'Equals' -and
+            $statement.Left -is [System.Management.Automation.Language.VariableExpressionAst] -and
+            $statement.Left.VariablePath.UserPath -eq 'Settings' -and
+            $statement.Right -is [System.Management.Automation.Language.CommandExpressionAst] -and
+            $statement.Right.Expression -is [System.Management.Automation.Language.HashtableAst]
+        if (-not $isSettings -or $hasSettings)
+        {
+            throw "Mod file [$Origin] is refused: line $($statement.Extent.StartLineNumber) runs code when the file is loaded. Only function definitions and one `$Settings = @{ ... } are allowed at the top level."
+        }
+        try
+        {
+            $settings = $statement.Right.Expression.SafeGetValue()
+        }
+        catch
+        {
+            throw "Mod file [$Origin] is refused: `$Settings on line $($statement.Extent.StartLineNumber) may only contain fixed values ($($_.Exception.Message))."
+        }
+        $hasSettings = $true
+    }
+
+    $module = New-Object -TypeName System.Management.Automation.PSModuleInfo -ArgumentList ([scriptblock]::Create($text))
+    Write-WingetFWLog -Message "Loaded $Name mod [$Origin] with sections: $(@($functions) -join ', ')" -Source 'Import-WingetFWMod'
+    [pscustomobject]@{ Name = $Name; Origin = $Origin; Settings = $settings; Functions = $functions.ToArray(); Module = $module }
+}
+
+function Import-WingetFWMod
+{
+    <#
+    .SYNOPSIS
+        Finds, fetches, checks and loads the global mod file and the app mod file.
+    .DESCRIPTION
+        Files: <ScriptRoot>\_WingetFW.ps1 (global) and <ScriptRoot>\<Source>\<Id>.ps1 (app). Each ScriptRoot (local folder,
+        UNC share or Azure blob container URL with SAS) is searched in order; the first one with the file wins.
+        Settings used: ScriptRoot (default: <PackagePath>\Mods), ScriptSyncMode (OnDemand, Mirror), UseCachedScriptsWhenOffline,
+        AllowedScriptSources (default: <PackagePath> and ProgramData\WingetFW\Scripts), RequireSignedScripts (Off, Signed,
+        TrustedSigners) and TrustedSigners.
+        A ScriptRoot that is not allowed, a root that can't be reached (without the cache option), a bad signature or a file
+        that runs code when it is loaded throws an error.
+        Returns an object with Global and App; each is $null or a mod with Name, Origin, Settings, Functions and Module.
+    .PARAMETER Id
+        Package ID for the app mod. Empty: only the global mod.
+    .PARAMETER Source
+        winget source, the folder of the app mod.
+    .PARAMETER Scope
+        Machine: cache in ProgramData\WingetFW\Cache (needs administrator rights). User: LOCALAPPDATA\WingetFW\Cache.
+    .PARAMETER Config
+        Settings from the package config file.
+    .PARAMETER PackagePath
+        Package folder, used for the default ScriptRoot and AllowedScriptSources.
+    .PARAMETER CacheRoot
+        Other cache folder (tests).
+    .PARAMETER PolicyPath
+        Policy registry key (tests).
+    .PARAMETER LocalPath
+        Local registry key (tests).
+    .EXAMPLE
+        $mods = Import-WingetFWMod -Id '7zip.7zip' -Source 'winget' -Config $config -PackagePath 'C:\Package'
+    #>
+    [CmdletBinding()]
+    [OutputType([pscustomobject])]
+    param
+    (
+        [Parameter()]
+        [AllowEmptyString()]
+        [string]$Id,
+
+        [Parameter()]
+        [string]$Source = 'winget',
+
+        [Parameter()]
+        [ValidateSet('Machine', 'User')]
+        [string]$Scope = 'Machine',
+
+        [Parameter()]
+        [System.Collections.IDictionary]$Config = @{},
+
+        [Parameter(Mandatory = $true)]
+        [string]$PackagePath,
+
+        [Parameter()]
+        [string]$CacheRoot,
+
+        [Parameter()]
+        [string]$PolicyPath = 'HKLM:\SOFTWARE\Policies\WingetFW',
+
+        [Parameter()]
+        [string]$LocalPath = 'HKLM:\SOFTWARE\WingetFW'
+    )
+
+    $settingParams = @{ Config = $Config; PolicyPath = $PolicyPath; LocalPath = $LocalPath }
+    $roots = @((Get-WingetFWSetting -Name 'ScriptRoot' -Default @(Join-Path -Path $PackagePath -ChildPath 'Mods') @settingParams).Value | Where-Object { $_ })
+    $syncMode = [string](Get-WingetFWSetting -Name 'ScriptSyncMode' -Default 'OnDemand' @settingParams).Value
+    if ($syncMode -notin @('OnDemand', 'Mirror')) { throw "ScriptSyncMode [$syncMode] is not valid. Use OnDemand or Mirror." }
+    $useCache = (Get-WingetFWSetting -Name 'UseCachedScriptsWhenOffline' -Default $false -AsBoolean @settingParams).Value
+    $requireSigned = [string](Get-WingetFWSetting -Name 'RequireSignedScripts' -Default 'Off' @settingParams).Value
+    if ($requireSigned -notin @('Off', 'Signed', 'TrustedSigners')) { throw "RequireSignedScripts [$requireSigned] is not valid. Use Off, Signed or TrustedSigners." }
+    $trustedSigners = @(@((Get-WingetFWSetting -Name 'TrustedSigners' @settingParams).Value) | Where-Object { $_ } | ForEach-Object { ([string]$_ -replace '\s', '').ToUpperInvariant() })
+    if ($requireSigned -eq 'TrustedSigners' -and -not $trustedSigners.Count) { throw 'RequireSignedScripts is TrustedSigners, but TrustedSigners is empty.' }
+    $allowed = @((Get-WingetFWSetting -Name 'AllowedScriptSources' -Default @($PackagePath, (Join-Path -Path $env:ProgramData -ChildPath 'WingetFW\Scripts')) @settingParams).Value)
+
+    foreach ($root in $roots)
+    {
+        if (-not (Test-WingetFWAllowedLocation -Location $root -Allowed $allowed))
+        {
+            throw "ScriptRoot [$(ConvertTo-WingetFWLogText $root)] is not in AllowedScriptSources."
+        }
+        if ($root -match '^http://') { Write-WingetFWLog -Message "ScriptRoot [$(ConvertTo-WingetFWLogText $root)] uses http, not https" -Severity 2 -Source 'Import-WingetFWMod' }
+    }
+
+    $idPattern = '^(?!\.{1,2}$)[^\\/:*?"<>|\x00-\x1f]+$'
+    $wanted = @(@{ Name = 'Global'; Relative = '_WingetFW.ps1' })
+    if ($Id)
+    {
+        if ($Id -notmatch $idPattern -or $Source -notmatch $idPattern) { throw "Package ID [$Id] or source [$Source] can't be used as a mod file name." }
+        $wanted += @{ Name = 'App'; Relative = "$Source\$Id.ps1" }
+    }
+
+    if (-not $CacheRoot)
+    {
+        if ($Scope -eq 'Machine')
+        {
+            $machineRoot = Get-WingetFWRoot -Scope 'Machine'
+            Protect-WingetFWFolder -Path $machineRoot
+            $CacheRoot = Join-Path -Path $machineRoot -ChildPath 'Cache'
+            Protect-WingetFWFolder -Path $CacheRoot -NoUsers
+        }
+        else
+        {
+            $CacheRoot = Join-Path -Path (Get-WingetFWRoot -Scope 'User') -ChildPath 'Cache'
+        }
+    }
+
+    $result = [ordered]@{ Global = $null; App = $null }
+    foreach ($root in $roots)
+    {
+        $logRoot = ConvertTo-WingetFWLogText $root
+        $cacheDir = Join-Path -Path $CacheRoot -ChildPath (Get-WingetFWCacheName -Root $root)
+        if ($syncMode -eq 'Mirror' -and -not (Sync-WingetFWModRoot -Root $root -CacheDir $cacheDir))
+        {
+            if (-not $useCache) { throw "ScriptRoot [$logRoot] can't be reached and UseCachedScriptsWhenOffline is off." }
+            Write-WingetFWLog -Message "ScriptRoot [$logRoot] can't be reached, using the cached copy" -Severity 2 -Source 'Import-WingetFWMod'
+        }
+        foreach ($file in $wanted)
+        {
+            if ($result[$file.Name]) { continue }
+            $found = Get-WingetFWModFromRoot -Root $root -RelativePath $file.Relative -CacheDir $cacheDir -SyncMode $syncMode
+            if ($found.Status -eq 'Unreachable')
+            {
+                if (-not $useCache) { throw "ScriptRoot [$logRoot] can't be reached and UseCachedScriptsWhenOffline is off." }
+                $cacheFile = Join-Path -Path $cacheDir -ChildPath $file.Relative
+                if (-not (Test-Path -LiteralPath $cacheFile -PathType Leaf)) { continue }
+                Write-WingetFWLog -Message "ScriptRoot [$logRoot] can't be reached, using the cached copy of [$($file.Relative)]" -Severity 2 -Source 'Import-WingetFWMod'
+                $found = @{ Status = 'Found'; Bytes = [IO.File]::ReadAllBytes($cacheFile); Origin = "$($found.Origin) (cached copy)" }
+            }
+            if ($found.Status -eq 'Found')
+            {
+                $result[$file.Name] = ConvertTo-WingetFWMod -Bytes $found.Bytes -Origin $found.Origin -Name $file.Name -RequireSigned $requireSigned -TrustedSigners $trustedSigners
+            }
+        }
+    }
+    foreach ($file in $wanted)
+    {
+        if (-not $result[$file.Name]) { Write-WingetFWLog -Message "No $($file.Name.ToLower()) mod file ($($file.Relative))" -Source 'Import-WingetFWMod' }
+    }
+    [pscustomobject]$result
+}
+
+function Invoke-WingetFWModSection
+{
+    <#
+    .SYNOPSIS
+        Runs one section (function) of a mod file, for example PreInstall. Does nothing when the mod has no such section.
+    .DESCRIPTION
+        The section runs in the mod's own scope and can use $WingetFW (the -Context object).
+        Returns $false when the section returned $false, $true when it ran, and nothing when the mod has no such section.
+    .PARAMETER Mod
+        A mod from Import-WingetFWMod.
+    .PARAMETER Section
+        Function name, for example PreInstall, Install, PostInstall, NotInstalled.
+    .PARAMETER Context
+        Object the section sees as $WingetFW, for example Action, Id, Source, ExitCode.
+    .EXAMPLE
+        Invoke-WingetFWModSection -Mod $mods.App -Section 'PreInstall' -Context $context
+    #>
+    [CmdletBinding()]
+    param
+    (
+        [Parameter(Mandatory = $true)]
+        [psobject]$Mod,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Section,
+
+        [Parameter()]
+        [psobject]$Context
+    )
+
+    if ($Mod.Functions -notcontains $Section) { return }
+    Write-WingetFWLog -Message "Running [$Section] from the $($Mod.Name.ToLower()) mod [$($Mod.Origin)]" -Source 'Invoke-WingetFWModSection'
+    $output = @(& $Mod.Module { param ($sectionName, $sectionContext) $script:WingetFW = $sectionContext; & $sectionName } $Section $Context)
+    if ($output.Count -and $output[-1] -is [bool] -and -not $output[-1])
+    {
+        Write-WingetFWLog -Message "[$Section] from the $($Mod.Name.ToLower()) mod returned `$false" -Source 'Invoke-WingetFWModSection'
+        return $false
+    }
+    $true
+}
+
+#endregion
+
+Export-ModuleMember -Function 'Get-WingetFWSetting', 'Write-WingetFWLog', 'Register-WingetFWEventLog', 'Write-WingetFWEvent', 'Get-WingetFWState', 'Set-WingetFWState', 'Import-WingetFWMod', 'Invoke-WingetFWModSection'

@@ -6,6 +6,7 @@
     <stringTable>
       <string id="SUPPORTED_WingetFW_5_0">WingetFW 5.0.0 or later</string>
       <string id="Cat_WingetFW">WingetFW</string>
+      <string id="Cat_Mods">Mod files</string>
 
       <string id="DefaultSilent">Add -silent by default</string>
       <string id="DefaultSilent_Help">Adds -silent to winget install, uninstall, upgrade and repair when the command line has none of -silent, -interactive and -override.
@@ -55,6 +56,51 @@ Not configured: the next setting level is used. Built-in default: enabled; the p
       <string id="VCRedistCheck_Help">Admin mode: installs the Visual C++ 2015-2022 runtime (x64/x86) when it is missing. winget.exe run as SYSTEM fails with 0xC000007B without it.
 
 Not configured: the next setting level is used. Built-in default: enabled; the package config file sets it to disabled.</string>
+
+      <string id="ScriptRoot">Mod file locations (ScriptRoot)</string>
+      <string id="ScriptRoot_Help">Where WingetFW looks for mod files, in this order. The first location that has a file wins.
+
+One location per line: a local folder (C:\ProgramData\WingetFW\Scripts), a UNC share (\\fs01\WingetFW\Mods) or an Azure blob container URL with a SAS (https://contoso.blob.core.windows.net/mods?sv=...&amp;sp=r&amp;sig=...).
+
+Files: _WingetFW.ps1 (all apps) and &lt;source&gt;\&lt;package id&gt;.ps1, for example winget\7zip.7zip.ps1.
+
+Every location must also be in Allowed mod file locations. Users can read this policy: use a read-only SAS (read + list for Mirror) and signed mod files.
+
+Not configured: the Mods folder in the WingetFW package.</string>
+
+      <string id="ScriptSyncMode">Mod file download mode</string>
+      <string id="ScriptSyncMode_Help">OnDemand: WingetFW only fetches the mod files it needs for the current app. The SAS needs read.
+Mirror: WingetFW first copies all .ps1 files of each location to its cache and removes files that are gone. The SAS needs read and list.
+
+Not configured: OnDemand.</string>
+      <string id="ScriptSyncMode_OnDemand">OnDemand</string>
+      <string id="ScriptSyncMode_Mirror">Mirror</string>
+
+      <string id="UseCachedScriptsWhenOffline">Use cached mod files when a location can't be reached</string>
+      <string id="UseCachedScriptsWhenOffline_Help">Enabled: when a mod file location can't be reached, WingetFW uses the copy in its cache (ProgramData\WingetFW\Cache, only SYSTEM and Administrators).
+Disabled or not configured: the deployment stops with exit code 60001.</string>
+
+      <string id="AllowedScriptSources">Allowed mod file locations</string>
+      <string id="AllowedScriptSources_Help">Path or URL prefixes. Every mod file location must start with one of them, otherwise the deployment stops with exit code 60001. This stops mod files from unknown shares or URLs.
+
+One prefix per line, for example \\fs01\WingetFW\ or https://contoso.blob.core.windows.net/mods/. A SAS in a URL is ignored.
+
+Not configured: the WingetFW package folder and C:\ProgramData\WingetFW\Scripts.</string>
+
+      <string id="RequireSignedScripts">Require signed mod files</string>
+      <string id="RequireSignedScripts_Help">Off: mod files do not need a signature.
+Signed: mod files must have a valid Authenticode signature from a certificate the device trusts.
+TrustedSigners: like Signed, and the signing certificate must be in Trusted signers.
+
+The signature is checked on every run, also for cached copies. A file that fails the check stops the deployment with exit code 60001.
+
+Not configured: Off.</string>
+      <string id="RequireSignedScripts_Off">Off</string>
+      <string id="RequireSignedScripts_Signed">Signed</string>
+      <string id="RequireSignedScripts_TrustedSigners">TrustedSigners</string>
+
+      <string id="TrustedSigners">Trusted signers</string>
+      <string id="TrustedSigners_Help">Thumbprints of the certificates that may sign mod files, one per line. Used when Require signed mod files is TrustedSigners.</string>
     </stringTable>
     <presentationTable>
       <presentation id="DefaultSource">
@@ -75,6 +121,21 @@ Not configured: the next setting level is used. Built-in default: enabled; the p
         <textBox refId="ProxyBypass">
           <label>Bypass list (separated by semicolons):</label>
         </textBox>
+      </presentation>
+      <presentation id="ScriptRoot">
+        <listBox refId="ScriptRoot">Locations, in search order</listBox>
+      </presentation>
+      <presentation id="ScriptSyncMode">
+        <dropdownList refId="ScriptSyncMode" defaultItem="0">Mode:</dropdownList>
+      </presentation>
+      <presentation id="AllowedScriptSources">
+        <listBox refId="AllowedScriptSources">Allowed path or URL prefixes</listBox>
+      </presentation>
+      <presentation id="RequireSignedScripts">
+        <dropdownList refId="RequireSignedScripts" defaultItem="1">Signature check:</dropdownList>
+      </presentation>
+      <presentation id="TrustedSigners">
+        <listBox refId="TrustedSigners">Certificate thumbprints</listBox>
       </presentation>
     </presentationTable>
   </resources>

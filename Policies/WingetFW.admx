@@ -12,6 +12,9 @@
   </supportedOn>
   <categories>
     <category name="WingetFW" displayName="$(string.Cat_WingetFW)" />
+    <category name="Mods" displayName="$(string.Cat_Mods)">
+      <parentCategory ref="WingetFW" />
+    </category>
   </categories>
   <policies>
     <policy name="DefaultSilent" class="Machine" displayName="$(string.DefaultSilent)" explainText="$(string.DefaultSilent_Help)" key="Software\Policies\WingetFW" valueName="DefaultSilent">
@@ -60,6 +63,54 @@
       <supportedOn ref="SUPPORTED_WingetFW_5_0" />
       <enabledValue><decimal value="1" /></enabledValue>
       <disabledValue><decimal value="0" /></disabledValue>
+    </policy>
+    <policy name="ScriptRoot" class="Machine" displayName="$(string.ScriptRoot)" explainText="$(string.ScriptRoot_Help)" key="Software\Policies\WingetFW\ScriptRoot" presentation="$(presentation.ScriptRoot)">
+      <parentCategory ref="Mods" />
+      <supportedOn ref="SUPPORTED_WingetFW_5_0" />
+      <elements>
+        <list id="ScriptRoot" key="Software\Policies\WingetFW\ScriptRoot" valuePrefix="" />
+      </elements>
+    </policy>
+    <policy name="ScriptSyncMode" class="Machine" displayName="$(string.ScriptSyncMode)" explainText="$(string.ScriptSyncMode_Help)" key="Software\Policies\WingetFW" presentation="$(presentation.ScriptSyncMode)">
+      <parentCategory ref="Mods" />
+      <supportedOn ref="SUPPORTED_WingetFW_5_0" />
+      <elements>
+        <enum id="ScriptSyncMode" valueName="ScriptSyncMode" required="true">
+          <item displayName="$(string.ScriptSyncMode_OnDemand)"><value><string>OnDemand</string></value></item>
+          <item displayName="$(string.ScriptSyncMode_Mirror)"><value><string>Mirror</string></value></item>
+        </enum>
+      </elements>
+    </policy>
+    <policy name="UseCachedScriptsWhenOffline" class="Machine" displayName="$(string.UseCachedScriptsWhenOffline)" explainText="$(string.UseCachedScriptsWhenOffline_Help)" key="Software\Policies\WingetFW" valueName="UseCachedScriptsWhenOffline">
+      <parentCategory ref="Mods" />
+      <supportedOn ref="SUPPORTED_WingetFW_5_0" />
+      <enabledValue><decimal value="1" /></enabledValue>
+      <disabledValue><decimal value="0" /></disabledValue>
+    </policy>
+    <policy name="AllowedScriptSources" class="Machine" displayName="$(string.AllowedScriptSources)" explainText="$(string.AllowedScriptSources_Help)" key="Software\Policies\WingetFW\AllowedScriptSources" presentation="$(presentation.AllowedScriptSources)">
+      <parentCategory ref="Mods" />
+      <supportedOn ref="SUPPORTED_WingetFW_5_0" />
+      <elements>
+        <list id="AllowedScriptSources" key="Software\Policies\WingetFW\AllowedScriptSources" valuePrefix="" />
+      </elements>
+    </policy>
+    <policy name="RequireSignedScripts" class="Machine" displayName="$(string.RequireSignedScripts)" explainText="$(string.RequireSignedScripts_Help)" key="Software\Policies\WingetFW" presentation="$(presentation.RequireSignedScripts)">
+      <parentCategory ref="Mods" />
+      <supportedOn ref="SUPPORTED_WingetFW_5_0" />
+      <elements>
+        <enum id="RequireSignedScripts" valueName="RequireSignedScripts" required="true">
+          <item displayName="$(string.RequireSignedScripts_Off)"><value><string>Off</string></value></item>
+          <item displayName="$(string.RequireSignedScripts_Signed)"><value><string>Signed</string></value></item>
+          <item displayName="$(string.RequireSignedScripts_TrustedSigners)"><value><string>TrustedSigners</string></value></item>
+        </enum>
+      </elements>
+    </policy>
+    <policy name="TrustedSigners" class="Machine" displayName="$(string.TrustedSigners)" explainText="$(string.TrustedSigners_Help)" key="Software\Policies\WingetFW\TrustedSigners" presentation="$(presentation.TrustedSigners)">
+      <parentCategory ref="Mods" />
+      <supportedOn ref="SUPPORTED_WingetFW_5_0" />
+      <elements>
+        <list id="TrustedSigners" key="Software\Policies\WingetFW\TrustedSigners" valuePrefix="" />
+      </elements>
     </policy>
   </policies>
 </policyDefinitions>

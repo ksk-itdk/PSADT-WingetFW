@@ -598,8 +598,8 @@ function Install-ADTDeployment
     ## <Perform Installation tasks here>
 	Write-ADTLogEntry -Message "Mode $Mode" -Source 'Mode'
 	IF ($wingetmanifest -or $id -or $name -or $moniker -or $productcode -or $importfile){
-		Write-ADTLogEntry -Message "Start-WinGetPackageFM -UserMode $($Mode) -Action $($Action) $parWinGetText" -Source 'Start-WinGetPackageFM'
-		Start-WinGetPackageFM -UserMode $Mode -Action $Action @parWinGet
+		Write-ADTLogEntry -Message "Invoke-WinGetActionFM -UserMode $($Mode) -Action $($Action) $parWinGetText" -Source 'Invoke-WinGetActionFM'
+		Invoke-WinGetActionFM -UserMode $Mode -Action $Action -WinGetParameters $parWinGet
 	}Else{
 		Write-ADTLogEntry -Message "No package specified. Use -id, -name, -moniker, -wingetmanifest, -productcode or -importfile" -Severity 3 -Source 'INSTALLATION'
 		Close-ADTSession -ExitCode 69001
@@ -677,8 +677,8 @@ function Uninstall-ADTDeployment
     ## <Perform Uninstallation tasks here>
 	Write-ADTLogEntry -Message "Mode $Mode" -Source 'Mode'
 	IF ($wingetmanifest -or $id -or $name -or $moniker -or $productcode -or $importfile){
-		Write-ADTLogEntry -Message "Start-WinGetPackageFM -UserMode $($Mode) -Action $($Action) $parWinGetText" -Source 'Start-WinGetPackageFM'
-		Start-WinGetPackageFM -UserMode $Mode -Action $Action @parWinGet
+		Write-ADTLogEntry -Message "Invoke-WinGetActionFM -UserMode $($Mode) -Action $($Action) $parWinGetText" -Source 'Invoke-WinGetActionFM'
+		Invoke-WinGetActionFM -UserMode $Mode -Action $Action -WinGetParameters $parWinGet
 	}Else{
 		Write-ADTLogEntry -Message "No package specified. Use -id, -name, -moniker, -wingetmanifest, -productcode or -importfile" -Severity 3 -Source 'UNINSTALLATION'
 		Close-ADTSession -ExitCode 69001
@@ -745,15 +745,8 @@ function Repair-ADTDeployment
     ## <Perform Repair tasks here>
 	Write-ADTLogEntry -Message "Mode $Mode" -Source 'Mode'
 	IF ($wingetmanifest -or $id -or $name -or $moniker -or $productcode -or $importfile){
-		If ($ForceRepair) {
-			Write-ADTLogEntry -Message "Start-WinGetPackageFM -UserMode $($Mode) -Action uninstall $parWinGetText" -Source 'Start-WinGetPackageFM'
-			Start-WinGetPackageFM -UserMode $Mode -Action 'uninstall' -SkipUnsupported @parWinGet
-			Write-ADTLogEntry -Message "Start-WinGetPackageFM -UserMode $($Mode) -Action install $parWinGetText" -Source 'Start-WinGetPackageFM'
-			Start-WinGetPackageFM -UserMode $Mode -Action 'install' @parWinGet
-		}Else{
-			Write-ADTLogEntry -Message "Start-WinGetPackageFM -UserMode $($Mode) -Action Repair $parWinGetText" -Source 'Start-WinGetPackageFM'
-			Start-WinGetPackageFM -UserMode $Mode -Action 'Repair' @parWinGet
-		}
+		Write-ADTLogEntry -Message "Invoke-WinGetActionFM -UserMode $($Mode) -Action Repair -ForceRepair:$([Bool]$ForceRepair) $parWinGetText" -Source 'Invoke-WinGetActionFM'
+		Invoke-WinGetActionFM -UserMode $Mode -Action 'Repair' -ForceRepair:$ForceRepair -WinGetParameters $parWinGet
 	}Else{
 		Write-ADTLogEntry -Message "No package specified. Use -id, -name, -moniker, -wingetmanifest, -productcode or -importfile" -Severity 3 -Source 'REPAIR'
 		Close-ADTSession -ExitCode 69001

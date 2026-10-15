@@ -89,7 +89,8 @@ Policy beats everything, so an admin can force a value centrally.
 | `<ScriptRoot>\_WingetFW.ps1` | Global mod file, same template, runs for every app. |
 | `Mods\_Template.ps1` (shipped) | Template with every section empty, like PSADT's `Invoke-AppDeployToolkit.ps1`. |
 
-No policy per app is needed: WingetFW finds the file by source and package ID.
+No policy per app is needed: WingetFW finds the file by source and package ID (`-id`; the source is `-source`,
+else `DefaultSource`, else `winget`). Apps installed without `-id` only use the global mod.
 
 ### 6.2 Template
 
@@ -106,7 +107,8 @@ No policy per app is needed: WingetFW finds the file by source and package ID.
 - **Post** runs after success, **Not...** after failure.
 - ForceRepair (uninstall + install) uses the Repair sections around the whole operation.
 - Import has no per-app sections; only `PreImport` / `PostImport` in the global file.
-- Order: global Pre, app Pre, winget, app During/Post/Not, global During/Post/Not.
+- Order: global Pre, app Pre, winget, app During, global During, app Post/Not, global Post/Not.
+- `$Settings` is only read from the app mod. An error in a section stops the deployment with 60001.
 
 ### 6.3 Loading and checks
 

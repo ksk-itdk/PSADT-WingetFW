@@ -22,6 +22,9 @@
            - Settings from policy and the local key through WingetFW.Core: DefaultSilent, DefaultSource,
              AllowedSources, Sources (REST sources added in Admin mode), Proxy, ProxyBypass, TlsCheck,
              VCRedistCheck. Config keys renamed to TlsCheck and VCRedistCheck.
+           - Mods: Invoke-WinGetActionFM runs the global and app mod sections around winget (WingetFW.Core
+             Import-WingetFWMod); Start-WinGetPackageFM takes $Settings from the app mod (-ModSettings) and
+             can return the result (-PassThru). A Pre section that returns $false gives exit code 69002.
 
 .LINK
     https://github.com/ksk-itdk/PSADT-WingetFW
@@ -783,7 +786,13 @@ This function does not return any objects.
         [Switch]$includepinned,
 		
 		[Parameter( Mandatory = $false, HelpMessage = 'Skip and log options the action does not support instead of throwing.')]
-        [Switch]$SkipUnsupported
+        [Switch]$SkipUnsupported,
+		
+		[Parameter( Mandatory = $false, HelpMessage = 'Settings for this action from the app mod file ($Settings.<Action>). The command line beats them.')]
+        [Hashtable]$ModSettings = @{},
+		
+		[Parameter( Mandatory = $false, HelpMessage = 'Return ExitCode and Success instead of ending the deployment when winget fails.')]
+        [Switch]$PassThru
 		
     )
 
@@ -806,7 +815,30 @@ This function does not return any objects.
 			'Import'    = $wingetGlobal + @('importfile', 'ignoreunavailable', 'ignoreversions', 'noupgrade')
 		}
 		# Agreements are handled per action further down
-		$notChecked = @('UserMode', 'Action', 'acceptpackageagreements', 'acceptsourceagreements', 'SkipUnsupported') + [System.Management.Automation.PSCmdlet]::CommonParameters
+		$notChecked = @('UserMode', 'Action', 'acceptpackageagreements', 'acceptsourceagreements', 'SkipUnsupported', 'ModSettings', 'PassThru') + [System.Management.Automation.PSCmdlet]::CommonParameters
+		
+		# winget options from the app mod file, only when the command line does not set them
+		$modOptions = @{ Override = 'override'; Custom = 'custom'; Scope = 'scope'; Locale = 'locale'; Architecture = 'architecture'; Source = 'source'; SkipDependencies = 'skipdependencies' }
+		ForEach ($key in @($ModSettings.Keys)) {
+			If (-not $modOptions.ContainsKey($key)) {
+				If ($key -notin @('DefaultSilent', 'DefaultSource', 'Proxy')) {
+					Write-ADTLogEntry -Message "Ignoring [$key] in the mod file `$Settings, it is not a WingetFW setting" -Source 'Start-WinGetPackageFM' -Severity 2
+				}
+				Continue
+			}
+			$option = $modOptions[$key]
+			$current = $PSBoundParameters[$option]
+			$isSet = If ($current -is [System.Management.Automation.SwitchParameter]) { $current.IsPresent } Else { -not [string]::IsNullOrEmpty($current) }
+			If ($isSet) {
+				Write-ADTLogEntry -Message "-$option on the command line beats $key in the mod file" -Source 'Start-WinGetPackageFM'
+				Continue
+			}
+			$value = If ($option -eq 'skipdependencies') { [Switch][Bool]$ModSettings[$key] } Else { [String]$ModSettings[$key] }
+			Set-Variable -Name $option -Value $value
+			$PSBoundParameters[$option] = $value
+			Write-ADTLogEntry -Message "Using -$option '$value' from the mod file" -Source 'Start-WinGetPackageFM'
+		}
+		
 		$usedOptions = @()
 		ForEach ($key in @($PSBoundParameters.Keys)) {
 			If ($key -in $notChecked) { Continue }
@@ -835,7 +867,7 @@ This function does not return any objects.
 		}
 		
 		# Settings: policy, command line, local key, config file, default (Get-WingetFWSetting in WingetFW.Core)
-		$proxySetting = Get-WingetFWSetting -Name 'Proxy' -CommandLine $(If ($proxy) { @{ Proxy = $proxy } } Else { @{} }) -Config $Script:WingetFWConfig
+		$proxySetting = Get-WingetFWSetting -Name 'Proxy' -CommandLine $(If ($proxy) { @{ Proxy = $proxy } } Else { @{} }) -ModSettings $ModSettings -Config $Script:WingetFWConfig
 		If ($proxySetting.Source -eq 'Policy' -and $noproxy) {
 			Write-ADTLogEntry -Message "Ignoring -noproxy, Proxy is set by policy" -Source 'Start-WinGetPackageFM' -Severity 2
 			$noproxy = [switch]$false
@@ -843,7 +875,7 @@ This function does not return any objects.
 		If ($proxySetting.Value -and -not $noproxy) { $proxy = [string]$proxySetting.Value }
 		
 		If ('silent' -in $supportedOptions[$Action] -and -not ($silent -or $interactive -or $override)) {
-			$silentSetting = Get-WingetFWSetting -Name 'DefaultSilent' -Config $Script:WingetFWConfig -Default $true -AsBoolean
+			$silentSetting = Get-WingetFWSetting -Name 'DefaultSilent' -ModSettings $ModSettings -Config $Script:WingetFWConfig -Default $true -AsBoolean
 			If ($silentSetting.Value) {
 				$silent = [switch]$true
 				Write-ADTLogEntry -Message "Adding -silent (DefaultSilent from [$($silentSetting.Source)])" -Source 'Start-WinGetPackageFM'
@@ -852,7 +884,7 @@ This function does not return any objects.
 		
 		# Uninstall and repair work on installed packages, so the default source only applies to install and upgrade
 		If (-not $source -and $Action -in @('Install', 'Upgrade') -and ($id -or $name -or $moniker)) {
-			$sourceSetting = Get-WingetFWSetting -Name 'DefaultSource' -Config $Script:WingetFWConfig
+			$sourceSetting = Get-WingetFWSetting -Name 'DefaultSource' -ModSettings $ModSettings -Config $Script:WingetFWConfig
 			If ($sourceSetting.Value) {
 				$source = [string]$sourceSetting.Value
 				Write-ADTLogEntry -Message "Using source [$source] (DefaultSource from [$($sourceSetting.Source)])" -Source 'Start-WinGetPackageFM'
@@ -1205,17 +1237,149 @@ This function does not return any objects.
 		Else {
 			$result = Start-ADTProcess -FilePath "$wingetpath\winget.exe" -ArgumentList "$Action $argsWinGet" -CreateNoWindow -PassThru -ErrorAction SilentlyContinue
 		}
+		$success = $result.ExitCode -in @(0, 1641, 3010, -1978335135, -1978335189)
+		If ($PassThru) {
+			Write-ADTLogEntry -Message "Done: winget $Action for [$package], exit code $($result.ExitCode)" -Source "Start-WinGetPackageFM"
+			Return [PSCustomObject]@{ ExitCode = $result.ExitCode; Success = $success }
+		}
 		# PSADT ignores -ExitOnProcessFailure for PSAppDeployToolkit.* modules, so the exit code is passed on here
 		If ($result.ExitCode -in @(1641, 3010)) {
 			(Get-ADTSession).SetExitCode($result.ExitCode)
 		}
-		ElseIf ($result.ExitCode -notin @(0, -1978335135, -1978335189)) {
+		ElseIf (-not $success) {
 			Close-ADTSession -ExitCode $result.ExitCode
 		}
 		Write-ADTLogEntry -Message "Done: winget $Action for [$package]" -Source "Start-WinGetPackageFM"
 		
 	}
 		
+    End {
+        Complete-ADTFunction -Cmdlet $PSCmdlet
+    }
+}
+#endregion
+
+#region Function Invoke-WinGetActionFM
+Function Invoke-WinGetActionFM {
+    <#
+.SYNOPSIS
+
+    Runs a winget action with the mod files around it.
+
+.DESCRIPTION
+
+    Loads the global mod (_WingetFW.ps1) and the app mod (<source>\<id>.ps1) with Import-WingetFWMod, then:
+      global Pre, app Pre, winget, app During, global During, app Post or Not, global Post or Not.
+    A Pre section that returns $false skips the action with exit code 69002.
+    $Settings.<Action> of the app mod is passed to Start-WinGetPackageFM (the command line beats it).
+    -ForceRepair runs uninstall and install between the Repair sections.
+
+.PARAMETER UserMode
+
+    Admin or User.
+
+.PARAMETER Action
+
+    Install, Uninstall, upgrade, import or Repair.
+
+.PARAMETER WinGetParameters
+
+    The winget parameters for Start-WinGetPackageFM.
+
+.PARAMETER ForceRepair
+
+    With Repair: uninstall and install instead of winget repair.
+
+.EXAMPLE
+
+    Invoke-WinGetActionFM -UserMode 'Admin' -Action 'Install' -WinGetParameters @{ id = '7zip.7zip'; exact = $true }
+
+.LINK
+
+    https://github.com/ksk-itdk/PSADT-WingetFW
+#>
+
+    [CmdletBinding()]
+    Param (
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('Admin', 'User')]
+        [String]$UserMode,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('Install', 'Uninstall', 'upgrade', 'import', 'Repair')]
+        [String]$Action,
+
+        [Parameter(Mandatory = $true)]
+        [Hashtable]$WinGetParameters,
+
+        [Parameter()]
+        [Switch]$ForceRepair
+    )
+
+    Begin {
+        Initialize-ADTFunction -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+    }
+
+    Process {
+        $sectionNames = @{
+            Install   = @('PreInstall', 'Install', 'PostInstall', 'NotInstalled')
+            Uninstall = @('PreUninstall', 'Uninstall', 'PostUninstall', 'NotUninstalled')
+            Repair    = @('PreRepair', 'Repair', 'PostRepair', 'NotRepaired')
+            Upgrade   = @('PreUpgrade', 'Upgrade', 'PostUpgrade', 'NotUpgraded')
+            Import    = @('PreImport', $null, 'PostImport', $null)
+        }
+        $actionName = (Get-Culture).TextInfo.ToTitleCase($Action.ToLowerInvariant())
+        $preSection, $duringSection, $postSection, $notSection = $sectionNames[$actionName]
+
+        # The app mod folder is the source: -source, else DefaultSource, else winget
+        $modSource = [String]$WinGetParameters['source']
+        If (-not $modSource) { $modSource = [String](Get-WingetFWSetting -Name 'DefaultSource' -Config $Script:WingetFWConfig -Default 'winget').Value }
+        $modId = If ($actionName -eq 'Import') { '' } Else { [String]$WinGetParameters['id'] }
+        $mods = Import-WingetFWMod -Id $modId -Source $modSource -Scope $(If ($UserMode -eq 'Admin') { 'Machine' } Else { 'User' }) -Config $Script:WingetFWConfig -PackagePath (Split-Path -Path $PSScriptRoot -Parent)
+        $modSettings = @{}
+        If ($mods.App -and $mods.App.Settings[$actionName] -is [Hashtable]) { $modSettings = $mods.App.Settings[$actionName] }
+        $preOrder = @(@($mods.Global, $mods.App) | Where-Object { $_ })
+        $afterOrder = @(@($mods.App, $mods.Global) | Where-Object { $_ })
+        $context = [PSCustomObject]@{ Action = $actionName; Id = $modId; Source = $modSource; UserMode = $UserMode; ForceRepair = [Bool]$ForceRepair; Parameters = $WinGetParameters; ExitCode = $null; Success = $null }
+
+        ForEach ($mod in $preOrder) {
+            If ((Invoke-WingetFWModSection -Mod $mod -Section $preSection -Context $context) -eq $false) {
+                Write-ADTLogEntry -Message "[$preSection] in the $($mod.Name.ToLower()) mod returned `$false, skipping winget $Action (exit code 69002)" -Source 'Invoke-WinGetActionFM' -Severity 2
+                Close-ADTSession -ExitCode 69002
+                Return
+            }
+        }
+
+        If ($ForceRepair -and $actionName -eq 'Repair') {
+            Write-ADTLogEntry -Message "ForceRepair: winget uninstall, then winget install" -Source 'Invoke-WinGetActionFM'
+            $result = Start-WinGetPackageFM -UserMode $UserMode -Action 'uninstall' -SkipUnsupported -PassThru -ModSettings $modSettings @WinGetParameters
+            If ($result.Success) {
+                $result = Start-WinGetPackageFM -UserMode $UserMode -Action 'install' -PassThru -ModSettings $modSettings @WinGetParameters
+            }
+        }
+        Else {
+            $result = Start-WinGetPackageFM -UserMode $UserMode -Action $Action -PassThru -ModSettings $modSettings @WinGetParameters
+        }
+        $context.ExitCode = $result.ExitCode
+        $context.Success = $result.Success
+
+        If ($duringSection) {
+            ForEach ($mod in $afterOrder) { $null = Invoke-WingetFWModSection -Mod $mod -Section $duringSection -Context $context }
+        }
+        $resultSection = If ($result.Success) { $postSection } Else { $notSection }
+        If ($resultSection) {
+            ForEach ($mod in $afterOrder) { $null = Invoke-WingetFWModSection -Mod $mod -Section $resultSection -Context $context }
+        }
+
+        # PSADT ignores -ExitOnProcessFailure for PSAppDeployToolkit.* modules, so the exit code is passed on here
+        If ($result.ExitCode -in @(1641, 3010)) {
+            (Get-ADTSession).SetExitCode($result.ExitCode)
+        }
+        ElseIf (-not $result.Success) {
+            Close-ADTSession -ExitCode $result.ExitCode
+        }
+    }
+
     End {
         Complete-ADTFunction -Cmdlet $PSCmdlet
     }

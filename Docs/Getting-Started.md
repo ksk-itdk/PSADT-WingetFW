@@ -10,7 +10,8 @@ Create the `.intunewin` from the `Toolkit\WinGetFW5.0.0` folder with `Invoke-App
 | `Invoke-AppDeployToolkit.exe` / `.ps1` | Setup file and deployment script with the WingetFW parameters |
 | `PSAppDeployToolkit.Extensions\` | WingetFW functions (`Install-WinGetFM`, `Get-WinGetVersionFM`, `Start-WinGetPackageFM`, `Resolve-WingetPath`) |
 | `PSAppDeployToolkit.Extensions\Config\WingetFW.psd1` | WingetFW settings, see [Configuration](Configuration.md) |
-| `PSAppDeployToolkit.Extensions\WingetFW.Core\` | Shared module: settings, logging, event log, state files (copy of `Source\WingetFW.Core`) |
+| `PSAppDeployToolkit.Extensions\WingetFW.Core\` | Shared module: settings, logging, event log, state files, mod files (copy of `Source\WingetFW.Core`) |
+| `Mods\` | Default location for [mod files](Mods.md); `_Template.ps1` is the template |
 | `Config\config.psd1`, `Assets\` | PSAppDeployToolkit settings, logo and banner |
 | `PSAppDeployToolkit\` | PSAppDeployToolkit 4.1.8 module (do not change) |
 
