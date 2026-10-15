@@ -16,6 +16,7 @@ Results of the last run: [TEST-RESULTS.md](TEST-RESULTS.md)
 | `results/WingetFW-TestResults.log` | Full readable log of the last run. |
 | `results/WingetFW-TestResults.json` | Machine-readable results, the source for `TEST-RESULTS.md`. |
 | `results/console.txt` | Console output of the last run. |
+| `Invoke-WingetFWCi.ps1` | Runs PSScriptAnalyzer and the Pester unit tests in `Unit\` (no VM needed). Used by GitHub CI. |
 
 ## Run the tests
 
@@ -40,6 +41,47 @@ Do not stop a run halfway. Processes on the VM keep running after the SSH sessio
 | Internet on VM | winget source, 7-Zip/jq/Postman downloads, GitHub API for the 7-Zip manifest |
 
 Defaults can be changed with `-ComputerName`, `-UserName`, `-KeyFile` and `-RemoteRoot`.
+
+## Self-hosted runner (CI)
+
+The VM suite can't run on GitHub-hosted runners, because it needs the sandbox VM, PsExec and SYSTEM rights.
+A self-hosted GitHub Actions runner is installed on the sandbox VM for it. The workflow is
+[.github/workflows/vm-tests.yml](../.github/workflows/vm-tests.yml); the release workflow
+([release.yml](../.github/workflows/release.yml)) calls it for every version tag. This section is the runner setup.
+
+### Rules
+
+| Rule | Why |
+|---|---|
+| The VM job runs only on a manual start (`workflow_dispatch`) or a version tag (`push: tags`). | The suite takes about 12 minutes and changes the VM. |
+| The VM job never runs on `pull_request`. | The repo is public. A pull request from a fork could run its own code on the VM. Only maintainers can start a manual run or push a tag. |
+| The runner is registered to this repository only, with the label `wingetfw-vm`. | Jobs from other repositories can't use it. The workflow picks it with `runs-on: [self-hosted, wingetfw-vm]`. |
+| PSScriptAnalyzer and Pester run on GitHub-hosted runners on every push and pull request. | They don't touch the VM. |
+| Repository setting **Actions > General > Fork pull request workflows**: require approval for all outside collaborators. | Extra safety if a workflow is changed by mistake. |
+
+### Setup
+
+1. Set up the VM as in [Prerequisites](#prerequisites).
+2. On GitHub: repository **Settings > Actions > Runners > New self-hosted runner > Windows x64**.
+   Run the download commands shown there in an admin PowerShell in `C:\actions-runner` on the VM.
+3. Configure the runner as a service:
+   ```powershell
+   .\config.cmd --url https://github.com/ksk-itdk/PSADT-WingetFW --token <token> --labels wingetfw-vm --runasservice
+   ```
+   - `<token>` is shown on the GitHub page and expires after one hour. Don't save it anywhere.
+   - When asked for the service account, enter `.\TEST` and type its password at the prompt.
+     The job then connects by SSH as `TEST` to `localhost`, the same way a run from your own PC does.
+4. Copy the private key `wingetfw_sandbox` to `C:\Users\TEST\.ssh\` (only `TEST`, SYSTEM and Administrators may read it).
+   The public key is already in `C:\ProgramData\ssh\administrators_authorized_keys`.
+5. Check that the runner shows as **Idle** under **Settings > Actions > Runners**.
+6. Take a new VM snapshot, so a revert keeps the runner.
+   GitHub removes a runner that has been offline for more than 14 days; register it again with a new token if that happens.
+
+### Start a run
+
+**Actions > VM tests > Run workflow**, optionally with a package folder (for example `WinGetFW5.0.0`).
+The job fails when a test is not `PASS`; `TEST-RESULTS.md` and `results\` are attached to the run as `vm-test-results`.
+Only one VM run can run at a time.
 
 ## How a test runs
 

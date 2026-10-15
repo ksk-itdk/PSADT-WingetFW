@@ -1,0 +1,55 @@
+name: VM tests
+
+# Full test suite on the sandbox VM (self-hosted runner, label wingetfw-vm).
+# Only a manual start or a release can run it; never pull requests (see Tests/README.md).
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: 'Package folder in Toolkit, for example WinGetFW5.0.0 (empty = script default)'
+        required: false
+        default: ''
+  workflow_call:
+    inputs:
+      package:
+        type: string
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wingetfw-vm
+  cancel-in-progress: false
+
+jobs:
+  vm-suite:
+    name: VM suite
+    if: github.repository == 'ksk-itdk/PSADT-WingetFW'
+    runs-on: [self-hosted, wingetfw-vm]
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run VM suite
+        shell: powershell
+        env:
+          WINGETFW_PACKAGE: ${{ inputs.package }}
+        run: |
+          $params = @{ ComputerName = 'localhost' }
+          if ($env:WINGETFW_PACKAGE) { $params.Package = $env:WINGETFW_PACKAGE }
+          .\Tests\Invoke-WingetFWVmTest.ps1 @params
+          $run = Get-Content -LiteralPath .\Tests\results\WingetFW-TestResults.json -Raw -Encoding UTF8 | ConvertFrom-Json
+          $failed = @($run.Tests | Where-Object { $_.Result -ne 'PASS' })
+          foreach ($test in $failed) { Write-Output "::error::$($test.Id) $($test.Title)" }
+          if ($failed.Count) { exit 1 }
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vm-test-results
+          path: |
+            Tests/TEST-RESULTS.md
+            Tests/results/

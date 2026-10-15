@@ -1,0 +1,69 @@
+name: Release
+
+# Runs when a version tag (for example 5.0.1) is pushed:
+# lint + unit tests, VM suite, then zip (signed when SignPath is set up) and a GitHub Release from CHANGELOG.txt.
+on:
+  push:
+    tags: ['[0-9]+.[0-9]+.[0-9]+']
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  vm:
+    uses: ./.github/workflows/vm-tests.yml
+    with:
+      package: WinGetFW${{ github.ref_name }}
+
+  release:
+    name: Build and publish
+    needs: [ci, vm]
+    runs-on: windows-latest
+    permissions:
+      contents: write
+      actions: read
+    env:
+      VERSION: ${{ github.ref_name }}
+      SIGNPATH_CONFIGURED: ${{ secrets.SIGNPATH_API_TOKEN != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Stage files and release notes
+        shell: pwsh
+        run: ./Build/New-WingetFWRelease.ps1 -Version $env:VERSION -OutputPath out
+
+      - name: Upload unsigned files
+        id: upload-unsigned
+        uses: actions/upload-artifact@v4
+        with:
+          name: WingetFW-${{ github.ref_name }}-unsigned
+          path: out/WingetFW-${{ github.ref_name }}/
+
+      # Optional: set the secret SIGNPATH_API_TOKEN and the variables SIGNPATH_ORGANIZATION_ID,
+      # SIGNPATH_PROJECT_SLUG and SIGNPATH_SIGNING_POLICY_SLUG. Without them the release is not signed.
+      - name: Sign with SignPath
+        if: env.SIGNPATH_CONFIGURED == 'true'
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          github-artifact-id: ${{ steps.upload-unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: out/signed
+
+      - name: Create zip
+        shell: pwsh
+        run: |
+          $source = if ($env:SIGNPATH_CONFIGURED -eq 'true') { 'out/signed' } else { "out/WingetFW-$env:VERSION" }
+          Compress-Archive -Path "$source/*" -DestinationPath "out/WingetFW-$env:VERSION.zip"
+
+      - name: Create GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create $env:VERSION "out/WingetFW-$env:VERSION.zip" --verify-tag --title "WingetFW $env:VERSION" --notes-file out/release-notes.md

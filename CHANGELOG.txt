@@ -1,4 +1,18 @@
-﻿**Version 4.0.8 [11/10/2026]**
+﻿**Version 5.0.0 [14/10/2026]**
+- Added WingetFW 5.0.0 on PSAppDeployToolkit 4.1.8 in Toolkit\WinGetFW5.0.0. The setup file is Invoke-AppDeployToolkit.exe instead of Deploy-Application.exe. WingetFW 4.0.8 stays in Toolkit\WinGetFW
+- Changed the WingetFW functions (Install-WinGetFM, Get-WinGetVersionFM, Start-WinGetPackageFM, Resolve-WingetPath) into the extension module PSAppDeployToolkit.Extensions. The WingetFW logic is unchanged
+- Changed the settings file from AppDeployToolkitExtensionsConfig.xml to PSAppDeployToolkit.Extensions\Config\WingetFW.psd1 (WingetFW_TlsCheck and WingetFW_VCRedistCheck, both $false in the package)
+- Changed reboot exit codes (1641, 3010) so they are passed to Intune by default. -AllowRebootPassThru is removed; use -SuppressRebootPassThru to return 0 instead
+- Changed error handling so an error no longer shows a dialog; -DeployMode NonInteractive is no longer needed in user mode
+- Changed command line quoting: with Invoke-AppDeployToolkit.exe a double-quoted value with spaces stops with exit code 1 (4.0.8 returned 0). Use single quotes for values with spaces and for {GUID}
+- Added exit code 60008 when PSAppDeployToolkit cannot start
+- Updated Tools\Update-WingetFWIntuneApps.ps1 to 0.2.0 (BETA): converts Deploy-Application.exe to Invoke-AppDeployToolkit.exe, removes -AllowRebootPassThru, reports ServiceUI.exe in a command line as an error, uses the newest Toolkit\WinGetFW* folder as the target version and no longer warns about -Mode User without NonInteractive. Tools\WingetFW-ParameterMap.psd1 has the new settings ExeName, OldExeNames and SuppressRebootPassThru
+- Updated the test suite (Invoke-WingetFWTestSuite.ps1 1.3.0, Invoke-WingetFWVmTest.ps1 1.2.0) to test 5.0.0 by default; -Package WinGetFW tests 4.0.8. Result for 5.0.0: 39 of 39 tests passed
+- Updated README.md for 5.0.0; the 4.0.8 README is now README-4.0.8.md
+- Added WingetFW.Core 1.0.0 in Source\WingetFW.Core (settings reader with the order Policy, command line, mod file, local key, config file, default; logging; WingetFW event log; state files). Not used by the package yet
+- Added CI on GitHub: PSScriptAnalyzer and Pester unit tests (Tests\Invoke-WingetFWCi.ps1, Tests\Unit) on every code change, the VM suite on a self-hosted runner (manual or release only) and a release workflow (Build\New-WingetFWRelease.ps1, zip, optional SignPath signing, GitHub Release from this file)
+
+**Version 4.0.8 [11/10/2026]**
 - Fixed an issue where User mode failed right after a user's first logon because Windows registers winget (App Installer) a few seconds late; WingetFW now requests the registration and retries for up to about 20 seconds
 - Changed Install so a package that is already installed (winget 0x8A150061 or 0x8A15002B) is logged as already installed and returns exit code 0 instead of failing
 - Added Tools\Update-WingetFWIntuneApps.ps1 (BETA, not fully tested, use at your own risk) to find all WingetFW apps in Intune, export them to a CSV with the converted command lines, and update the selected apps to the new WingetFW package. The parameter conversion from 3.x and 4.0.x is in Tools\WingetFW-ParameterMap.psd1

@@ -1,0 +1,41 @@
+name: CI
+
+# PSScriptAnalyzer and Pester on GitHub-hosted runners. Runs only when code changes.
+on:
+  push:
+    branches: ['**']
+    paths: ['**.ps1', '**.psm1', '**.psd1', '.github/workflows/**']
+  pull_request:
+    paths: ['**.ps1', '**.psm1', '**.psd1', '.github/workflows/**']
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Lint and unit tests
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install modules (PowerShell 7)
+        shell: pwsh
+        run: |
+          Install-Module -Name Pester -MinimumVersion 5.5.0 -Scope CurrentUser -Force -SkipPublisherCheck
+          Install-Module -Name PSScriptAnalyzer -Scope CurrentUser -Force
+
+      - name: Install modules (Windows PowerShell 5.1)
+        shell: powershell
+        run: |
+          Install-Module -Name Pester -MinimumVersion 5.5.0 -Scope CurrentUser -Force -SkipPublisherCheck
+
+      - name: PSScriptAnalyzer and unit tests (PowerShell 7)
+        shell: pwsh
+        run: ./Tests/Invoke-WingetFWCi.ps1
+
+      - name: Unit tests (Windows PowerShell 5.1)
+        if: success() || failure()
+        shell: powershell
+        run: .\Tests\Invoke-WingetFWCi.ps1 -SkipAnalyzer
