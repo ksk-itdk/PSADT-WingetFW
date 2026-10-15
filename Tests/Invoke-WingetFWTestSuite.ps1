@@ -40,9 +40,12 @@
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 1.5.0
+    Version      : 1.6.0
 
     Release notes
+    1.6.0  - M09 uses a real read-only SMB share (\\localhost\WingetFWMods). The blob simulator runs on HTTPS
+             (https://localhost:8443, test TLS certificate trusted on the VM) and returns 403 without the right SAS.
+           - M15: a wrong SAS (403) stops the deployment with 60001.
     1.5.0  - M01-M13: mod files (order of the sections, $Settings, 69002, failure sections, load check, signature,
              AllowedScriptSources, UNC, Azure blob simulated with a local web server, Mirror, offline cache,
              user mode). A test code signing certificate is added to LocalMachine and removed at the end.
@@ -478,7 +481,9 @@ $modsDir = Join-Path $pkgDir 'Mods'
 $traceFile = Join-Path $Root 'mod-trace.txt'
 $blobDir = Join-Path $Root 'blob'
 $blobLog = Join-Path $Root 'blob-requests.txt'
-$blobUrl = 'http://127.0.0.1:8085/mods/prod?sv=1&sp=rl&sig=SECRET'
+$blobUrl = 'https://localhost:8443/mods/prod?sv=1&sp=rl&sig=SECRET'
+$shareDir = Join-Path $Root 'sharemods'
+$shareName = 'WingetFWMods'
 Function Reset-WingetFWMods {
     Get-ChildItem $modsDir -Force | Where-Object { $_.Name -ne '_Template.ps1' } | Remove-Item -Recurse -Force
     Remove-Item $traceFile -Force -ErrorAction SilentlyContinue
@@ -518,7 +523,12 @@ While ($listener.IsListening) {
     Add-Content -LiteralPath $Log -Value $request.RawUrl
     $path = [Uri]::UnescapeDataString($request.Url.AbsolutePath)
     If ($path -eq '/stop') { $response.Close(); $listener.Stop(); Break }
-    If ($request.QueryString['comp'] -eq 'list') {
+    # Like Azure: no valid SAS signature, no access
+    If ($request.QueryString['sig'] -ne 'SECRET') {
+        $response.StatusCode = 403
+        $bytes = [Text.Encoding]::UTF8.GetBytes('AuthenticationFailed')
+    }
+    ElseIf ($request.QueryString['comp'] -eq 'list') {
         $base = Join-Path $Root $path.Trim('/')
         $names = @(Get-ChildItem -LiteralPath $base -Recurse -File | ForEach-Object { $_.FullName.Substring($base.Length + 1).Replace('\', '/') } | Where-Object { $_.StartsWith([string]$request.QueryString['prefix']) })
         $bytes = [Text.Encoding]::UTF8.GetBytes('<?xml version="1.0" encoding="utf-8"?><EnumerationResults><Blobs>' + (($names | ForEach-Object { "<Blob><Name>$_</Name></Blob>" }) -join '') + '</Blobs><NextMarker /></EnumerationResults>')
@@ -537,14 +547,27 @@ Function Start-BlobServer {
     $script = Join-Path $tmpDir 'blob-server.ps1'
     Set-Content -Path $script -Value $blobServer -Encoding UTF8
     Remove-Item $blobLog -Force -ErrorAction SilentlyContinue
-    Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$script`" -Root `"$blobDir`" -Prefix http://127.0.0.1:8085/ -Log `"$blobLog`"" -WindowStyle Hidden
+    Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$script`" -Root `"$blobDir`" -Prefix https://localhost:8443/ -Log `"$blobLog`"" -WindowStyle Hidden
     For ($i = 0; $i -lt 20; $i++) {
-        Try { Invoke-WebRequest 'http://127.0.0.1:8085/ping' -UseBasicParsing -TimeoutSec 2 | Out-Null; Break }
+        Try { Invoke-WebRequest 'https://localhost:8443/ping' -UseBasicParsing -TimeoutSec 2 | Out-Null; Break }
         Catch { If ($_.Exception.Response) { Break }; Start-Sleep -Milliseconds 500 }
     }
-    'blob server started on http://127.0.0.1:8085/ (folder ' + $blobDir + ')'
+    'blob server started on https://localhost:8443/ (folder ' + $blobDir + ')'
 }
-Function Stop-BlobServer { Try { Invoke-WebRequest 'http://127.0.0.1:8085/stop' -UseBasicParsing -TimeoutSec 5 | Out-Null } Catch { }; 'blob server stopped' }
+Function Stop-BlobServer { Try { Invoke-WebRequest 'https://localhost:8443/stop' -UseBasicParsing -TimeoutSec 5 | Out-Null } Catch { }; 'blob server stopped' }
+
+# HTTPS for the blob simulator: test TLS certificate for localhost, trusted in LocalMachine Root, bound to port 8443
+$tlsCert = New-SelfSignedCertificate -DnsName 'localhost' -FriendlyName 'WingetFW Test TLS' -CertStoreLocation Cert:\LocalMachine\My -NotAfter (Get-Date).AddDays(2)
+$store = New-Object Security.Cryptography.X509Certificates.X509Store('Root', 'LocalMachine'); $store.Open('ReadWrite'); $store.Add($tlsCert); $store.Close()
+& netsh.exe http delete sslcert ipport=0.0.0.0:8443 | Out-Null
+& netsh.exe http add sslcert ipport=0.0.0.0:8443 "certhash=$($tlsCert.Thumbprint)" 'appid={5b0c2f4e-7a1d-4c3e-9f6b-2d8e1a7c4b90}' | Out-Null
+Write-Result "  test TLS certificate for https://localhost:8443: $($tlsCert.Thumbprint)"
+
+# Read-only SMB share for the UNC test
+New-Item -ItemType Directory -Path $shareDir -Force | Out-Null
+If (Get-SmbShare -Name $shareName -ErrorAction SilentlyContinue) { Remove-SmbShare -Name $shareName -Force }
+New-SmbShare -Name $shareName -Path $shareDir -ReadAccess 'Everyone' | Out-Null
+Write-Result "  SMB share \\localhost\$shareName -> $shareDir (read only)"
 
 # Test code signing certificate, trusted in LocalMachine Root and TrustedPublisher for the M07 test
 $signCert = New-SelfSignedCertificate -Type CodeSigningCert -Subject 'CN=WingetFW Test Signing' -CertStoreLocation Cert:\LocalMachine\My -NotAfter (Get-Date).AddDays(2)
@@ -582,18 +605,18 @@ Invoke-Test -Id 'M07' -Title 'Mods: RequireSignedScripts TrustedSigners runs a m
 Invoke-Test -Id 'M08' -Title 'Mods: a ScriptRoot that is not in AllowedScriptSources is refused (60001)' -ArgList @('Install', '-id', '7zip.7zip', '-exact', '-silent') `
     -Pre { Reset-WingetFWSettings; Reset-WingetFWMods; New-Item -ItemType Directory -Path (Join-Path $Root 'othermods') -Force | Out-Null; Set-WingetFWTestSetting Policy ScriptRoot @((Join-Path $Root 'othermods')) } `
     -ExpectExit 60001 -ExpectLog @('is not in AllowedScriptSources') -ExpectNotLog @('Running winget Install')
-Invoke-Test -Id 'M09' -Title 'Mods: ScriptRoot on a UNC share (\\localhost\C$)' -ArgList @('Install', '-id', '7zip.7zip', '-exact', '-silent') `
-    -Pre { Reset-WingetFWSettings; Reset-WingetFWMods; $unc = Join-Path $Root 'uncmods'; Remove-Item $unc -Recurse -Force -ErrorAction SilentlyContinue
-           New-TraceMod (Join-Path $unc 'winget\7zip.7zip.ps1') 'unc' @('PreInstall')
-           Set-WingetFWTestSetting Policy ScriptRoot @('\\localhost\C$\temp\wingetfw-vmtest\uncmods'); Set-WingetFWTestSetting Policy AllowedScriptSources @('\\localhost\C$\temp\wingetfw-vmtest\') } `
-    -ExpectLog @('Loaded App mod \[\\\\localhost\\C\$\\temp\\wingetfw-vmtest\\uncmods\\winget\\7zip\.7zip\.ps1\]') -State { Test-ModTrace @('unc PreInstall') }
-Invoke-Test -Id 'M10' -Title 'Mods: Azure blob ScriptRoot (simulated), OnDemand; the SAS is masked in the log' -ArgList @('Install', '-id', '7zip.7zip', '-exact', '-silent') `
+Invoke-Test -Id 'M09' -Title 'Mods: ScriptRoot on a read-only SMB share (\\localhost\WingetFWMods)' -ArgList @('Install', '-id', '7zip.7zip', '-exact', '-silent') `
+    -Pre { Reset-WingetFWSettings; Reset-WingetFWMods; Get-ChildItem $shareDir -Force | Remove-Item -Recurse -Force
+           New-TraceMod (Join-Path $shareDir 'winget\7zip.7zip.ps1') 'unc' @('PreInstall')
+           Set-WingetFWTestSetting Policy ScriptRoot @("\\localhost\$shareName"); Set-WingetFWTestSetting Policy AllowedScriptSources @("\\localhost\$shareName\") } `
+    -ExpectLog @('Loaded App mod \[\\\\localhost\\WingetFWMods\\winget\\7zip\.7zip\.ps1\]') -State { Test-ModTrace @('unc PreInstall') }
+Invoke-Test -Id 'M10' -Title 'Mods: Azure blob ScriptRoot (simulated on HTTPS), OnDemand; the SAS is masked in the log' -ArgList @('Install', '-id', '7zip.7zip', '-exact', '-silent') `
     -Pre { Reset-WingetFWSettings; Reset-WingetFWMods; Remove-Item $blobDir -Recurse -Force -ErrorAction SilentlyContinue
            New-TraceMod (Join-Path $blobDir 'mods\prod\_WingetFW.ps1') 'blobglobal' @('PreInstall'); New-TraceMod (Join-Path $blobDir 'mods\prod\winget\7zip.7zip.ps1') 'blob' @('PreInstall')
-           Start-BlobServer; Set-WingetFWTestSetting Policy ScriptRoot @($blobUrl); Set-WingetFWTestSetting Policy AllowedScriptSources @('http://127.0.0.1:8085/mods/') } `
-    -ExpectLog @('Loaded App mod \[http://127\.0\.0\.1:8085/mods/prod/winget/7zip\.7zip\.ps1\?sv=1&sp=rl&sig=\*\*\*\]') -ExpectNotLog @('SECRET') `
+           Start-BlobServer; Set-WingetFWTestSetting Policy ScriptRoot @($blobUrl); Set-WingetFWTestSetting Policy AllowedScriptSources @('https://localhost:8443/mods/') } `
+    -ExpectLog @('Loaded App mod \[https://localhost:8443/mods/prod/winget/7zip\.7zip\.ps1\?sv=1&sp=rl&sig=\*\*\*\]') -ExpectNotLog @('SECRET') `
     -State { Test-ModTrace @('blobglobal PreInstall', 'blob PreInstall') }
-Invoke-Test -Id 'M11' -Title 'Mods: Azure blob ScriptRoot (simulated), Mirror lists the container and copies all mod files' -ArgList @('Install', '-id', '7zip.7zip', '-exact', '-silent') `
+Invoke-Test -Id 'M11' -Title 'Mods: Azure blob ScriptRoot (simulated on HTTPS), Mirror lists the container and copies all mod files' -ArgList @('Install', '-id', '7zip.7zip', '-exact', '-silent') `
     -Pre { Remove-Item $traceFile -Force -ErrorAction SilentlyContinue; Set-WingetFWTestSetting Policy ScriptSyncMode 'Mirror' } `
     -ExpectLog @('Mirrored 2 mod file\(s\)') -ExpectNotLog @('SECRET') `
     -State { $listed = [Bool](Get-Content $blobLog | Where-Object { $_ -match 'comp=list' -and $_ -match 'sig=SECRET' }); $t = Test-ModTrace @('blobglobal PreInstall', 'blob PreInstall'); [PSCustomObject]@{ Ok = ($listed -and $t.Ok); Text = "container listed with SAS: $listed; $($t.Text)" } }
@@ -606,6 +629,11 @@ Invoke-Test -Id 'M13' -Title 'Mods: ScriptRoot cannot be reached - UseCachedScri
 Invoke-Test -Id 'M14' -Title 'Mods: user mode runs the global mod (NotUninstalled when jq is not installed for the user)' -Mode User -ArgList @('Uninstall', '-id', 'jqlang.jq', '-exact', '-silent', '-scope', 'User') `
     -Pre { Reset-WingetFWSettings; Reset-WingetFWMods; New-TraceMod $globalMod 'global' @('PreUninstall', 'PostUninstall', 'NotUninstalled') } `
     -ExpectExit @(-1978335212) -State { Test-ModTrace @('global PreUninstall', 'global NotUninstalled -1978335212') }
+Invoke-Test -Id 'M15' -Title 'Mods: Azure blob ScriptRoot with a wrong SAS - 403 stops the deployment (60001)' -ArgList @('Install', '-id', '7zip.7zip', '-exact', '-silent') `
+    -Pre { Reset-WingetFWSettings; Reset-WingetFWMods; Start-BlobServer
+           Set-WingetFWTestSetting Policy ScriptRoot @('https://localhost:8443/mods/prod?sv=1&sp=rl&sig=WRONG'); Set-WingetFWTestSetting Policy AllowedScriptSources @('https://localhost:8443/mods/') } `
+    -ExpectExit 60001 -ExpectLog @('\(403\)', "can't be reached and UseCachedScriptsWhenOffline is off") -ExpectNotLog @('Running winget Install', 'WRONG')
+Stop-BlobServer | Out-Null
 Reset-WingetFWSettings
 Reset-WingetFWMods
 
@@ -645,9 +673,11 @@ Invoke-WingetAsSystem 'source remove --name WingetFWTest' | Out-Null
 Stop-BlobServer | Out-Null
 ForEach ($storeName in @('My', 'Root', 'TrustedPublisher')) {
     $store = New-Object Security.Cryptography.X509Certificates.X509Store($storeName, 'LocalMachine'); $store.Open('ReadWrite')
-    @($store.Certificates | Where-Object { $_.Subject -eq 'CN=WingetFW Test Signing' }) | ForEach-Object { $store.Remove($_) }
+    @($store.Certificates | Where-Object { $_.Subject -eq 'CN=WingetFW Test Signing' -or $_.FriendlyName -eq 'WingetFW Test TLS' -or $_.Thumbprint -eq $tlsCert.Thumbprint }) | ForEach-Object { $store.Remove($_) }
     $store.Close()
 }
+& netsh.exe http delete sslcert ipport=0.0.0.0:8443 | Out-Null
+If (Get-SmbShare -Name $shareName -ErrorAction SilentlyContinue) { Remove-SmbShare -Name $shareName -Force }
 Remove-Item $stateFile -Force -ErrorAction SilentlyContinue
 Remove-Item $tmpDir -Recurse -Force -ErrorAction SilentlyContinue
 

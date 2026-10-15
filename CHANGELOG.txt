@@ -1,4 +1,4 @@
-﻿**Version 5.0.0 [14/10/2026]**
+**Version 5.0.0 [14/10/2026]**
 - Added WingetFW 5.0.0 on PSAppDeployToolkit 4.1.8 in Toolkit\WinGetFW5.0.0. The setup file is Invoke-AppDeployToolkit.exe instead of Deploy-Application.exe. WingetFW 4.0.8 stays in Toolkit\WinGetFW
 - Changed the WingetFW functions (Install-WinGetFM, Get-WinGetVersionFM, Start-WinGetPackageFM, Resolve-WingetPath) into the extension module PSAppDeployToolkit.Extensions. The WingetFW logic is unchanged
 - Changed the settings file from AppDeployToolkitExtensionsConfig.xml to PSAppDeployToolkit.Extensions\Config\WingetFW.psd1 (TlsCheck and VCRedistCheck, both $false in the package)
@@ -15,7 +15,7 @@
 - Added the mod settings ScriptRoot (local folder, UNC share or Azure blob URL; default the package Mods folder), ScriptSyncMode (OnDemand, Mirror), UseCachedScriptsWhenOffline, AllowedScriptSources, RequireSignedScripts (Off, Signed, TrustedSigners) and TrustedSigners, also in the ADMX
 - Added a load check for mod files: only function definitions and $Settings with fixed values at the top level; other files stop with 60001
 - Updated Tools\Update-WingetFWIntuneApps.ps1 to 0.2.0 (BETA): converts Deploy-Application.exe to Invoke-AppDeployToolkit.exe, removes -AllowRebootPassThru, reports ServiceUI.exe in a command line as an error, uses the newest Toolkit\WinGetFW* folder as the target version and no longer warns about -Mode User without NonInteractive. Tools\WingetFW-ParameterMap.psd1 has the new settings ExeName, OldExeNames and SuppressRebootPassThru
-- Updated the test suite (Invoke-WingetFWTestSuite.ps1 1.5.0, Invoke-WingetFWVmTest.ps1 1.2.0) to test 5.0.0 by default; -Package WinGetFW tests 4.0.8. Settings tests S01-S12 and mod tests M01-M14 added. Result for 5.0.0: 65 of 65 tests passed
+- Updated the test suite (Invoke-WingetFWTestSuite.ps1 1.6.0, Invoke-WingetFWVmTest.ps1 1.2.0) to test 5.0.0 by default; -Package WinGetFW tests 4.0.8. Settings tests S01-S12 and mod tests M01-M15 added. Result for 5.0.0: 66 of 66 tests passed
 - Updated README.md for 5.0.0; the 4.0.8 README is now README-4.0.8.md
 - Added WingetFW.Core 1.2.0 in Source\WingetFW.Core (settings reader with the order Policy, command line, mod file, local key, config file, default; logging; WingetFW event log; state files; mod files). The package loads a copy from PSAppDeployToolkit.Extensions\WingetFW.Core
 - Added CI on GitHub: PSScriptAnalyzer and Pester unit tests (Tests\Invoke-WingetFWCi.ps1, Tests\Unit) on every code change, the VM suite on a self-hosted runner (manual or release only) and a release workflow (Build\New-WingetFWRelease.ps1, zip, optional SignPath signing, GitHub Release from this file)
