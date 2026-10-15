@@ -191,7 +191,7 @@ The installed version is always read live from winget.
 | 2 | ADMX/ADML, device settings (4.1), sources (5). | VM: policy beats command line beats mod beats local key beats config |
 | 3 | Mods: template, discovery, fetch/cache, load checks, sections, 69002. | VM: local/UNC/blob, unsigned rejected, unknown source rejected, load check rejects top-level code |
 | 4 | Conflicting apps (`UninstallFirst`). | VM: old MSI removed before install |
-| 5 | Docs: README, ADMX reference, mod template guide, signing guide. | Reviewed |
+| 5 | Docs: `Docs\Configuration.md` (ADMX reference), `Docs\Mods.md` (mod template guide), `Docs\Signing.md`, links in README. | Reviewed |
 
 ## 11. Tests
 

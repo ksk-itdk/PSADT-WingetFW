@@ -16,7 +16,8 @@ These notes are for anyone who changes the code. How to use WingetFW is in [READ
 | `.github\workflows\` | CI (`ci.yml`), VM tests (`vm-tests.yml`), release (`release.yml`) |
 | `Tools\` | `Update-WingetFWIntuneApps.ps1` and its parameter map |
 | `Tests\` | Unit tests (`Tests\Unit`), VM test suite and the last results, see [Tests/README.md](Tests/README.md) |
-| `Docs\` | Project specs and the [phase plan](Docs/Phases.md) |
+| `Docs\` | User documentation (linked from the README) |
+| `Docs\Design\` | Project specs and the [phase plan](Docs/Design/Phases.md) |
 | `CHANGELOG.txt` | One entry per version |
 | `README.md`, `README-<version>.md` | Current version, and older versions |
 
@@ -27,7 +28,7 @@ These notes are for anyone who changes the code. How to use WingetFW is in [READ
   The older folder stays, so existing Intune apps can still be rebuilt.
 - Before a release:
   1. CHANGELOG entry (see format below).
-  2. README updated (parameters, exit codes, examples).
+  2. Docs updated: the page in `Docs\` for the change (parameters, exit codes, configuration ...).
   3. VM suite passed, `Tests\TEST-RESULTS.md` committed.
   4. Tag with the plain version number, for example `5.0.0`. The tag starts `.github\workflows\release.yml`:
      lint and unit tests, VM suite, zip (signed when SignPath is set up) and a GitHub Release with the CHANGELOG entry.

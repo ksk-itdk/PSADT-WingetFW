@@ -10,7 +10,7 @@ A phase starts when the phases it depends on are done.
 
 | Step | Phase | Content | Depends on |
 |---|---|---|---|
-| 1 | FW-0 | CI: PSScriptAnalyzer + Pester, VM suite on release, release workflow, signing | 5.0.0 merged |
+| 1 | FW-0 | CI: PSScriptAnalyzer + Pester, VM suite on release, release workflow, signing | 5.0.0 |
 | 2 | FW-1 | WingetFW.Core: settings reader, logging, event log channel, state files | FW-0 |
 | 2 | CON-1 | Search, manifest details, command line, detection script | FW-0 |
 | 3 | FW-2 | ADMX/ADML, device settings, sources | FW-1 |
@@ -19,7 +19,7 @@ A phase starts when the phases it depends on are done.
 | 4 | CON-3 | Inventory and WingetFW upgrade of apps | CON-2 |
 | 5 | FW-4 | Conflicting apps (`UninstallFirst`) | FW-3 |
 | 5 | UPD-1 | Engine, ESP check, manual mode | FW-3 |
-| 6 | FW-5 | Docs: README, ADMX reference, mod guide, signing guide | FW-4 |
+| 6 | FW-5 | Docs: Docs\Configuration.md (ADMX reference), Docs\Mods.md, Docs\Signing.md, README links | FW-4 |
 | 6 | CON-4 | Mod editor, signing, effective settings view | FW-3, CON-3 |
 | 6 | UPD-2 | Scheduled tasks (SYSTEM + user) | UPD-1 |
 | 7 | UPD-3 | Intune mode (remediation, Win32 app), WDAC test | UPD-2 |
@@ -55,8 +55,8 @@ flowchart LR
 
 ### WingetFW
 
-- [ ] FW-0 CI and release workflow - done when the pipeline is green on main
-- [ ] FW-1 WingetFW.Core - done when Pester covers every settings level combination
+- [x] FW-0 CI and release workflow - done when the pipeline is green on GitHub
+- [x] FW-1 WingetFW.Core - done when Pester covers every settings level combination
 - [ ] FW-2 ADMX and settings - done when the VM shows policy > command line > mod > local key > config
 - [ ] FW-3 Mods - done when the VM runs local/UNC/blob mods and rejects unsigned, unknown-source and top-level-code files
 - [ ] FW-4 Conflicting apps - done when the VM removes an old MSI before install

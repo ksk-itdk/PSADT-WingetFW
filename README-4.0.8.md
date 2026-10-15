@@ -132,7 +132,7 @@ C:\ProgramData\Microsoft\IntuneManagementExtension\Logs\<OverrideAPPName|id|name
 The log contains the WingetFW parameters, the final winget command line and the winget exit code. Use `-OverrideAPPName` to change the first part of the file name. Use `-log` for winget's own log file.
 
 ## UPGRADING INTUNE APPS
-`Tools\Update-WingetFWIntuneApps.ps1` (BETA) updates WingetFW 3.x and 4.x apps in Intune to the current WingetFW version. See [UPGRADING INTUNE APPS in README.md](README.md#upgrading-intune-apps).
+`Tools\Update-WingetFWIntuneApps.ps1` (BETA) updates WingetFW 3.x and 4.x apps in Intune to the current WingetFW version. See [Upgrading Intune apps](Docs/Upgrading-Intune-Apps.md).
 
 ## TESTS
 The test suite and the latest results are in [Tests/README.md](Tests/README.md) and [Tests/TEST-RESULTS.md](Tests/TEST-RESULTS.md).
