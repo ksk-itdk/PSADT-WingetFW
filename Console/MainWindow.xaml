@@ -1,0 +1,184 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="WingetFW Console" Width="1360" Height="860" WindowStartupLocation="CenterScreen" FontSize="12">
+    <Window.Resources>
+        <Style TargetType="TextBox">
+            <Setter Property="Margin" Value="2" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style TargetType="ComboBox">
+            <Setter Property="Margin" Value="2" />
+        </Style>
+        <Style TargetType="Label">
+            <Setter Property="Padding" Value="2,4,6,4" />
+        </Style>
+        <Style TargetType="Button">
+            <Setter Property="Margin" Value="2" />
+            <Setter Property="Padding" Value="10,2" />
+        </Style>
+        <Style TargetType="GroupBox">
+            <Setter Property="Margin" Value="0,0,0,6" />
+            <Setter Property="Padding" Value="4" />
+        </Style>
+    </Window.Resources>
+    <DockPanel>
+        <StatusBar DockPanel.Dock="Bottom">
+            <TextBlock x:Name="StatusText" Text="Ready" />
+        </StatusBar>
+        <TabControl Margin="4">
+            <TabItem Header="Search and build">
+                <Grid Margin="4">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                        <Label Content="Search:" />
+                        <TextBox x:Name="SearchText" Width="320" ToolTip="Name, ID, moniker or tag" />
+                        <Label Content="Source:" />
+                        <ComboBox x:Name="SearchSourceBox" Width="140" />
+                        <Button x:Name="SearchButton" Content="Search" IsDefault="True" />
+                    </StackPanel>
+                    <Grid Grid.Row="1">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="5*" />
+                            <ColumnDefinition Width="6" />
+                            <ColumnDefinition Width="6*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="2*" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="2*" />
+                                <RowDefinition Height="2*" />
+                            </Grid.RowDefinitions>
+                            <DataGrid x:Name="ResultsGrid" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single" HeadersVisibility="Column">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="2*" />
+                                    <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="2*" />
+                                    <DataGridTextColumn Header="Version" Binding="{Binding Version}" Width="*" />
+                                    <DataGridTextColumn Header="Source" Binding="{Binding Source}" Width="*" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,4">
+                                <Label Content="Version:" />
+                                <ComboBox x:Name="VersionBox" Width="160" />
+                            </StackPanel>
+                            <TextBox x:Name="DetailsText" Grid.Row="2" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                                     VerticalContentAlignment="Top" FontFamily="Consolas" />
+                            <DataGrid x:Name="InstallersGrid" Grid.Row="3" Margin="0,4,0,0" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single" HeadersVisibility="Column"
+                                      ToolTip="Select an installer to use its scope, architecture and installer type">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Architecture" Binding="{Binding Architecture}" />
+                                    <DataGridTextColumn Header="Type" Binding="{Binding InstallerType}" />
+                                    <DataGridTextColumn Header="Nested" Binding="{Binding NestedInstallerType}" />
+                                    <DataGridTextColumn Header="Scope" Binding="{Binding Scope}" />
+                                    <DataGridTextColumn Header="Locale" Binding="{Binding Locale}" />
+                                    <DataGridTextColumn Header="Silent switch" Binding="{Binding Silent}" />
+                                    <DataGridTextColumn Header="Product code" Binding="{Binding ProductCode}" />
+                                    <DataGridTextColumn Header="Elevation" Binding="{Binding ElevationRequirement}" />
+                                    <DataGridTextColumn Header="Released" Binding="{Binding ReleaseDate}" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Grid>
+                        <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch" />
+                        <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <GroupBox Header="Install command">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition />
+                                        </Grid.RowDefinitions>
+                                        <Label Content="Package ID" />
+                                        <TextBox x:Name="IdText" Grid.Column="1" />
+                                        <CheckBox x:Name="SourceCheck" Grid.Column="2" Content="Source" VerticalAlignment="Center" IsChecked="True" Margin="2,0,6,0" />
+                                        <TextBox x:Name="SourceText" Grid.Column="3" />
+
+                                        <Label Grid.Row="1" Content="Action" />
+                                        <ComboBox x:Name="ActionBox" Grid.Row="1" Grid.Column="1" />
+                                        <Label Grid.Row="1" Grid.Column="2" Content="Mode" />
+                                        <ComboBox x:Name="ModeBox" Grid.Row="1" Grid.Column="3" ToolTip="Admin: Intune install behavior System. User: Intune install behavior User" />
+
+                                        <CheckBox x:Name="ExactCheck" Grid.Row="2" Grid.Column="1" Content="-exact" IsChecked="True" VerticalAlignment="Center" Margin="2,4" />
+                                        <Label Grid.Row="2" Grid.Column="2" Content="Version" />
+                                        <TextBox x:Name="PinVersionText" Grid.Row="2" Grid.Column="3" ToolTip="Empty: latest version" />
+
+                                        <Label Grid.Row="3" Content="Scope" />
+                                        <ComboBox x:Name="ScopeBox" Grid.Row="3" Grid.Column="1" />
+                                        <Label Grid.Row="3" Grid.Column="2" Content="Architecture" />
+                                        <ComboBox x:Name="ArchitectureBox" Grid.Row="3" Grid.Column="3" />
+
+                                        <Label Grid.Row="4" Content="Installer type" />
+                                        <ComboBox x:Name="InstallerTypeBox" Grid.Row="4" Grid.Column="1" />
+                                        <Label Grid.Row="4" Grid.Column="2" Content="Installer UI" />
+                                        <ComboBox x:Name="InstallModeBox" Grid.Row="4" Grid.Column="3" ToolTip="Default: WingetFW adds -silent unless the DefaultSilent setting is off" />
+
+                                        <Label Grid.Row="5" Content="Custom" />
+                                        <TextBox x:Name="CustomText" Grid.Row="5" Grid.Column="1" ToolTip="Arguments added to the installer defaults (-custom)" />
+                                        <Label Grid.Row="5" Grid.Column="2" Content="Override" />
+                                        <TextBox x:Name="OverrideText" Grid.Row="5" Grid.Column="3" ToolTip="Replaces all installer arguments (-override); not with -silent or -interactive" />
+
+                                        <Label Grid.Row="6" Content="Log file" />
+                                        <TextBox x:Name="LogText" Grid.Row="6" Grid.Column="1" Grid.ColumnSpan="3" ToolTip="winget log file (-log)" />
+
+                                        <Label Grid.Row="7" Content="Other options" />
+                                        <TextBox x:Name="OtherText" Grid.Row="7" Grid.Column="1" Grid.ColumnSpan="3" ToolTip="More WingetFW parameters, for example: -skipdependencies -locale 'en-US'" />
+                                    </Grid>
+                                </GroupBox>
+                                <GroupBox Header="Commands">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition /><RowDefinition /><RowDefinition />
+                                        </Grid.RowDefinitions>
+                                        <Label Content="Install" />
+                                        <TextBox x:Name="InstallCommandText" Grid.Column="1" IsReadOnly="True" TextWrapping="Wrap" FontFamily="Consolas" />
+                                        <Button x:Name="CopyInstallButton" Grid.Column="2" Content="Copy" VerticalAlignment="Top" />
+                                        <Label Grid.Row="1" Content="Uninstall" />
+                                        <TextBox x:Name="UninstallCommandText" Grid.Row="1" Grid.Column="1" IsReadOnly="True" TextWrapping="Wrap" FontFamily="Consolas" />
+                                        <Button x:Name="CopyUninstallButton" Grid.Row="1" Grid.Column="2" Content="Copy" VerticalAlignment="Top" />
+                                        <ListBox x:Name="MessagesList" Grid.Row="2" Grid.ColumnSpan="3" MinHeight="60" MaxHeight="140" Margin="2,4,2,2" />
+                                    </Grid>
+                                </GroupBox>
+                                <GroupBox Header="Detection script">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition /><RowDefinition /><RowDefinition />
+                                        </Grid.RowDefinitions>
+                                        <RadioButton x:Name="DetectWingetRadio" Grid.ColumnSpan="2" Content="winget list (package ID)" IsChecked="True" Margin="2,4" />
+                                        <RadioButton x:Name="DetectRegistryRadio" Grid.Column="2" Grid.ColumnSpan="2" Content="Uninstall registry key (HKLM)" Margin="2,4" />
+                                        <Label Grid.Row="1" Content="Display name" />
+                                        <TextBox x:Name="DetectNameText" Grid.Row="1" Grid.Column="1" ToolTip="DisplayName in the uninstall key, wildcards allowed" />
+                                        <Label Grid.Row="1" Grid.Column="2" Content="Minimum version" />
+                                        <TextBox x:Name="DetectVersionText" Grid.Row="1" Grid.Column="3" Text="0" ToolTip="0 = any version" />
+                                        <TextBlock x:Name="DetectTemplateText" Grid.Row="2" Grid.ColumnSpan="2" VerticalAlignment="Center" Margin="2" />
+                                        <StackPanel Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                                            <Button x:Name="CopyDetectionButton" Content="Copy" />
+                                            <Button x:Name="SaveDetectionButton" Content="Save as..." />
+                                        </StackPanel>
+                                    </Grid>
+                                </GroupBox>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Grid>
+                </Grid>
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+</Window>

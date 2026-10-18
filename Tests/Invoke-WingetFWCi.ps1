@@ -28,9 +28,10 @@
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 1.0.0
+    Version      : 1.1.0
 
     Release notes
+    1.1.0  - PSScriptAnalyzer also checks the Console folder (phase CON-1).
     1.0.0  - First version (phase FW-0).
 
 .LINK
@@ -60,6 +61,7 @@ if (-not $SkipAnalyzer)
         'Toolkit\WinGetFW5.0.0\Invoke-AppDeployToolkit.ps1'
         'Toolkit\Detection'
         'Tools'
+        'Console'
         'Tests'
     )
     $settings = Join-Path -Path $repoRoot -ChildPath 'PSScriptAnalyzerSettings.psd1'

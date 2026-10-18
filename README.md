@@ -33,6 +33,7 @@ This README is for **WingetFW 5.0.0** (PSAppDeployToolkit 4.1.8, `Toolkit\WinGet
 | [Signing mod files](Docs/Signing.md) | Code signing certificate, Intune profile, `RequireSignedScripts`, WDAC |
 | [Exit codes and logs](Docs/Exit-Codes-and-Logs.md) | Exit codes, log files |
 | [Upgrading Intune apps](Docs/Upgrading-Intune-Apps.md) | `Tools\Update-WingetFWIntuneApps.ps1` (beta) |
+| [WingetFW Console](Docs/Console.md) | Window to search packages and build the install and uninstall commands and the detection script |
 | [Tests](Tests/README.md) | Test suite. Latest run of WingetFW 5.0.0: 70 of 70 tests passed ([results](Tests/TEST-RESULTS.md)) |
 | [Changelog](CHANGELOG.txt) | Changes per version |
 | [Contributing](CONTRIBUTING.md) | Notes for changing the code |

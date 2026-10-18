@@ -98,5 +98,6 @@ List of all Intune (or ConfigMgr) apps that run WingetFW, with:
 
 ## 8. Open points
 
-- One window with tabs, or separate windows per task.
+- One window with tabs (decided in CON-1).
+- Search and details: Microsoft.WinGet.Client for search, manifest YAML from GitHub winget-pkgs (powershell-yaml) for details; PowerShell 7.4 or later (decided in CON-1).
 - Whether to also show device results (needs WingetFW-Update reporting or Intune install status).
