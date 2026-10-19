@@ -9,9 +9,11 @@
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 1.0.0
+    Version      : 1.0.1
 
     Release notes
+    1.0.1  - The VM command tests are not created when the list is empty (Windows PowerShell 5.1 failed in
+             Pester discovery on an empty -ForEach).
     1.0.0  - First version (phase CON-1).
 
 .LINK
@@ -182,6 +184,8 @@ Describe 'ConvertFrom-WingetFWCommandLine' -Skip:$skip {
 }
 
 Describe 'Command lines of the last VM test run' -Skip:$skip {
+    # Pester fails discovery on an empty -ForEach (Windows PowerShell 5.1 or no results file)
+    if (-not $vmTests.Count) { return }
     It '<Id>: same rule result as WingetFW on the VM' -ForEach $vmTests {
         $read = ConvertFrom-WingetFWCommandLine -CommandLine $Command
         $read.Errors | Should -BeNullOrEmpty
