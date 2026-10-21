@@ -17,7 +17,6 @@ These notes are for anyone who changes the code. How to use WingetFW is in [READ
 | `Tools\` | `Update-WingetFWIntuneApps.ps1` and its parameter map |
 | `Tests\` | Unit tests (`Tests\Unit`), VM test suite and the last results, see [Tests/README.md](Tests/README.md) |
 | `Docs\` | User documentation (linked from the README) |
-| `Docs\Design\` | Project specs and the [phase plan](Docs/Design/Phases.md) |
 | `CHANGELOG.txt` | One entry per version |
 | `README.md`, `README-<version>.md` | Current version, and older versions |
 

@@ -30,16 +30,16 @@
     Version      : 0.4.0
 
     Release notes
-    0.4.0  - Mod files and settings (phase CON-4): New-WingetFWModFile, Test-WingetFWModFile, Save-WingetFWModFile,
+    0.4.0  - Mod files and settings: New-WingetFWModFile, Test-WingetFWModFile, Save-WingetFWModFile,
              Get-WingetFWEffectiveSetting.
-    0.3.0  - Inventory and upgrade (phase CON-3): Get-WingetFWIntuneInventory, Update-WingetFWIntuneApp,
+    0.3.0  - Inventory and upgrade: Get-WingetFWIntuneInventory, Update-WingetFWIntuneApp,
              Get-WingetFWModFileInfo. The conversion and app list functions of Tools\Update-WingetFWIntuneApps.ps1
              moved here (Convert-WingetFWCommandLine, Get-WingetFWIntuneAppList, Get-WingetFWDetectionInfo,
              Get-WingetFWNotesVersion, Set-WingetFWNotesVersion).
-    0.2.0  - Intune publish (phase CON-2): sign-in, .intunewin with IntuneWinAppUtil.exe (Microsoft signature checked),
+    0.2.0  - Intune publish: sign-in, .intunewin with IntuneWinAppUtil.exe (Microsoft signature checked),
              group search, Win32 app with detection script, return codes (69002 = retry), requirements and assignments.
            - The Graph and upload functions of Tools\Update-WingetFWIntuneApps.ps1 moved here.
-    0.1.0  - First version (phase CON-1): search, manifest details, command line builder, detection scripts.
+    0.1.0  - First version: search, manifest details, command line builder, detection scripts.
 
 .LINK
     https://github.com/ksk-itdk/PSADT-WingetFW

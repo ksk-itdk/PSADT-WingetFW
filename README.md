@@ -37,4 +37,3 @@ This README is for **WingetFW 5.0.0** (PSAppDeployToolkit 4.1.8, `Toolkit\WinGet
 | [Tests](Tests/README.md) | Test suite. Latest run of WingetFW 5.0.0: 70 of 70 tests passed ([results](Tests/TEST-RESULTS.md)) |
 | [Changelog](CHANGELOG.txt) | Changes per version |
 | [Contributing](CONTRIBUTING.md) | Notes for changing the code |
-| [Design](Docs/Design/Phases.md) | Specs and phase plan for WingetFW, WingetFW Console and WingetFW-Update |

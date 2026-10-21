@@ -6,8 +6,8 @@ A window for admins that finds a winget package, builds the WingetFW install com
 and detection script, creates the Win32 app in Intune, upgrades existing WingetFW apps to the current
 WingetFW version, and creates and signs mod files. It changes nothing on the device.
 
-Version 0.4.0: search, details, commands, detection script (phase CON-1), publish to Intune (phase CON-2),
-inventory and upgrade (phase CON-3), mod files and settings (phase CON-4).
+Version 0.4.0: search, details, commands and detection script; publish to Intune; inventory and upgrade;
+mod files and settings.
 
 ## REQUIREMENTS
 - Windows with PowerShell 7.4 or later.

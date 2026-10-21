@@ -7,7 +7,7 @@
     Version      : 1.0.0
 
     Release notes
-    1.0.0  - First version (phase FW-2): WingetFW.Core copy in the package equals Source\WingetFW.Core.
+    1.0.0  - First version: WingetFW.Core copy in the package equals Source\WingetFW.Core.
 
 .LINK
     https://github.com/ksk-itdk/PSADT-WingetFW

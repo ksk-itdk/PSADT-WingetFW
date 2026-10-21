@@ -6,7 +6,7 @@
     commands and the detection script for an Intune app.
 
 .DESCRIPTION
-    One window with tabs. Tab "Search and build" (phase CON-1):
+    One window with tabs. Tab "Search and build":
     1. Search a winget source by name, ID, moniker or tag.
     2. Select a package and version to see the manifest details and installers
        (source winget: from GitHub winget-pkgs; other sources: winget show).
@@ -15,15 +15,15 @@
        checked with the WingetFW option rules (the cases where WingetFW stops with 60001 or 69001).
     4. Copy or save the detection script (winget list or uninstall registry key).
 
-    Tab "Publish to Intune" (phase CON-2): sign in (delegated), select or build the .intunewin, and create
+    Tab "Publish to Intune": sign in (delegated), select or build the .intunewin, and create
     the Win32 app with the commands and detection script of the first tab, requirements, return codes and
     optional group assignments. Nothing is changed in Intune before you confirm.
 
-    Tab "Inventory and upgrade" (phase CON-3): lists all WingetFW apps in Intune with their command lines
+    Tab "Inventory and upgrade": lists all WingetFW apps in Intune with their command lines
     converted to the current WingetFW version (same rows as Tools\Update-WingetFWIntuneApps.ps1 -Export),
     exports the CSV, runs a dry run and updates the selected apps after you confirm.
 
-    Tab "Mod files and settings" (phase CON-4): creates, checks, saves and signs mod files, and shows the
+    Tab "Mod files and settings": creates, checks, saves and signs mod files, and shows the
     WingetFW settings on this PC with the level each value comes from.
 
     Needs PowerShell 7.4 or later and the modules Microsoft.WinGet.Client (search), powershell-yaml
@@ -38,17 +38,17 @@
     Version      : 0.4.0
 
     Release notes
-    0.4.0  - Tab "Mod files and settings" (phase CON-4): new mod file from the template, open, check (the same check
+    0.4.0  - Tab "Mod files and settings": new mod file from the template, open, check (the same check
              as WingetFW), save below AllowedScriptSources, sign with a code signing certificate, and the effective
              settings on this PC with the level of each value.
-    0.3.0  - Tab "Inventory and upgrade" (phase CON-3): lists the WingetFW apps in Intune with version, package,
+    0.3.0  - Tab "Inventory and upgrade": lists the WingetFW apps in Intune with version, package,
              action, detection, assignments and mod file; export to the update tool CSV; dry run and update of the
              selected apps.
     0.2.1  - Error messages show the inner errors too (a failed sign-in only said
              "InteractiveBrowserCredential authentication failed:").
-    0.2.0  - Tab "Publish to Intune" (phase CON-2): sign-in, .intunewin (browse or build), app details,
+    0.2.0  - Tab "Publish to Intune": sign-in, .intunewin (browse or build), app details,
              requirements, group assignments, create the Win32 app.
-    0.1.0  - First version (phase CON-1): search, manifest details, install and uninstall commands,
+    0.1.0  - First version: search, manifest details, install and uninstall commands,
              detection script.
 
 .LINK

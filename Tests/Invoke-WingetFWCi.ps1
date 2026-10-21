@@ -31,8 +31,8 @@
     Version      : 1.1.0
 
     Release notes
-    1.1.0  - PSScriptAnalyzer also checks the Console folder (phase CON-1).
-    1.0.0  - First version (phase FW-0).
+    1.1.0  - PSScriptAnalyzer also checks the Console folder.
+    1.0.0  - First version.
 
 .LINK
     https://github.com/ksk-itdk/PSADT-WingetFW
