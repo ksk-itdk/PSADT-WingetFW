@@ -1,6 +1,6 @@
 @{
     RootModule        = 'WingetFW.Console.psm1'
-    ModuleVersion     = '0.4.0'
+    ModuleVersion     = '0.5.0'
     GUID              = 'b4f2c8e1-6a3d-4f57-9c0e-2d8a7b1e5f36'
     Author            = 'KSKITDK'
     Description       = 'WingetFW Console logic: package search, manifest details, command line builder, detection scripts, Intune publish, inventory and upgrade, mod files and settings.'
@@ -31,6 +31,10 @@
         'New-WingetFWModFile'
         'Test-WingetFWModFile'
         'Save-WingetFWModFile'
+        'Connect-WingetFWConfigMgr'
+        'Get-WingetFWConfigMgrDistributionPointGroup'
+        'Copy-WingetFWConfigMgrContent'
+        'New-WingetFWConfigMgrApp'
     )
     CmdletsToExport   = @()
     VariablesToExport = @()

@@ -9,9 +9,10 @@
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 1.3.0
+    Version      : 1.4.0
 
     Release notes
+    1.4.0  - ConfigMgr publish with mocked ConfigMgr cmdlets.
     1.3.0  - Mod files (template, load check, save below AllowedScriptSources, signature) and effective settings.
     1.2.0  - Command line conversion, inventory, mod file check and app update with mocked Graph calls.
     1.1.0  - Intune publish tests with mocked Graph calls.
@@ -659,5 +660,93 @@ Describe 'Mod files and settings' -Skip:$skip {
         (& $get 'ScriptSyncMode').Text | Should -Be 'OnDemand'
         (& $get 'ScriptSyncMode').Source | Should -Be 'Default'
         (& $get 'ProxyBypass').Source | Should -Be 'None'
+    }
+}
+
+Describe 'ConfigMgr publish (ConfigMgr cmdlets mocked)' -Skip:$skip {
+    BeforeAll {
+        # Stand-ins with the same parameters, so the mocks work without the ConfigMgr console (CI)
+        $stubs = @{
+            'New-CMApplication'              = 'param ($Name, $Publisher, $Description, $LocalizedName, $SoftwareVersion)'
+            'Add-CMScriptDeploymentType'     = 'param ($ApplicationName, $DeploymentTypeName, $ContentLocation, $InstallCommand, $UninstallCommand, $ScriptLanguage, $ScriptText, $InstallationBehaviorType, $LogonRequirementType, $UserInteractionMode, $RebootBehavior, $MaximumRuntimeMins, $EstimatedRuntimeMins, $Comment)'
+            'Get-CMDeploymentType'           = 'param ($ApplicationName, $DeploymentTypeName)'
+            'Add-CMDeploymentTypeReturnCode' = 'param ($InputObject, $ReturnCode, $CodeType, $Name)'
+            'Start-CMContentDistribution'    = 'param ($ApplicationName, $DistributionPointGroupName)'
+            'New-CMApplicationDeployment'    = 'param ($Name, $CollectionName, $DeployAction, $DeployPurpose, $UserNotification)'
+        }
+        foreach ($name in $stubs.Keys)
+        {
+            if (-not (Get-Command -Name $name -ErrorAction SilentlyContinue)) { New-Item -Path "Function:\global:$name" -Value ([scriptblock]::Create($stubs[$name])) | Out-Null; $script:createdStubs += @($name) }
+        }
+        $appParams = @{
+            Name = '7-Zip'; Publisher = 'Igor Pavlov'; InstallCommandLine = "Invoke-AppDeployToolkit.exe -DeploymentType 'Install' -id '7zip.7zip'"
+            UninstallCommandLine = "Invoke-AppDeployToolkit.exe -DeploymentType 'Uninstall' -id '7zip.7zip'"; DetectionScript = 'Write-Output Installed'
+            ContentLocation = '\\cm01\Sources\Apps\WingetFW 5.0.0'; WingetFWVersion = '5.0.0'
+        }
+    }
+
+    AfterAll {
+        foreach ($name in @($script:createdStubs)) { Remove-Item -Path "Function:\global:$name" -ErrorAction SilentlyContinue }
+    }
+
+    BeforeEach {
+        $script:cm = [System.Collections.Generic.List[string]]::new()
+        Mock -ModuleName 'WingetFW.Console' Invoke-WingetFWCMCommand { & $ScriptBlock }
+        Mock -ModuleName 'WingetFW.Console' New-CMApplication { $script:cm.Add('New-CMApplication'); [pscustomobject]@{ CI_ID = 16777300 } }
+        Mock -ModuleName 'WingetFW.Console' Add-CMScriptDeploymentType { $script:cm.Add('Add-CMScriptDeploymentType') }
+        Mock -ModuleName 'WingetFW.Console' Get-CMDeploymentType { [pscustomobject]@{ LocalizedDisplayName = $DeploymentTypeName } }
+        Mock -ModuleName 'WingetFW.Console' Add-CMDeploymentTypeReturnCode { $script:cm.Add('Add-CMDeploymentTypeReturnCode') }
+        Mock -ModuleName 'WingetFW.Console' Start-CMContentDistribution { $script:cm.Add('Start-CMContentDistribution') }
+        Mock -ModuleName 'WingetFW.Console' New-CMApplicationDeployment { $script:cm.Add('New-CMApplicationDeployment') }
+    }
+
+    It 'creates the application with a system script deployment type and return code 69002' {
+        $result = New-WingetFWConfigMgrApp @appParams
+        @($script:cm) | Should -Be @('New-CMApplication', 'Add-CMScriptDeploymentType', 'Add-CMDeploymentTypeReturnCode')
+        Should -Invoke -ModuleName 'WingetFW.Console' New-CMApplication -Times 1 -Exactly -ParameterFilter { $Name -eq '7-Zip' -and $Publisher -eq 'Igor Pavlov' -and $LocalizedName -eq '7-Zip' }
+        Should -Invoke -ModuleName 'WingetFW.Console' Add-CMScriptDeploymentType -Times 1 -Exactly -ParameterFilter {
+            $ApplicationName -eq '7-Zip' -and $DeploymentTypeName -eq '7-Zip - WingetFW' -and $ContentLocation -eq '\\cm01\Sources\Apps\WingetFW 5.0.0' -and
+            $InstallCommand -eq "Invoke-AppDeployToolkit.exe -DeploymentType 'Install' -id '7zip.7zip'" -and
+            $UninstallCommand -eq "Invoke-AppDeployToolkit.exe -DeploymentType 'Uninstall' -id '7zip.7zip'" -and
+            $ScriptLanguage -eq 'PowerShell' -and $ScriptText -eq 'Write-Output Installed' -and
+            $InstallationBehaviorType -eq 'InstallForSystem' -and $LogonRequirementType -eq 'WhetherOrNotUserLoggedOn' -and
+            $RebootBehavior -eq 'BasedOnExitCode' -and $Comment -eq 'WingetFW 5.0.0'
+        }
+        Should -Invoke -ModuleName 'WingetFW.Console' Add-CMDeploymentTypeReturnCode -Times 1 -Exactly -ParameterFilter { $ReturnCode -eq 69002 -and $CodeType -eq 'FastRetry' -and $InputObject.LocalizedDisplayName -eq '7-Zip - WingetFW' }
+        $result.CIId | Should -Be 16777300
+        $result.Deployed | Should -Be ''
+    }
+
+    It 'installs for the user only when a user is logged on with -InstallBehavior User' {
+        $null = New-WingetFWConfigMgrApp @appParams -InstallBehavior User
+        Should -Invoke -ModuleName 'WingetFW.Console' Add-CMScriptDeploymentType -Times 1 -Exactly -ParameterFilter { $InstallationBehaviorType -eq 'InstallForUser' -and $LogonRequirementType -eq 'OnlyWhenUserLoggedOn' }
+    }
+
+    It 'distributes the content and deploys when a group and a collection are given' {
+        $result = New-WingetFWConfigMgrApp @appParams -DistributionPointGroupName 'All DPs' -CollectionName 'WingetFW Test' -DeployPurpose Required
+        @($script:cm)[-2..-1] | Should -Be @('Start-CMContentDistribution', 'New-CMApplicationDeployment')
+        Should -Invoke -ModuleName 'WingetFW.Console' Start-CMContentDistribution -Times 1 -Exactly -ParameterFilter { $ApplicationName -eq '7-Zip' -and @($DistributionPointGroupName) -contains 'All DPs' }
+        Should -Invoke -ModuleName 'WingetFW.Console' New-CMApplicationDeployment -Times 1 -Exactly -ParameterFilter { $Name -eq '7-Zip' -and $CollectionName -eq 'WingetFW Test' -and $DeployPurpose -eq 'Required' -and $DeployAction -eq 'Install' }
+        $result.Deployed | Should -Be 'Required to WingetFW Test'
+    }
+
+    It 'names the created application when a later step fails' {
+        Mock -ModuleName 'WingetFW.Console' Start-CMContentDistribution { throw 'DP group not found' }
+        { New-WingetFWConfigMgrApp @appParams -DistributionPointGroupName 'Nope' } | Should -Throw "The application '7-Zip' was created in ConfigMgr, but the content distribution failed: DP group not found"
+    }
+
+    It 'refuses content that is not on a UNC path' {
+        { New-WingetFWConfigMgrApp @appParams -ContentLocation 'C:\Sources\WingetFW' } | Should -Throw '*must be a UNC path*'
+        { Copy-WingetFWConfigMgrContent -ContentShare 'C:\Sources' } | Should -Throw '*must be a UNC path*'
+        $script:cm.Count | Should -Be 0
+    }
+}
+
+Describe 'ConfigMgr connection check' -Skip:$skip {
+    It 'needs a connection before ConfigMgr cmdlets run' {
+        InModuleScope -ModuleName 'WingetFW.Console' {
+            $Script:CMSiteCode = $null
+            { Invoke-WingetFWCMCommand { 'x' } } | Should -Throw '*Connect to the ConfigMgr site first*'
+        }
     }
 }
