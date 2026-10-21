@@ -19,6 +19,10 @@
     the Win32 app with the commands and detection script of the first tab, requirements, return codes and
     optional group assignments. Nothing is changed in Intune before you confirm.
 
+    Tab "Publish to ConfigMgr": connects to a site with the ConfigMgr console's module, copies the WingetFW package
+    to the content share and creates the application (script deployment type, return code 69002, optional
+    distribution and deployment) after you confirm.
+
     Tab "Inventory and upgrade": lists all WingetFW apps in Intune with their command lines
     converted to the current WingetFW version (same rows as Tools\Update-WingetFWIntuneApps.ps1 -Export),
     exports the CSV, runs a dry run and updates the selected apps after you confirm.
@@ -35,9 +39,12 @@
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 0.4.0
+    Version      : 0.5.0
 
     Release notes
+    0.5.0  - Tab "Publish to ConfigMgr": connect to a site, copy the WingetFW package to the content share, and create
+             the application with the commands and detection script of the first tab, with optional distribution and
+             deployment.
     0.4.0  - Tab "Mod files and settings": new mod file from the template, open, check (the same check
              as WingetFW), save below AllowedScriptSources, sign with a code signing certificate, and the effective
              settings on this PC with the level of each value.
@@ -195,6 +202,10 @@ function Update-Commands
     $ui.PublishUninstallText.Text = $uninstall.CommandLine
     $ui.InstallBehaviorText.Text = if ($install.Parameters['Mode'] -eq 'User') { 'User (-Mode User)' } else { 'System (-Mode Admin)' }
     $ui.PublishDetectionText.Text = if ($ui.DetectRegistryRadio.IsChecked) { "$($templates.Registry): $($ui.DetectNameText.Text) >= $($ui.DetectVersionText.Text)" } else { "$($templates.Winget): $($ui.IdText.Text)" }
+    $ui.CMInstallText.Text = $install.CommandLine
+    $ui.CMUninstallText.Text = $uninstall.CommandLine
+    $ui.CMBehaviorText.Text = if ($install.Parameters['Mode'] -eq 'User') { 'Install for user, only when a user is logged on (-Mode User)' } else { 'Install for system, whether or not a user is logged on (-Mode Admin)' }
+    $ui.CMDetectionText.Text = "PowerShell script $($ui.PublishDetectionText.Text)"
 }
 
 function Get-DetectionScript([string]$Path)
@@ -379,6 +390,8 @@ if ($certificates) { $ui.ModCertBox.SelectedIndex = 0 }
 else { $ui.ModSignCheck.IsEnabled = $false; $ui.ModSignCheck.ToolTip = 'No code signing certificate with private key in Cert:\CurrentUser\My, see Docs\Signing.md' }
 $script:effectiveSettings = @()
 Update-ModPath
+$ui.CMPurposeBox.ItemsSource = @('Available', 'Required')
+$ui.CMPurposeBox.SelectedIndex = 0
 #endregion
 
 #region Events
@@ -419,6 +432,10 @@ $ui.VersionBox.Add_SelectionChanged({
             $ui.AppPublisherText.Text = $manifest.Publisher
             $ui.AppDescriptionText.Text = $manifest.ShortDescription
             $ui.AppUrlText.Text = $manifest.PackageUrl
+            $ui.CMAppNameText.Text = $ui.AppNameText.Text
+            $ui.CMPublisherText.Text = $manifest.Publisher
+            $ui.CMDescriptionText.Text = $manifest.ShortDescription
+            $ui.CMVersionText.Text = $version
             Set-Status "$($selected.Id) $version - $($manifest.Installers.Count) installer(s)"
         }
     })
@@ -651,6 +668,69 @@ $ui.ModSaveButton.Add_Click({
 
 $ui.SettingsActionBox.Add_SelectionChanged({ Invoke-UiAction '' { Update-Settings } })
 $ui.SettingsRefreshButton.Add_Click({ Invoke-UiAction '' { Update-Settings; Set-Status 'Settings read' } })
+
+$ui.CMConnectButton.Add_Click({
+        Invoke-UiAction "Connecting to site $($ui.CMSiteCodeText.Text.Trim())..." {
+            $site = Connect-WingetFWConfigMgr -SiteCode $ui.CMSiteCodeText.Text.Trim() -SiteServer $ui.CMServerText.Text.Trim()
+            $ui.CMConnectedText.Text = "$($site.SiteCode) - $($site.SiteName) ($($site.Version))"
+            $ui.CMDPGroupBox.ItemsSource = @(Get-WingetFWConfigMgrDistributionPointGroup)
+            Set-Status "Connected to site $($site.SiteCode)"
+        }
+    })
+
+$ui.CMShareText.Add_TextChanged({
+        $share = $ui.CMShareText.Text.Trim().TrimEnd('\')
+        $ui.CMContentText.Text = if ($share) { "$share\WingetFW $($package.Version)" } else { '' }
+    })
+
+$ui.CMCopyButton.Add_Click({
+        Invoke-UiAction "Copying WingetFW $($package.Version) to the content share..." {
+            $ui.CMContentText.Text = Copy-WingetFWConfigMgrContent -ContentShare $ui.CMShareText.Text.Trim().TrimEnd('\')
+            Set-Status "Content folder: $($ui.CMContentText.Text)"
+        }
+    })
+
+$ui.CMCreateButton.Add_Click({
+        $install = New-WingetFWCommandLine -Parameters (Get-BuildParameters).Parameters
+        $uninstall = New-WingetFWCommandLine -Parameters $install.Parameters -Uninstall
+        $problems = @($install.Errors) + @($uninstall.Errors | ForEach-Object { "Uninstall: $_" })
+        if (-not $ui.CMAppNameText.Text.Trim()) { $problems += 'Name is empty' }
+        if (-not $ui.CMPublisherText.Text.Trim()) { $problems += 'Publisher is empty' }
+        if ($ui.CMShareText.Text.Trim() -notmatch '^\\\\') { $problems += 'Fill in the content share (UNC path)' }
+        if ($ui.CMConnectedText.Text -eq 'Not connected') { $problems += 'Connect to the site first' }
+        if ($problems)
+        {
+            $null = [System.Windows.MessageBox]::Show($window, ($problems -join "`n"), 'WingetFW Console', 'OK', 'Warning')
+            return
+        }
+        $dpGroup = [string]$ui.CMDPGroupBox.Text
+        $collection = $ui.CMCollectionText.Text.Trim()
+        $question = "Create the application '$($ui.CMAppNameText.Text.Trim())' in site $($ui.CMSiteCodeText.Text.Trim())?" +
+            $(if ($dpGroup) { "`nDistribute to: $dpGroup" }) + $(if ($collection) { "`nDeploy $($ui.CMPurposeBox.SelectedItem) to: $collection" })
+        if ([System.Windows.MessageBox]::Show($window, $question, 'WingetFW Console', 'YesNo', 'Question') -ne 'Yes') { return }
+
+        Invoke-UiAction "Creating '$($ui.CMAppNameText.Text.Trim())' in ConfigMgr..." {
+            $content = Copy-WingetFWConfigMgrContent -ContentShare $ui.CMShareText.Text.Trim().TrimEnd('\')
+            $ui.CMContentText.Text = $content
+            $appParams = @{
+                Name                 = $ui.CMAppNameText.Text.Trim()
+                Publisher            = $ui.CMPublisherText.Text.Trim()
+                Description          = $ui.CMDescriptionText.Text.Trim()
+                SoftwareVersion      = $ui.CMVersionText.Text.Trim()
+                InstallCommandLine   = $install.CommandLine
+                UninstallCommandLine = $uninstall.CommandLine
+                InstallBehavior      = $(if ($install.Parameters['Mode'] -eq 'User') { 'User' } else { 'System' })
+                DetectionScript      = (Get-DetectionScript).Text
+                ContentLocation      = $content
+                DeployPurpose        = [string]$ui.CMPurposeBox.SelectedItem
+            }
+            if ($dpGroup) { $appParams.DistributionPointGroupName = @($dpGroup) }
+            if ($collection) { $appParams.CollectionName = $collection }
+            $app = New-WingetFWConfigMgrApp @appParams
+            $ui.CMResultText.Text = "Created '$($app.Name)'$(if ($app.Distributed) { ", distributed to $($app.Distributed -join ', ')" })$(if ($app.Deployed) { ", deployed $($app.Deployed)" })"
+            Set-Status $ui.CMResultText.Text
+        }
+    })
 #endregion
 
 Update-Commands

@@ -21,15 +21,20 @@
     Mods     : New-WingetFWModFile (from the package template), Test-WingetFWModFile (load and signature check of
                WingetFW.Core), Save-WingetFWModFile (only below AllowedScriptSources, optional signature) and
                Get-WingetFWEffectiveSetting (the settings on this PC and their level). WingetFW.Core is loaded from Source.
+    ConfigMgr: Connect-WingetFWConfigMgr (ConfigurationManager module of the ConfigMgr console), Copy-WingetFWConfigMgrContent
+               (the package to the content share), New-WingetFWConfigMgrApp (application, script deployment type,
+               return code 69002, distribution, deployment).
 
     Needs PowerShell 7.4 or later. Search needs Microsoft.WinGet.Client, manifest details need powershell-yaml,
-    Intune needs Microsoft.Graph.Authentication.
+    Intune needs Microsoft.Graph.Authentication, ConfigMgr needs the ConfigMgr console.
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 0.4.0
+    Version      : 0.5.0
 
     Release notes
+    0.5.0  - ConfigMgr publish: Connect-WingetFWConfigMgr, Get-WingetFWConfigMgrDistributionPointGroup,
+             Copy-WingetFWConfigMgrContent, New-WingetFWConfigMgrApp.
     0.4.0  - Mod files and settings: New-WingetFWModFile, Test-WingetFWModFile, Save-WingetFWModFile,
              Get-WingetFWEffectiveSetting.
     0.3.0  - Inventory and upgrade: Get-WingetFWIntuneInventory, Update-WingetFWIntuneApp,
@@ -1958,6 +1963,206 @@ function Save-WingetFWModFile
         $null = Set-AuthenticodeSignature @signParams
     }
     Test-WingetFWModFile -Path $Path -Global:$Global
+}
+
+#endregion
+
+#region ConfigMgr (ConfigurationManager module of the ConfigMgr console)
+
+$Script:CMSiteCode = $null
+
+function Invoke-WingetFWCMCommand
+{
+    # ConfigMgr cmdlets only work with the site drive as the current location
+    param ([scriptblock]$ScriptBlock)
+
+    if (-not $Script:CMSiteCode) { throw 'Connect to the ConfigMgr site first (Connect-WingetFWConfigMgr).' }
+    Push-Location -LiteralPath "$($Script:CMSiteCode):\"
+    try { & $ScriptBlock }
+    finally { Pop-Location }
+}
+
+function Connect-WingetFWConfigMgr
+{
+    <#
+    .SYNOPSIS
+        Connects to a ConfigMgr site with the ConfigurationManager module of the ConfigMgr console on this PC.
+    .PARAMETER SiteCode
+        Three-character site code, for example P01.
+    .PARAMETER SiteServer
+        Site server with the SMS Provider, for example cm01.contoso.com.
+    #>
+    [CmdletBinding()]
+    param
+    (
+        [Parameter(Mandatory = $true)]
+        [ValidatePattern('^[A-Za-z0-9]{3}$')]
+        [string]$SiteCode,
+
+        [Parameter(Mandatory = $true)]
+        [string]$SiteServer
+    )
+
+    if (-not (Get-Module -Name 'ConfigurationManager'))
+    {
+        if (-not $env:SMS_ADMIN_UI_PATH) { throw 'Publishing to ConfigMgr needs the ConfigMgr console on this PC (its ConfigurationManager module); SMS_ADMIN_UI_PATH is not set.' }
+        Import-Module -Name (Join-Path -Path (Split-Path -Path $env:SMS_ADMIN_UI_PATH -Parent) -ChildPath 'ConfigurationManager.psd1') -Global
+    }
+    $SiteCode = $SiteCode.ToUpperInvariant()
+    if (-not (Get-PSDrive -Name $SiteCode -PSProvider 'CMSite' -ErrorAction SilentlyContinue))
+    {
+        $null = New-PSDrive -Name $SiteCode -PSProvider 'CMSite' -Root $SiteServer -Description 'WingetFW Console' -Scope Global
+    }
+    $Script:CMSiteCode = $SiteCode
+    $site = Invoke-WingetFWCMCommand { Get-CMSite -SiteCode $SiteCode }
+    if (-not $site) { throw "Site $SiteCode was not found on $SiteServer." }
+    [pscustomobject]@{ SiteCode = $SiteCode; SiteName = $site.SiteName; SiteServer = $SiteServer; Version = $site.Version }
+}
+
+function Get-WingetFWConfigMgrDistributionPointGroup
+{
+    <#
+    .SYNOPSIS
+        Names of the distribution point groups of the connected site.
+    #>
+    [CmdletBinding()]
+    param ()
+
+    Invoke-WingetFWCMCommand { @(Get-CMDistributionPointGroup | ForEach-Object { $_.Name } | Sort-Object) }
+}
+
+function Copy-WingetFWConfigMgrContent
+{
+    <#
+    .SYNOPSIS
+        Copies the newest WingetFW package to <ContentShare>\WingetFW <version>, the content of every WingetFW application.
+    .DESCRIPTION
+        A folder that already has Invoke-AppDeployToolkit.exe is used as it is: applications already use it, and a
+        change needs a content update on the distribution points. Returns the content folder.
+    .PARAMETER ContentShare
+        UNC path the site server can read, for example \\cm01\Sources\Apps.
+    #>
+    [CmdletBinding(SupportsShouldProcess)]
+    param
+    (
+        [Parameter(Mandatory = $true)]
+        [string]$ContentShare
+    )
+
+    if ($ContentShare -notmatch '^\\\\[^\\]+\\[^\\]+') { throw "The content share must be a UNC path (\\server\share), ConfigMgr reads the content from there: $ContentShare" }
+    $package = Get-WingetFWPackageInfo
+    $target = Join-Path -Path $ContentShare -ChildPath "WingetFW $($package.Version)"
+    if (Test-Path -LiteralPath (Join-Path -Path $target -ChildPath 'Invoke-AppDeployToolkit.exe')) { return $target }
+    if (-not $PSCmdlet.ShouldProcess($target, "Copy WingetFW $($package.Version)")) { return $target }
+    Copy-Item -LiteralPath $package.Path -Destination $target -Recurse
+    $target
+}
+
+function New-WingetFWConfigMgrApp
+{
+    <#
+    .SYNOPSIS
+        Creates a WingetFW application in ConfigMgr: script deployment type with the WingetFW commands and the detection
+        script, return code 69002, content distribution and an optional deployment.
+    .DESCRIPTION
+        Needs Connect-WingetFWConfigMgr. The deployment type uses the default return codes of ConfigMgr, plus 69002
+        (skipped by a mod file) as fast retry. When a step after the creation fails, the application stays in ConfigMgr;
+        the error has its name.
+    .PARAMETER InstallBehavior
+        System (WingetFW -Mode Admin) or User (-Mode User, only when a user is logged on).
+    .PARAMETER ContentLocation
+        UNC folder with the WingetFW package, from Copy-WingetFWConfigMgrContent.
+    .PARAMETER CollectionName
+        Deploy to this collection. Empty: no deployment.
+    #>
+    [CmdletBinding(SupportsShouldProcess)]
+    param
+    (
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Publisher,
+
+        [Parameter()]
+        [string]$Description,
+
+        [Parameter()]
+        [string]$SoftwareVersion,
+
+        [Parameter(Mandatory = $true)]
+        [string]$InstallCommandLine,
+
+        [Parameter(Mandatory = $true)]
+        [string]$UninstallCommandLine,
+
+        [Parameter()]
+        [ValidateSet('System', 'User')]
+        [string]$InstallBehavior = 'System',
+
+        [Parameter(Mandatory = $true)]
+        [string]$DetectionScript,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ContentLocation,
+
+        [Parameter()]
+        [string[]]$DistributionPointGroupName = @(),
+
+        [Parameter()]
+        [string]$CollectionName,
+
+        [Parameter()]
+        [ValidateSet('Available', 'Required')]
+        [string]$DeployPurpose = 'Available',
+
+        [Parameter()]
+        [string]$WingetFWVersion = (Get-WingetFWPackageInfo).Version
+    )
+
+    if ($ContentLocation -notmatch '^\\\\') { throw "The content location must be a UNC path: $ContentLocation" }
+    $deploymentTypeName = "$Name - WingetFW"
+    if (-not $PSCmdlet.ShouldProcess($Name, 'Create ConfigMgr application')) { return }
+
+    Invoke-WingetFWCMCommand {
+        $appParams = @{ Name = $Name; Publisher = $Publisher; Description = $(if ($Description) { $Description } else { $Name }); LocalizedName = $Name }
+        if ($SoftwareVersion) { $appParams.SoftwareVersion = $SoftwareVersion }
+        $app = New-CMApplication @appParams
+        $step = 'deployment type'
+        try
+        {
+            $system = $InstallBehavior -eq 'System'
+            $null = Add-CMScriptDeploymentType -ApplicationName $Name -DeploymentTypeName $deploymentTypeName -ContentLocation $ContentLocation `
+                -InstallCommand $InstallCommandLine -UninstallCommand $UninstallCommandLine -ScriptLanguage 'PowerShell' -ScriptText $DetectionScript `
+                -InstallationBehaviorType $(if ($system) { 'InstallForSystem' } else { 'InstallForUser' }) `
+                -LogonRequirementType $(if ($system) { 'WhetherOrNotUserLoggedOn' } else { 'OnlyWhenUserLoggedOn' }) `
+                -UserInteractionMode 'Hidden' -RebootBehavior 'BasedOnExitCode' -MaximumRuntimeMins 60 -EstimatedRuntimeMins 10 -Comment "WingetFW $WingetFWVersion"
+            $step = 'return code 69002'
+            $deploymentType = Get-CMDeploymentType -ApplicationName $Name -DeploymentTypeName $deploymentTypeName
+            $null = Add-CMDeploymentTypeReturnCode -InputObject $deploymentType -ReturnCode 69002 -CodeType 'FastRetry' -Name 'WingetFW: skipped by a mod file'
+            if ($DistributionPointGroupName)
+            {
+                $step = 'content distribution'
+                Start-CMContentDistribution -ApplicationName $Name -DistributionPointGroupName $DistributionPointGroupName
+            }
+            if ($CollectionName)
+            {
+                $step = 'deployment'
+                $null = New-CMApplicationDeployment -Name $Name -CollectionName $CollectionName -DeployAction 'Install' -DeployPurpose $DeployPurpose -UserNotification 'DisplaySoftwareCenterOnly'
+            }
+        }
+        catch
+        {
+            throw "The application '$Name' was created in ConfigMgr, but the $step failed: $($_.Exception.Message)"
+        }
+        [pscustomobject]@{
+            Name           = $Name
+            CIId           = $app.CI_ID
+            DeploymentType = $deploymentTypeName
+            Distributed    = @($DistributionPointGroupName)
+            Deployed       = if ($CollectionName) { "$DeployPurpose to $CollectionName" } else { '' }
+        }
+    }
 }
 
 #endregion

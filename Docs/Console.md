@@ -3,11 +3,11 @@
 [Back to README](../README.md)
 
 A window for admins that finds a winget package, builds the WingetFW install command, uninstall command
-and detection script, creates the Win32 app in Intune, upgrades existing WingetFW apps to the current
+and detection script, creates the app in Intune or ConfigMgr, upgrades existing WingetFW apps in Intune to the current
 WingetFW version, and creates and signs mod files. It changes nothing on the device.
 
-Version 0.4.0: search, details, commands and detection script; publish to Intune; inventory and upgrade;
-mod files and settings.
+Version 0.5.0: search, details, commands and detection script; publish to Intune; publish to ConfigMgr;
+inventory and upgrade; mod files and settings.
 
 ## REQUIREMENTS
 - Windows with PowerShell 7.4 or later.
@@ -18,6 +18,7 @@ mod files and settings.
 - Internet access to GitHub (`raw.githubusercontent.com`) for the manifest details of the `winget` source.
 - For publishing: the module `Microsoft.Graph.Authentication`, and an admin account that may create Intune apps.
   The Console signs in as you (delegated) with `DeviceManagementApps.ReadWrite.All` and `Group.Read.All`. It stores no secrets.
+- For ConfigMgr: the ConfigMgr console on this PC (its `ConfigurationManager` module), and an account that may create applications.
 - Run it from the repository folder. It reads `Toolkit\WinGetFW<version>` (the newest one), `Toolkit\Detection` and `Tools\WingetFW-ParameterMap.psd1`.
 
 ## START
@@ -72,6 +73,32 @@ Build the app on the **Search and build** tab first; the **Publish to Intune** t
 
 If the upload or the assignment fails, the app stays in Intune without content; the message shows its ID so you can delete it.
 
+## PUBLISH TO CONFIGMGR
+Build the app on the **Search and build** tab first; the **Publish to ConfigMgr** tab uses those commands and that detection script.
+1. **Site**: site code and the site server with the SMS Provider, then **Connect**. The Console uses the `ConfigurationManager`
+   module of the ConfigMgr console on this PC, with your own account.
+2. **Content share**: a UNC path the site server can read, for example `\\cm01\Sources\Apps`. **Copy package to share** copies
+   the newest `Toolkit\WinGetFW<version>` folder to `<share>\WingetFW <version>`. Every WingetFW application uses this folder.
+   A folder that is already there is not overwritten: applications use it, and a change needs a content update on the
+   distribution points. Put mod files for the package `Mods` folder there before the first copy, or use a `ScriptRoot` share.
+3. **Application**: name, publisher, description and software version are filled in from the manifest.
+4. **Distribution and deployment** (optional): a distribution point group, and a collection with **Available** or **Required**.
+5. **Create application in ConfigMgr**. You confirm first. The application gets one script deployment type:
+
+| Setting | Value |
+|---|---|
+| Content | `<share>\WingetFW <version>` |
+| Install and uninstall command | From the **Search and build** tab |
+| Detection | The detection script (PowerShell) |
+| Install behavior | Install for system, whether or not a user is logged on (`-Mode Admin`); install for user, only when a user is logged on (`-Mode User`) |
+| Return codes | The ConfigMgr defaults, plus **69002 fast retry** (skipped by a [mod file](Mods.md)) |
+| Reboot | Based on the return code |
+| Comment | `WingetFW <version>` |
+
+- If a step after the creation fails (return code, distribution or deployment), the application stays in ConfigMgr; the message names it.
+- ConfigMgr runs the detection script with the client setting **PowerShell execution policy**. With **All Signed**, sign the
+  detection script or set the policy to **Bypass**.
+
 ## INVENTORY AND UPGRADE
 The **Inventory and upgrade** tab does the same as [`Tools\Update-WingetFWIntuneApps.ps1`](Upgrading-Intune-Apps.md),
 with a list and a preview. Both use the same functions, so the result is the same.
@@ -115,5 +142,5 @@ run the Console on a test device to see the settings an Intune policy sets there
 The checks write their log lines to the WingetFW log of the current user (`%LOCALAPPDATA%\WingetFW\Logs`).
 
 ## TESTS
-- `Tests\Unit\WingetFW.Console.Tests.ps1`: builder, option rules, quoting, detection scripts, manifest data, the Intune app and assignment body, the command line conversion, the inventory and the app update with mocked Graph calls, mod files and effective settings.
+- `Tests\Unit\WingetFW.Console.Tests.ps1`: builder, option rules, quoting, detection scripts, manifest data, the Intune app and assignment body, the command line conversion, the inventory and the app update with mocked Graph calls, mod files and effective settings, and the ConfigMgr application with mocked ConfigMgr cmdlets.
 - The builder is also checked against every command of the last VM test run (`Tests\results\WingetFW-TestResults.json`): commands that passed on the VM are accepted, the validation tests (V01-V10, N01) are rejected with the same message as the WingetFW log.
