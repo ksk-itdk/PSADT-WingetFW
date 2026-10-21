@@ -13,6 +13,8 @@ adds what the app needs, for example closing a process, setting a registry value
 | `<ScriptRoot>\_WingetFW.ps1` | Every app (global mod) |
 | `Toolkit\WinGetFW5.0.0\Mods\_Template.ps1` | Template with all sections |
 
+The [WingetFW Console](Console.md#mod-files-and-settings) creates mod files from the template, checks them like WingetFW, saves and signs them.
+
 - The app mod is found by `-id` and the source: `-source`, else `DefaultSource`, else `winget`. Apps installed by `-name`, `-moniker`, `-wingetmanifest` or `-productcode` only use the global mod.
 - `ScriptRoot` is a list of locations (see [SETTINGS](#settings)). The first location that has a file wins, for each file separately.
 - Without settings, WingetFW uses the `Mods` folder in the package. You can put the mod files there and build the `.intunewin` with them.

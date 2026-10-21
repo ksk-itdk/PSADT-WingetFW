@@ -23,6 +23,9 @@
     converted to the current WingetFW version (same rows as Tools\Update-WingetFWIntuneApps.ps1 -Export),
     exports the CSV, runs a dry run and updates the selected apps after you confirm.
 
+    Tab "Mod files and settings" (phase CON-4): creates, checks, saves and signs mod files, and shows the
+    WingetFW settings on this PC with the level each value comes from.
+
     Needs PowerShell 7.4 or later and the modules Microsoft.WinGet.Client (search), powershell-yaml
     (manifest details) and Microsoft.Graph.Authentication (Intune). Runs from the repository folder: it reads Toolkit\WinGetFW<version>,
     Toolkit\Detection and Tools\WingetFW-ParameterMap.psd1.
@@ -32,9 +35,12 @@
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 0.3.0
+    Version      : 0.4.0
 
     Release notes
+    0.4.0  - Tab "Mod files and settings" (phase CON-4): new mod file from the template, open, check (the same check
+             as WingetFW), save below AllowedScriptSources, sign with a code signing certificate, and the effective
+             settings on this PC with the level of each value.
     0.3.0  - Tab "Inventory and upgrade" (phase CON-3): lists the WingetFW apps in Intune with version, package,
              action, detection, assignments and mod file; export to the update tool CSV; dry run and update of the
              selected apps.
@@ -265,6 +271,66 @@ function Invoke-InventoryUpdate([switch]$DryRun)
         Set-Status "$(if ($DryRun) { 'Dry run' } else { 'Update' }) done for $($selected.Count) app(s)$(if (-not $DryRun) { '; load the apps again to see the new state' })"
     }
 }
+
+function Get-ModPath
+{
+    $root = $ui.ModRootText.Text.Trim()
+    if (-not $root) { return '' }
+    if ($ui.ModGlobalRadio.IsChecked) { return Join-Path -Path $root -ChildPath '_WingetFW.ps1' }
+    $id = $ui.ModIdText.Text.Trim()
+    $source = $ui.ModSourceText.Text.Trim()
+    # Same rule as Import-WingetFWMod: the ID and source become a folder and a file name
+    $namePattern = '^(?!\.{1,2}$)[^\\/:*?"<>|\x00-\x1f]+$'
+    if ($id -notmatch $namePattern -or $source -notmatch $namePattern) { return '' }
+    Join-Path -Path $root -ChildPath "$source\$id.ps1"
+}
+
+function Update-ModPath
+{
+    $ui.ModPathText.Text = Get-ModPath
+    $ui.ModIdText.IsEnabled = $ui.ModSourceText.IsEnabled = $ui.ModFromSearchButton.IsEnabled = [bool]$ui.ModAppRadio.IsChecked
+}
+
+function Update-Settings
+{
+    $modSettings = @{}
+    $check = Test-WingetFWModFile -Text $ui.ModEditorText.Text -Global:([bool]$ui.ModGlobalRadio.IsChecked)
+    $section = if ($check.Ok -and -not $ui.ModGlobalRadio.IsChecked) { $check.Settings[[string]$ui.SettingsActionBox.SelectedItem] }
+    if ($section -is [System.Collections.IDictionary]) { $modSettings = $section }
+    $script:effectiveSettings = @(Get-WingetFWEffectiveSetting -ModSettings $modSettings)
+    $ui.SettingsGrid.ItemsSource = $script:effectiveSettings
+}
+
+function Get-EffectiveValue([string]$Name)
+{
+    if (-not $script:effectiveSettings) { Update-Settings }
+    ($script:effectiveSettings | Where-Object Name -eq $Name).Value
+}
+
+function Show-ModCheck
+{
+    $messages = [System.Collections.Generic.List[string]]::new()
+    $global = [bool]$ui.ModGlobalRadio.IsChecked
+    $check = Test-WingetFWModFile -Text $ui.ModEditorText.Text -Global:$global
+    if ($check.Ok) { $messages.Add("OK: WingetFW can load this file. Sections: $(if ($check.Sections) { $check.Sections -join ', ' } else { 'none' })") }
+    foreach ($text in $check.Errors) { $messages.Add("Error: $text") }
+    foreach ($text in $check.Warnings) { $messages.Add("Warning: $text") }
+
+    $path = Get-ModPath
+    if ($path -and (Test-Path -LiteralPath $path -PathType Leaf))
+    {
+        $requireSigned = [string](Get-EffectiveValue 'RequireSignedScripts')
+        $saved = Test-WingetFWModFile -Path $path -Global:$global -RequireSigned $requireSigned -TrustedSigners @(Get-EffectiveValue 'TrustedSigners')
+        $same = [System.IO.File]::ReadAllText($path) -ceq $ui.ModEditorText.Text
+        $messages.Add("Saved file$(if (-not $same) { ' (differs from the editor)' }): signature $($saved.Signature)")
+        if ($saved.Signature -like 'UnknownError*') { $messages.Add('UnknownError: signed, but this PC does not trust the certificate. Devices need it as a trusted certificate (Docs\Signing.md).') }
+        if ($saved.Ok) { $messages.Add("Saved file: accepted by WingetFW with the settings of this PC (RequireSignedScripts $requireSigned)") }
+        else { foreach ($text in $saved.Errors) { $messages.Add("Saved file refused with the settings of this PC: $text") } }
+    }
+    $ui.ModMessagesList.ItemsSource = $messages.ToArray()
+    Update-Settings
+    $check
+}
 #endregion
 
 #region Start values
@@ -302,6 +368,17 @@ $defaultIntuneWin = Join-Path -Path $env:LOCALAPPDATA -ChildPath "WingetFW\Conso
 if (Test-Path -LiteralPath $defaultIntuneWin) { $ui.IntuneWinText.Text = $defaultIntuneWin }
 $ui.InventoryTargetText.Text = "Target: WingetFW $($package.Version)"
 $script:inventory = @()
+
+$ui.ModRootText.Text = Join-Path -Path $package.Path -ChildPath 'Mods'
+$ui.SettingsActionBox.ItemsSource = @('Install', 'Uninstall', 'Repair', 'Upgrade')
+$ui.SettingsActionBox.SelectedIndex = 0
+$certificates = @(Get-ChildItem -Path Cert:\CurrentUser\My -CodeSigningCert | Where-Object { $_.HasPrivateKey -and $_.NotAfter -gt (Get-Date) } |
+    ForEach-Object { [pscustomobject]@{ Text = "$($_.Subject) (until $($_.NotAfter.ToString('yyyy-MM-dd')), $($_.Thumbprint))"; Certificate = $_ } })
+$ui.ModCertBox.ItemsSource = $certificates
+if ($certificates) { $ui.ModCertBox.SelectedIndex = 0 }
+else { $ui.ModSignCheck.IsEnabled = $false; $ui.ModSignCheck.ToolTip = 'No code signing certificate with private key in Cert:\CurrentUser\My, see Docs\Signing.md' }
+$script:effectiveSettings = @()
+Update-ModPath
 #endregion
 
 #region Events
@@ -497,6 +574,83 @@ $ui.ExportInventoryButton.Add_Click({
 
 $ui.DryRunButton.Add_Click({ Invoke-InventoryUpdate -DryRun })
 $ui.UpgradeButton.Add_Click({ Invoke-InventoryUpdate })
+
+foreach ($name in 'ModIdText', 'ModSourceText', 'ModRootText') { $ui[$name].Add_TextChanged({ Update-ModPath }) }
+foreach ($name in 'ModAppRadio', 'ModGlobalRadio') { $ui[$name].Add_Checked({ Update-ModPath }) }
+
+$ui.ModFromSearchButton.Add_Click({
+        $ui.ModIdText.Text = $ui.IdText.Text.Trim()
+        $ui.ModSourceText.Text = if ($ui.SourceText.Text.Trim()) { $ui.SourceText.Text.Trim() } else { 'winget' }
+    })
+
+$ui.ModBrowseButton.Add_Click({
+        $dialog = New-Object -TypeName Microsoft.Win32.OpenFolderDialog
+        if ($ui.ModRootText.Text -and (Test-Path -LiteralPath $ui.ModRootText.Text)) { $dialog.InitialDirectory = $ui.ModRootText.Text }
+        if ($dialog.ShowDialog($window)) { $ui.ModRootText.Text = $dialog.FolderName }
+    })
+
+$ui.ModNewButton.Add_Click({
+        Invoke-UiAction '' {
+            if (-not $ui.ModGlobalRadio.IsChecked -and -not $ui.ModIdText.Text.Trim()) { Set-Status 'Type the package ID first'; return }
+            if ($ui.ModEditorText.Text.Trim() -and [System.Windows.MessageBox]::Show($window, 'Replace the text in the editor with the template?', 'WingetFW Console', 'YesNo', 'Question') -ne 'Yes') { return }
+            $ui.ModEditorText.Text = if ($ui.ModGlobalRadio.IsChecked) { New-WingetFWModFile -Global } else { New-WingetFWModFile -Id $ui.ModIdText.Text.Trim() -Source $ui.ModSourceText.Text.Trim() }
+            $null = Show-ModCheck
+            Set-Status 'New mod file from the template; keep only the sections you need, then Save'
+        }
+    })
+
+$ui.ModOpenButton.Add_Click({
+        Invoke-UiAction '' {
+            $path = Get-ModPath
+            if (-not $path -or -not (Test-Path -LiteralPath $path -PathType Leaf))
+            {
+                $dialog = New-Object -TypeName Microsoft.Win32.OpenFileDialog
+                $dialog.Filter = 'Mod file (*.ps1)|*.ps1'
+                if (-not $dialog.ShowDialog($window)) { return }
+                $path = $dialog.FileName
+                $ui.ModRootText.Text = if ((Split-Path -Path $path -Leaf) -eq '_WingetFW.ps1') { Split-Path -Path $path -Parent } else { Split-Path -Path (Split-Path -Path $path -Parent) -Parent }
+                if ((Split-Path -Path $path -Leaf) -eq '_WingetFW.ps1') { $ui.ModGlobalRadio.IsChecked = $true }
+                else
+                {
+                    $ui.ModAppRadio.IsChecked = $true
+                    $ui.ModIdText.Text = [System.IO.Path]::GetFileNameWithoutExtension($path)
+                    $ui.ModSourceText.Text = Split-Path -Path (Split-Path -Path $path -Parent) -Leaf
+                }
+            }
+            $ui.ModEditorText.Text = [System.IO.File]::ReadAllText($path)
+            $null = Show-ModCheck
+            Set-Status "Opened $path"
+        }
+    })
+
+$ui.ModCheckButton.Add_Click({ Invoke-UiAction '' { $null = Show-ModCheck; Set-Status 'Checked' } })
+
+$ui.ModSaveButton.Add_Click({
+        Invoke-UiAction '' {
+            $path = Get-ModPath
+            if (-not $path) { Set-Status 'Fill in the ScriptRoot and a valid package ID and source'; return }
+            if ((Test-Path -LiteralPath $path) -and [System.Windows.MessageBox]::Show($window, "$path exists. Replace it?", 'WingetFW Console', 'YesNo', 'Question') -ne 'Yes') { return }
+            $saveParams = @{
+                Text                 = $ui.ModEditorText.Text
+                Path                 = $path
+                AllowedScriptSources = @(Get-EffectiveValue 'AllowedScriptSources')
+                Global               = [bool]$ui.ModGlobalRadio.IsChecked
+            }
+            if ($ui.ModSignCheck.IsChecked -and $ui.ModCertBox.SelectedItem)
+            {
+                $saveParams.Certificate = $ui.ModCertBox.SelectedItem.Certificate
+                $saveParams.TimestampServer = $ui.ModTimestampText.Text.Trim()
+            }
+            $null = Save-WingetFWModFile @saveParams
+            # The editor shows exactly what was saved (the signature block is added to the file)
+            $ui.ModEditorText.Text = [System.IO.File]::ReadAllText($path)
+            $null = Show-ModCheck
+            Set-Status "Saved $path$(if ($saveParams.Certificate) { ' and signed' })"
+        }
+    })
+
+$ui.SettingsActionBox.Add_SelectionChanged({ Invoke-UiAction '' { Update-Settings } })
+$ui.SettingsRefreshButton.Add_Click({ Invoke-UiAction '' { Update-Settings; Set-Status 'Settings read' } })
 #endregion
 
 Update-Commands

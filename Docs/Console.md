@@ -3,11 +3,11 @@
 [Back to README](../README.md)
 
 A window for admins that finds a winget package, builds the WingetFW install command, uninstall command
-and detection script, creates the Win32 app in Intune, and upgrades existing WingetFW apps to the current
-WingetFW version. It changes nothing on the device.
+and detection script, creates the Win32 app in Intune, upgrades existing WingetFW apps to the current
+WingetFW version, and creates and signs mod files. It changes nothing on the device.
 
-Version 0.3.0: search, details, commands, detection script (phase CON-1), publish to Intune (phase CON-2),
-inventory and upgrade (phase CON-3).
+Version 0.4.0: search, details, commands, detection script (phase CON-1), publish to Intune (phase CON-2),
+inventory and upgrade (phase CON-3), mod files and settings (phase CON-4).
 
 ## REQUIREMENTS
 - Windows with PowerShell 7.4 or later.
@@ -92,6 +92,28 @@ with a list and a preview. Both use the same functions, so the result is the sam
 
 Load the apps again after an update to see the new state.
 
+## MOD FILES AND SETTINGS
+The **Mod files and settings** tab creates, checks, saves and signs [mod files](Mods.md).
+1. Choose **App mod** (package ID and source; **From Search and build** copies them from the first tab) or **Global mod** (`_WingetFW.ps1`).
+2. **ScriptRoot**: the folder or UNC share the mod files are in. Default: the `Mods` folder of the newest package.
+   The file name is shown below it: `<ScriptRoot>\<source>\<package id>.ps1` or `<ScriptRoot>\_WingetFW.ps1`.
+3. **New from template** (all sections, from the package template) or **Open file**. Edit the file; keep only the sections you need.
+4. **Check** runs the same check as WingetFW before it runs a mod file (WingetFW.Core): only functions and `$Settings` with fixed values.
+   It also warns about names WingetFW does not use, for example a `$Settings` key that is not a setting.
+   For a saved file it shows the signature and whether WingetFW would accept it with the settings of this PC.
+5. **Save** checks the file again and saves it as UTF-8 with BOM. It is refused when the folder is not below one of the
+   `AllowedScriptSources` of this PC (see the settings on the right).
+   With **Sign when saving**, the file is signed with the selected code signing certificate from `Cert:\CurrentUser\My`
+   and a timestamp, see [Signing mod files](Signing.md). `UnknownError` after signing means: signed, but this PC does not
+   trust the certificate; the devices need it.
+
+The right side shows the **effective settings on this PC**: every WingetFW setting with its value and the level it comes
+from (Policy, Mod, Local, Config, Default), read with the same function as WingetFW. **Mod $Settings for** picks the
+action whose `$Settings` from the editor is used. The command line level is not included, and only this PC is read:
+run the Console on a test device to see the settings an Intune policy sets there.
+
+The checks write their log lines to the WingetFW log of the current user (`%LOCALAPPDATA%\WingetFW\Logs`).
+
 ## TESTS
-- `Tests\Unit\WingetFW.Console.Tests.ps1`: builder, option rules, quoting, detection scripts, manifest data, the Intune app and assignment body, the command line conversion, the inventory and the app update with mocked Graph calls.
+- `Tests\Unit\WingetFW.Console.Tests.ps1`: builder, option rules, quoting, detection scripts, manifest data, the Intune app and assignment body, the command line conversion, the inventory and the app update with mocked Graph calls, mod files and effective settings.
 - The builder is also checked against every command of the last VM test run (`Tests\results\WingetFW-TestResults.json`): commands that passed on the VM are accepted, the validation tests (V01-V10, N01) are rejected with the same message as the WingetFW log.

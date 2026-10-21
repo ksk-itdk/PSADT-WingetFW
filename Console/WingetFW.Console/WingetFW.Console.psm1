@@ -18,15 +18,20 @@
     Inventory: Get-WingetFWIntuneInventory lists the WingetFW apps in Intune with their command lines converted to the
                current version (Convert-WingetFWCommandLine), detection script and mod file; Update-WingetFWIntuneApp
                updates one app (-WhatIf = dry run). Tools\Update-WingetFWIntuneApps.ps1 -Export and -Apply use the same functions.
+    Mods     : New-WingetFWModFile (from the package template), Test-WingetFWModFile (load and signature check of
+               WingetFW.Core), Save-WingetFWModFile (only below AllowedScriptSources, optional signature) and
+               Get-WingetFWEffectiveSetting (the settings on this PC and their level). WingetFW.Core is loaded from Source.
 
     Needs PowerShell 7.4 or later. Search needs Microsoft.WinGet.Client, manifest details need powershell-yaml,
     Intune needs Microsoft.Graph.Authentication.
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 0.3.0
+    Version      : 0.4.0
 
     Release notes
+    0.4.0  - Mod files and settings (phase CON-4): New-WingetFWModFile, Test-WingetFWModFile, Save-WingetFWModFile,
+             Get-WingetFWEffectiveSetting.
     0.3.0  - Inventory and upgrade (phase CON-3): Get-WingetFWIntuneInventory, Update-WingetFWIntuneApp,
              Get-WingetFWModFileInfo. The conversion and app list functions of Tools\Update-WingetFWIntuneApps.ps1
              moved here (Convert-WingetFWCommandLine, Get-WingetFWIntuneAppList, Get-WingetFWDetectionInfo,
@@ -1681,6 +1686,278 @@ function Update-WingetFWIntuneApp
     {
         "Failed: $($_.Exception.Message)"
     }
+}
+
+#endregion
+
+#region Mod files and settings (WingetFW.Core does the checks, the same code WingetFW runs)
+
+$Script:Core = $null
+$Script:ModSections = @(
+    'PreInstall', 'Install', 'PostInstall', 'NotInstalled', 'PreUninstall', 'Uninstall', 'PostUninstall', 'NotUninstalled'
+    'PreRepair', 'Repair', 'PostRepair', 'NotRepaired', 'PreUpgrade', 'Upgrade', 'PostUpgrade', 'NotUpgraded', 'PreImport', 'PostImport'
+)
+# Keys of $Settings.<Action> that Start-WinGetPackageFM uses
+$Script:ModSettingKeys = @('Override', 'Custom', 'Scope', 'Locale', 'Architecture', 'Source', 'SkipDependencies', 'DefaultSilent', 'DefaultSource', 'Proxy')
+
+function Get-WingetFWCore
+{
+    if (-not $Script:Core)
+    {
+        $Script:Core = Import-Module -Name (Join-Path -Path $Script:RepoRoot -ChildPath 'Source\WingetFW.Core\WingetFW.Core.psd1') -PassThru -Force
+    }
+    $Script:Core
+}
+
+function Get-WingetFWEffectiveSetting
+{
+    <#
+    .SYNOPSIS
+        The WingetFW settings on this PC with the level each value comes from (Get-WingetFWSetting of WingetFW.Core).
+    .DESCRIPTION
+        Levels: Policy (HKLM\SOFTWARE\Policies\WingetFW), Mod ($Settings of a mod file for one action), Local
+        (HKLM\SOFTWARE\WingetFW), Config (WingetFW.psd1 of the package), Default. The command line is not included.
+    .PARAMETER ModSettings
+        One action of a mod file's $Settings, for example $settings.Install.
+    .PARAMETER PackagePath
+        Package folder for the config file and the defaults that use it. Default: the newest Toolkit\WinGetFW<version>.
+    #>
+    [CmdletBinding()]
+    param
+    (
+        [Parameter()]
+        [System.Collections.IDictionary]$ModSettings = @{},
+
+        [Parameter()]
+        [string]$PackagePath = (Get-WingetFWPackageInfo).Path,
+
+        [Parameter()]
+        [string]$PolicyPath = 'HKLM:\SOFTWARE\Policies\WingetFW',
+
+        [Parameter()]
+        [string]$LocalPath = 'HKLM:\SOFTWARE\WingetFW'
+    )
+
+    $core = Get-WingetFWCore
+    $configFile = Join-Path -Path $PackagePath -ChildPath 'PSAppDeployToolkit.Extensions\Config\WingetFW.psd1'
+    $config = if (Test-Path -LiteralPath $configFile) { Import-PowerShellDataFile -LiteralPath $configFile } else { @{} }
+    # Same defaults as the package (PSAppDeployToolkit.Extensions.psm1 and Import-WingetFWMod)
+    $defaults = [ordered]@{
+        DefaultSilent               = $true
+        DefaultSource               = $null
+        AllowedSources              = $null
+        Sources                     = $null
+        Proxy                       = $null
+        ProxyBypass                 = $null
+        TlsCheck                    = $true
+        VCRedistCheck               = $true
+        ScriptRoot                  = @(Join-Path -Path $PackagePath -ChildPath 'Mods')
+        ScriptSyncMode              = 'OnDemand'
+        UseCachedScriptsWhenOffline = $false
+        AllowedScriptSources        = @($PackagePath, (Join-Path -Path $env:ProgramData -ChildPath 'WingetFW\Scripts'))
+        RequireSignedScripts        = 'Off'
+        TrustedSigners              = $null
+    }
+    $booleans = @('DefaultSilent', 'TlsCheck', 'VCRedistCheck', 'UseCachedScriptsWhenOffline')
+    foreach ($name in $defaults.Keys)
+    {
+        $settingParams = @{ Name = $name; ModSettings = $ModSettings; Config = $config; PolicyPath = $PolicyPath; LocalPath = $LocalPath; AsBoolean = ($name -in $booleans) }
+        if ($null -ne $defaults[$name]) { $settingParams.Default = $defaults[$name] }
+        $setting = & $core { param ($p) Get-WingetFWSetting @p } $settingParams
+        $value = $setting.Value
+        [pscustomobject]@{
+            Name   = $name
+            Value  = $value
+            Text   = if ($setting.Source -eq 'None') { '' } elseif ($value -is [System.Collections.IDictionary]) { @($value.GetEnumerator() | ForEach-Object { '{0}={1}' -f $_.Key, $_.Value }) -join '; ' } else { (@($value) -join '; ') -replace '(?i)(sig=)[^&;\s]+', '$1***' }
+            Source = $setting.Source
+        }
+    }
+}
+
+function New-WingetFWModFile
+{
+    <#
+    .SYNOPSIS
+        Text of a new mod file from the template of the newest package (all sections, empty $Settings).
+    #>
+    [CmdletBinding()]
+    param
+    (
+        [Parameter(Mandatory = $true, ParameterSetName = 'App')]
+        [string]$Id,
+
+        [Parameter(ParameterSetName = 'App')]
+        [string]$Source = 'winget',
+
+        [Parameter(Mandatory = $true, ParameterSetName = 'Global')]
+        [switch]$Global
+    )
+
+    $package = Get-WingetFWPackageInfo
+    $template = [System.IO.File]::ReadAllText((Join-Path -Path $package.Path -ChildPath 'Mods\_Template.ps1'))
+    $for = if ($Global) { 'all apps (global mod file _WingetFW.ps1). $Settings is not used in this file' } else { "$Id (source $Source)" }
+    $header = @(
+        '<#'
+        '.SYNOPSIS'
+        "    WingetFW mod file for $for."
+        ''
+        '.DESCRIPTION'
+        "    Created from the template of WingetFW $($package.Version) with the WingetFW Console."
+        '    Keep only the sections you need. Rules and sections: Docs\Mods.md.'
+        '#>'
+    ) -join "`r`n"
+    # Replace the help block of the template; the rest is the same
+    $start = $template.IndexOf('<#')
+    $end = $template.IndexOf('#>', $start)
+    $header + $template.Substring($end + 2)
+}
+
+function Test-WingetFWModFile
+{
+    <#
+    .SYNOPSIS
+        Checks a mod file the same way WingetFW does before it runs it (load check, and the signature when required).
+    .OUTPUTS
+        Ok, Errors, Warnings, Sections, Settings and Signature (status and signer of a saved file).
+    .PARAMETER Text
+        Text of an unsaved file (no signature check).
+    .PARAMETER Path
+        A saved file; its exact bytes are checked.
+    .PARAMETER RequireSigned
+        Off, Signed or TrustedSigners, like the setting RequireSignedScripts.
+    .PARAMETER Global
+        The file is the global mod file _WingetFW.ps1.
+    #>
+    [CmdletBinding()]
+    param
+    (
+        [Parameter(Mandatory = $true, ParameterSetName = 'Text')]
+        [AllowEmptyString()]
+        [string]$Text,
+
+        [Parameter(Mandatory = $true, ParameterSetName = 'Path')]
+        [string]$Path,
+
+        [Parameter()]
+        [ValidateSet('Off', 'Signed', 'TrustedSigners')]
+        [string]$RequireSigned = 'Off',
+
+        [Parameter()]
+        [string[]]$TrustedSigners = @(),
+
+        [Parameter()]
+        [switch]$Global
+    )
+
+    $result = [pscustomobject]@{
+        Ok        = $false
+        Errors    = [System.Collections.Generic.List[string]]::new()
+        Warnings  = [System.Collections.Generic.List[string]]::new()
+        Sections  = @()
+        Settings  = @{}
+        Signature = ''
+    }
+    if ($Path)
+    {
+        $bytes = [System.IO.File]::ReadAllBytes($Path)
+        $signature = Get-AuthenticodeSignature -LiteralPath $Path
+        $result.Signature = if ($signature.SignerCertificate) { "$($signature.Status) - $($signature.SignerCertificate.Subject) ($($signature.SignerCertificate.Thumbprint))" } else { [string]$signature.Status }
+        $origin = $Path
+    }
+    else
+    {
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes($Text)
+        $origin = 'editor'
+        if ($RequireSigned -ne 'Off') { $result.Warnings.Add("RequireSignedScripts is ${RequireSigned}: save and sign the file, then check the saved file") }
+        $RequireSigned = 'Off'
+    }
+
+    $core = Get-WingetFWCore
+    try
+    {
+        $trusted = @($TrustedSigners | Where-Object { $_ } | ForEach-Object { ($_ -replace '\s', '').ToUpperInvariant() })
+        $mod = & $core { param ($b, $o, $r, $t) ConvertTo-WingetFWMod -Bytes $b -Origin $o -Name 'Check' -RequireSigned $r -TrustedSigners $t } $bytes $origin $RequireSigned $trusted
+    }
+    catch
+    {
+        $result.Errors.Add($_.Exception.Message)
+        return $result
+    }
+
+    $result.Ok = $true
+    $result.Sections = @($mod.Functions)
+    $result.Settings = $mod.Settings
+    foreach ($name in $mod.Functions)
+    {
+        if ($name -notin $Script:ModSections) { $result.Warnings.Add("function $name is not a section; WingetFW only calls it when a section does") }
+        elseif ($name -in 'PreImport', 'PostImport' -and -not $Global) { $result.Warnings.Add("$name only runs in the global mod file _WingetFW.ps1") }
+    }
+    if ($Global -and $mod.Settings.Count) { $result.Warnings.Add('$Settings in the global mod file is not used') }
+    foreach ($action in $mod.Settings.Keys)
+    {
+        if ($action -notin 'Install', 'Uninstall', 'Repair', 'Upgrade') { $result.Warnings.Add("`$Settings.$action is not used (use Install, Uninstall, Repair or Upgrade)"); continue }
+        if ($mod.Settings[$action] -isnot [System.Collections.IDictionary]) { $result.Warnings.Add("`$Settings.$action must be @{ ... }"); continue }
+        foreach ($key in $mod.Settings[$action].Keys)
+        {
+            if ($key -notin $Script:ModSettingKeys) { $result.Warnings.Add("`$Settings.$action.$key is not a WingetFW setting; WingetFW ignores it") }
+        }
+    }
+    $result
+}
+
+function Save-WingetFWModFile
+{
+    <#
+    .SYNOPSIS
+        Checks a mod file and saves it (UTF-8 with BOM, so Windows PowerShell 5.1 reads and checks the same text); signs it when a certificate is given.
+    .DESCRIPTION
+        Refused when the load check fails or when the folder is not below one of the AllowedScriptSources.
+        Returns the result of Test-WingetFWModFile for the saved file.
+    .PARAMETER AllowedScriptSources
+        Path prefixes the file must be below, like the setting AllowedScriptSources.
+    .PARAMETER Certificate
+        Code signing certificate with private key, for example from Cert:\CurrentUser\My.
+    .PARAMETER TimestampServer
+        Keeps the signature valid after the certificate expires. Empty: no timestamp.
+    #>
+    [CmdletBinding(SupportsShouldProcess)]
+    param
+    (
+        [Parameter(Mandatory = $true)]
+        [string]$Text,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+
+        [Parameter(Mandatory = $true)]
+        [string[]]$AllowedScriptSources,
+
+        [Parameter()]
+        [System.Security.Cryptography.X509Certificates.X509Certificate2]$Certificate,
+
+        [Parameter()]
+        [string]$TimestampServer,
+
+        [Parameter()]
+        [switch]$Global
+    )
+
+    $check = Test-WingetFWModFile -Text $Text -Global:$Global
+    if (-not $check.Ok) { throw "Not saved: $($check.Errors -join ' ')" }
+    $folder = Split-Path -Path ([System.IO.Path]::GetFullPath($Path)) -Parent
+    $allowed = & (Get-WingetFWCore) { param ($l, $a) Test-WingetFWAllowedLocation -Location $l -Allowed $a } $folder $AllowedScriptSources
+    if (-not $allowed) { throw "Not saved: $folder is not below one of the AllowedScriptSources ($($AllowedScriptSources -join '; '))" }
+    if (-not $PSCmdlet.ShouldProcess($Path, 'Save mod file')) { return }
+
+    if (-not (Test-Path -LiteralPath $folder)) { $null = New-Item -Path $folder -ItemType Directory -Force }
+    [System.IO.File]::WriteAllText($Path, $Text, [System.Text.UTF8Encoding]::new($true))
+    if ($Certificate)
+    {
+        $signParams = @{ LiteralPath = $Path; Certificate = $Certificate; HashAlgorithm = 'SHA256' }
+        if ($TimestampServer) { $signParams.TimestampServer = $TimestampServer }
+        $null = Set-AuthenticodeSignature @signParams
+    }
+    Test-WingetFWModFile -Path $Path -Global:$Global
 }
 
 #endregion

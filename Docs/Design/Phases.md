@@ -67,7 +67,7 @@ flowchart LR
 - [x] CON-1 Search and build - done when output matches hand-made apps that pass the VM suite
 - [x] CON-2 Intune publish - done when an app created in a test tenant installs on the VM
 - [x] CON-3 Inventory and upgrade - done when the dry-run equals the update tool output
-- [ ] CON-4 Mod editor - done when a mod created in the Console runs on the VM
+- [x] CON-4 Mod editor - done when a mod created in the Console runs on the VM
 - [ ] CON-5 ConfigMgr publish - done when an app created in a lab site installs
 
 ### WingetFW-Update

@@ -9,9 +9,10 @@
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 1.2.0
+    Version      : 1.3.0
 
     Release notes
+    1.3.0  - Mod files (template, load check, save below AllowedScriptSources, signature) and effective settings (phase CON-4).
     1.2.0  - Command line conversion, inventory, mod file check and app update with mocked Graph calls (phase CON-3).
     1.1.0  - Intune publish tests with mocked Graph calls (phase CON-2).
     1.0.1  - The VM command tests are not created when the list is empty (Windows PowerShell 5.1 failed in
@@ -567,5 +568,96 @@ Describe 'Inventory and upgrade (Graph mocked)' -Skip:$skip {
     It 'fails without a package when it is not a dry run' {
         $row = @(Get-WingetFWIntuneInventory -TargetVersion '5.0.0')[0]
         Update-WingetFWIntuneApp -Row $row -TargetVersion '5.0.0' | Should -Be 'Failed: no .intunewin package given'
+    }
+}
+
+Describe 'Mod files and settings' -Skip:$skip {
+    BeforeAll {
+        $testKey = 'HKCU:\Software\WingetFWConsoleTests'
+        $policyKey = "$testKey\Policy"
+        $localKey = "$testKey\Local"
+    }
+
+    AfterAll {
+        Remove-Item -LiteralPath $testKey -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    It 'creates an app and a global mod file from the template that pass the check' {
+        $app = New-WingetFWModFile -Id '7zip.7zip' -Source 'winget'
+        $app | Should -Match 'WingetFW mod file for 7zip\.7zip \(source winget\)'
+        $app | Should -Not -Match 'WingetFW mod file template'
+        $check = Test-WingetFWModFile -Text $app
+        $check.Ok | Should -BeTrue
+        $check.Sections.Count | Should -Be 16
+        $check.Warnings | Should -BeNullOrEmpty
+
+        $global = New-WingetFWModFile -Global
+        (Test-WingetFWModFile -Text $global -Global).Warnings | Should -Contain '$Settings in the global mod file is not used'
+    }
+
+    It 'refuses the same files as WingetFW' {
+        (Test-WingetFWModFile -Text "function PreInstall { }`r`nWrite-Host 'x'").Errors -join "`n" | Should -Match 'line 2 runs code when the file is loaded'
+        (Test-WingetFWModFile -Text "param (`$x)`r`nfunction PreInstall { }").Errors -join "`n" | Should -Match 'no using, param'
+        (Test-WingetFWModFile -Text '$Settings = @{ Install = @{ Custom = (Get-Date) } }').Errors -join "`n" | Should -Match 'may only contain fixed values'
+        (Test-WingetFWModFile -Text 'function PreInstall {').Errors -join "`n" | Should -Match 'syntax error on line 1'
+    }
+
+    It 'warns about names WingetFW does not use' {
+        $check = Test-WingetFWModFile -Text "`$Settings = @{ Install = @{ Scope = 'Machine'; Foo = 1 }; Bar = @{} }`r`nfunction Helper { }`r`nfunction PostImport { }"
+        $check.Ok | Should -BeTrue
+        $check.Warnings | Should -Contain '$Settings.Install.Foo is not a WingetFW setting; WingetFW ignores it'
+        $check.Warnings | Should -Contain '$Settings.Bar is not used (use Install, Uninstall, Repair or Upgrade)'
+        $check.Warnings | Should -Contain 'function Helper is not a section; WingetFW only calls it when a section does'
+        $check.Warnings | Should -Contain 'PostImport only runs in the global mod file _WingetFW.ps1'
+        $check.Settings.Install.Scope | Should -Be 'Machine'
+    }
+
+    It 'saves only below AllowedScriptSources, as UTF-8 with BOM' {
+        $text = "function PostInstall`r`n{`r`n    Write-ADTLogEntry -Message 'caf$([char]0xE9)'`r`n}`r`n"
+        $allowed = Join-Path -Path $TestDrive -ChildPath 'allowed'
+        { Save-WingetFWModFile -Text $text -Path (Join-Path -Path $TestDrive -ChildPath 'other\winget\a.b.ps1') -AllowedScriptSources @($allowed) } | Should -Throw '*is not below one of the AllowedScriptSources*'
+        { Save-WingetFWModFile -Text 'Write-Host 1' -Path (Join-Path -Path $allowed -ChildPath 'winget\a.b.ps1') -AllowedScriptSources @($allowed) } | Should -Throw 'Not saved: *runs code*'
+
+        $path = Join-Path -Path $allowed -ChildPath 'Mods\winget\a.b.ps1'
+        $result = Save-WingetFWModFile -Text $text -Path $path -AllowedScriptSources @($allowed)
+        $result.Ok | Should -BeTrue
+        $result.Signature | Should -Be 'NotSigned'
+        $bytes = [System.IO.File]::ReadAllBytes($path)
+        $bytes[0..2] | Should -Be @(0xEF, 0xBB, 0xBF)
+        [System.IO.File]::ReadAllText($path) | Should -BeExactly $text
+    }
+
+    It 'checks the signature of a saved file like WingetFW' {
+        $path = Join-Path -Path $TestDrive -ChildPath 'unsigned.ps1'
+        Set-Content -LiteralPath $path -Value 'function PreInstall { }'
+        (Test-WingetFWModFile -Path $path -RequireSigned Signed).Errors -join "`n" | Should -Match 'is not validly signed \(NotSigned\)\. RequireSignedScripts is Signed'
+        (Test-WingetFWModFile -Path $path).Ok | Should -BeTrue
+    }
+
+    It 'shows each setting with its level: policy, mod, local, config, default' {
+        $null = New-Item -Path $policyKey -Force
+        $null = New-Item -Path $localKey -Force
+        New-ItemProperty -Path $policyKey -Name 'Proxy' -Value 'http://policy:8080' | Out-Null
+        New-ItemProperty -Path $localKey -Name 'Proxy' -Value 'http://local:8080' | Out-Null
+        New-ItemProperty -Path $localKey -Name 'DefaultSource' -Value 'contoso' | Out-Null
+        New-ItemProperty -Path $localKey -Name 'RequireSignedScripts' -Value 'Signed' | Out-Null
+        $list = New-Item -Path "$policyKey\TrustedSigners" -Force
+        New-ItemProperty -Path $list.PSPath -Name '1' -Value 'AAAA' | Out-Null
+        New-ItemProperty -Path $list.PSPath -Name '2' -Value 'BBBB' | Out-Null
+
+        $rows = @(Get-WingetFWEffectiveSetting -ModSettings @{ DefaultSilent = $false; DefaultSource = 'mod' } -PolicyPath $policyKey -LocalPath $localKey)
+        $get = { param ($n) $rows | Where-Object Name -eq $n }
+        @($rows.Name) | Should -Be @('DefaultSilent', 'DefaultSource', 'AllowedSources', 'Sources', 'Proxy', 'ProxyBypass', 'TlsCheck', 'VCRedistCheck', 'ScriptRoot', 'ScriptSyncMode', 'UseCachedScriptsWhenOffline', 'AllowedScriptSources', 'RequireSignedScripts', 'TrustedSigners')
+        (& $get 'Proxy').Text | Should -Be 'http://policy:8080'
+        (& $get 'Proxy').Source | Should -Be 'Policy'
+        (& $get 'DefaultSource').Text | Should -Be 'mod'
+        (& $get 'DefaultSource').Source | Should -Be 'Mod'
+        (& $get 'DefaultSilent').Value | Should -BeFalse
+        (& $get 'RequireSignedScripts').Source | Should -Be 'Local'
+        (& $get 'TrustedSigners').Text | Should -Be 'AAAA; BBBB'
+        (& $get 'TlsCheck').Source | Should -Be 'Config'
+        (& $get 'ScriptSyncMode').Text | Should -Be 'OnDemand'
+        (& $get 'ScriptSyncMode').Source | Should -Be 'Default'
+        (& $get 'ProxyBypass').Source | Should -Be 'None'
     }
 }

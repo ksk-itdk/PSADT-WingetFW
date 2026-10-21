@@ -313,6 +313,84 @@
                     </StackPanel>
                 </Grid>
             </TabItem>
+            <TabItem Header="Mod files and settings">
+                <Grid Margin="4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="3*" />
+                        <ColumnDefinition Width="6" />
+                        <ColumnDefinition Width="2*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <StackPanel Orientation="Horizontal">
+                            <RadioButton x:Name="ModAppRadio" Content="App mod" IsChecked="True" VerticalAlignment="Center" Margin="2,0,8,0" />
+                            <RadioButton x:Name="ModGlobalRadio" Content="Global mod (__WingetFW.ps1)" VerticalAlignment="Center" Margin="2,0,12,0" />
+                            <Label Content="Package ID" />
+                            <TextBox x:Name="ModIdText" Width="180" />
+                            <Label Content="Source" />
+                            <TextBox x:Name="ModSourceText" Width="90" Text="winget" />
+                            <Button x:Name="ModFromSearchButton" Content="From Search and build" />
+                        </StackPanel>
+                        <Grid Grid.Row="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Label Content="ScriptRoot" />
+                            <TextBox x:Name="ModRootText" Grid.Column="1" ToolTip="Local folder or UNC share; it must be below one of the AllowedScriptSources" />
+                            <Button x:Name="ModBrowseButton" Grid.Column="2" Content="Browse..." />
+                        </Grid>
+                        <StackPanel Grid.Row="2" Orientation="Horizontal">
+                            <Label Content="File" />
+                            <TextBlock x:Name="ModPathText" VerticalAlignment="Center" FontFamily="Consolas" />
+                        </StackPanel>
+                        <WrapPanel Grid.Row="3" Margin="0,2">
+                            <Button x:Name="ModNewButton" Content="New from template" />
+                            <Button x:Name="ModOpenButton" Content="Open file" />
+                            <Button x:Name="ModCheckButton" Content="Check" />
+                            <Button x:Name="ModSaveButton" Content="Save" FontWeight="Bold" />
+                            <CheckBox x:Name="ModSignCheck" Content="Sign when saving" VerticalAlignment="Center" Margin="10,0,4,0" />
+                            <ComboBox x:Name="ModCertBox" Width="300" DisplayMemberPath="Text" ToolTip="Code signing certificates with private key in Cert:\CurrentUser\My" />
+                            <Label Content="Timestamp" />
+                            <TextBox x:Name="ModTimestampText" Width="190" Text="http://timestamp.digicert.com" ToolTip="Empty: no timestamp (the signature ends when the certificate expires)" />
+                        </WrapPanel>
+                        <TextBox x:Name="ModEditorText" Grid.Row="4" AcceptsReturn="True" AcceptsTab="True" FontFamily="Consolas" TextWrapping="NoWrap"
+                                 VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" VerticalContentAlignment="Top" />
+                        <ListBox x:Name="ModMessagesList" Grid.Row="5" Height="110" Margin="2,4,2,2" />
+                    </Grid>
+                    <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch" />
+                    <Grid Grid.Column="2">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Effective settings on this PC" FontWeight="Bold" VerticalAlignment="Center" Margin="2,0,10,0" />
+                            <Label Content="Mod $Settings for" />
+                            <ComboBox x:Name="SettingsActionBox" Width="90" />
+                            <Button x:Name="SettingsRefreshButton" Content="Refresh" />
+                        </StackPanel>
+                        <DataGrid x:Name="SettingsGrid" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column" Margin="0,4">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Setting" Binding="{Binding Name}" />
+                                <DataGridTextColumn Header="Value" Binding="{Binding Text}" Width="*" />
+                                <DataGridTextColumn Header="From" Binding="{Binding Source}" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <TextBlock Grid.Row="2" TextWrapping="Wrap" Margin="2"
+                                   Text="From: Policy = HKLM\SOFTWARE\Policies\WingetFW, Mod = $Settings of the file in the editor, Local = HKLM\SOFTWARE\WingetFW, Config = WingetFW.psd1 of the package, Default = built into WingetFW. The command line is not included." />
+                    </Grid>
+                </Grid>
+            </TabItem>
         </TabControl>
     </DockPanel>
 </Window>
