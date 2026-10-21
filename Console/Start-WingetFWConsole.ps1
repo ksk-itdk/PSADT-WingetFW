@@ -28,9 +28,11 @@
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 0.2.0
+    Version      : 0.2.1
 
     Release notes
+    0.2.1  - Error messages show the inner errors too (a failed sign-in only said
+             "InteractiveBrowserCredential authentication failed:").
     0.2.0  - Tab "Publish to Intune" (phase CON-2): sign-in, .intunewin (browse or build), app details,
              requirements, group assignments, create the Win32 app.
     0.1.0  - First version (phase CON-1): search, manifest details, install and uninstall commands,
@@ -81,8 +83,11 @@ function Invoke-UiAction([string]$Status, [scriptblock]$Action)
     }
     catch
     {
-        Set-Status "Error: $($_.Exception.Message)"
-        $null = [System.Windows.MessageBox]::Show($window, $_.Exception.Message, 'WingetFW Console', 'OK', 'Error')
+        # Sign-in errors keep the reason in the inner exceptions
+        $messages = for ($e = $_.Exception; $e; $e = $e.InnerException) { if ($e.Message) { $e.Message.Trim() } }
+        $text = (@($messages) | Select-Object -Unique) -join "`n`n"
+        Set-Status "Error: $(@($messages)[-1])"
+        $null = [System.Windows.MessageBox]::Show($window, $text, 'WingetFW Console', 'OK', 'Error')
     }
     finally { $window.Cursor = $null }
 }
