@@ -5,6 +5,7 @@
 ## UPGRADING INTUNE APPS
 > **BETA:** `Tools\Update-WingetFWIntuneApps.ps1` is not fully tested yet. Use it at your own risk, run `-Apply` with `-WhatIf` first and test it on a single app before updating more apps.
 `Tools\Update-WingetFWIntuneApps.ps1` updates existing WingetFW apps (3.x, 4.x and 5.x) in Intune to a new WingetFW package. It needs PowerShell 7.4 or later, the `Microsoft.Graph.Authentication` module and the permission `DeviceManagementApps.Read.All` (export) or `DeviceManagementApps.ReadWrite.All` (apply). It logs in with a popup, or with an app registration (`-TenantId`, `-ClientId`, `-ClientSecret`).
+The [WingetFW Console](Console.md#inventory-and-upgrade) does the same in a window (tab **Inventory and upgrade**) with the same functions and the same CSV.
 
 1. Export: finds all Win32 apps that run `Deploy-Application.exe` or `Invoke-AppDeployToolkit.exe` with a WingetFW package parameter and writes a CSV with the old and new command lines, the changes, warnings, errors and the detection script used. Nothing is changed in Intune.
    ```

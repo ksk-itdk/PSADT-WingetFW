@@ -272,6 +272,47 @@
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
+            <TabItem Header="Inventory and upgrade">
+                <Grid Margin="4">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="3*" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="2*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                        <Button x:Name="LoadInventoryButton" Content="Load WingetFW apps" FontWeight="Bold" ToolTip="Signs in with the tenant on the Publish tab if you are not signed in yet" />
+                        <Label Content="Mod files ScriptRoot (optional)" Margin="12,0,0,0" />
+                        <TextBox x:Name="InventoryScriptRootText" Width="360" ToolTip="Local folder, UNC share or Azure blob URL with SAS; the app mod file is &lt;ScriptRoot&gt;\&lt;source&gt;\&lt;id&gt;.ps1" />
+                        <TextBlock x:Name="InventoryTargetText" VerticalAlignment="Center" Margin="12,0" />
+                    </StackPanel>
+                    <DataGrid x:Name="InventoryGrid" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Extended" HeadersVisibility="Column"
+                              ToolTip="Select one or more apps (Ctrl or Shift) for the dry run or the update">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Update" Binding="{Binding Update}" />
+                            <DataGridTextColumn Header="App" Binding="{Binding DisplayName}" Width="2*" />
+                            <DataGridTextColumn Header="WingetFW" Binding="{Binding CurrentWingetFWVersion}" />
+                            <DataGridTextColumn Header="Package" Binding="{Binding Details.Package}" Width="*" />
+                            <DataGridTextColumn Header="Action" Binding="{Binding Details.Action}" />
+                            <DataGridTextColumn Header="Mode" Binding="{Binding Details.Mode}" />
+                            <DataGridTextColumn Header="Detection" Binding="{Binding DetectionRule}" />
+                            <DataGridTextColumn Header="Assignments" Binding="{Binding Details.Intents}" />
+                            <DataGridTextColumn Header="Mod file" Binding="{Binding Details.ModStatus}" />
+                            <DataGridTextColumn Header="Result" Binding="{Binding Result}" Width="2*" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <TextBlock Grid.Row="2" Text="Details of the selected app" FontWeight="Bold" Margin="2,6,2,2" />
+                    <TextBox x:Name="InventoryDetailsText" Grid.Row="3" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                             VerticalContentAlignment="Top" FontFamily="Consolas" />
+                    <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,4,0,0">
+                        <Button x:Name="ExportInventoryButton" Content="Export CSV..." ToolTip="Same CSV as Tools\Update-WingetFWIntuneApps.ps1 -Export; it can be used with -Apply" />
+                        <Button x:Name="SelectUpdateButton" Content="Select all with Update = Yes" />
+                        <Button x:Name="DryRunButton" Content="Dry run selected" ToolTip="Checks the selected apps again without changing anything" />
+                        <Button x:Name="UpgradeButton" Content="Update selected in Intune..." FontWeight="Bold" ToolTip="Uploads the .intunewin from the Publish tab and sets the new command lines" />
+                    </StackPanel>
+                </Grid>
+            </TabItem>
         </TabControl>
     </DockPanel>
 </Window>

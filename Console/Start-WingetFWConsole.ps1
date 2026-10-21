@@ -19,6 +19,10 @@
     the Win32 app with the commands and detection script of the first tab, requirements, return codes and
     optional group assignments. Nothing is changed in Intune before you confirm.
 
+    Tab "Inventory and upgrade" (phase CON-3): lists all WingetFW apps in Intune with their command lines
+    converted to the current WingetFW version (same rows as Tools\Update-WingetFWIntuneApps.ps1 -Export),
+    exports the CSV, runs a dry run and updates the selected apps after you confirm.
+
     Needs PowerShell 7.4 or later and the modules Microsoft.WinGet.Client (search), powershell-yaml
     (manifest details) and Microsoft.Graph.Authentication (Intune). Runs from the repository folder: it reads Toolkit\WinGetFW<version>,
     Toolkit\Detection and Tools\WingetFW-ParameterMap.psd1.
@@ -28,9 +32,12 @@
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 0.2.1
+    Version      : 0.3.0
 
     Release notes
+    0.3.0  - Tab "Inventory and upgrade" (phase CON-3): lists the WingetFW apps in Intune with version, package,
+             action, detection, assignments and mod file; export to the update tool CSV; dry run and update of the
+             selected apps.
     0.2.1  - Error messages show the inner errors too (a failed sign-in only said
              "InteractiveBrowserCredential authentication failed:").
     0.2.0  - Tab "Publish to Intune" (phase CON-2): sign-in, .intunewin (browse or build), app details,
@@ -197,6 +204,67 @@ function Get-DetectionScript([string]$Path)
         New-WingetFWDetectionScript -Type Winget -Id $ui.IdText.Text.Trim() @detectParams
     }
 }
+
+function Connect-ConsoleIntune
+{
+    if ((Get-Command -Name Get-MgContext -ErrorAction SilentlyContinue) -and (Get-MgContext)) { return }
+    Set-Status 'Signing in (see the browser window)...'
+    $context = Connect-WingetFWIntune -TenantId $ui.TenantText.Text.Trim()
+    $ui.SignedInText.Text = "$($context.Account) - tenant $($context.TenantId)"
+}
+
+function Format-InventoryDetails($Row)
+{
+    $lines = @(
+        "App          : $($Row.DisplayName) ($($Row.AppId))"
+        "WingetFW     : $($Row.CurrentWingetFWVersion) -> $($Row.TargetWingetFWVersion)    Update: $($Row.Update)"
+        "Install old  : $($Row.InstallCommandOld)"
+        "Install new  : $($Row.InstallCommandNew)"
+        "Changes      : $($Row.InstallChanges -replace ' \| ', "`r`n               ")"
+        "Uninstall old: $($Row.UninstallCommandOld)"
+        "Uninstall new: $($Row.UninstallCommandNew)"
+        "Changes      : $($Row.UninstallChanges -replace ' \| ', "`r`n               ")"
+        "Warnings     : $($Row.Warnings -replace ' \| ', "`r`n               ")"
+        "Errors       : $($Row.Errors -replace ' \| ', "`r`n               ")"
+        "Detection    : $($Row.DetectionRule) $(if ($Row.DetectionAppId) { "($($Row.DetectionAppId))" })"
+        "Assignments  : $(if ($Row.Details.Intents) { $Row.Details.Intents } else { 'none' })"
+        "Mod file     : $(if ($Row.Details.ModStatus) { "$($Row.Details.ModStatus) $($Row.Details.ModLocation) $($Row.Details.ModSigned)" } else { 'not checked (no ScriptRoot)' })"
+        "Result       : $($Row.Result)"
+    )
+    $lines -join "`r`n"
+}
+
+function Invoke-InventoryUpdate([switch]$DryRun)
+{
+    $selected = @($ui.InventoryGrid.SelectedItems)
+    if (-not $selected.Count) { Set-Status 'Select one or more apps first'; return }
+    $file = $ui.IntuneWinText.Text
+    if (-not $DryRun)
+    {
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { $null = [System.Windows.MessageBox]::Show($window, 'Select or build the .intunewin on the Publish tab first.', 'WingetFW Console', 'OK', 'Warning'); return }
+        $question = "Update $($selected.Count) app(s) to WingetFW $($package.Version)?`n`nEach app gets the package $file as a new content version and the new command lines. Apps with Update = No are skipped."
+        if ([System.Windows.MessageBox]::Show($window, $question, 'WingetFW Console', 'YesNo', 'Question') -ne 'Yes') { return }
+    }
+    Invoke-UiAction '' {
+        Connect-ConsoleIntune
+        $intuneWin = if (-not $DryRun) { Get-WingetFWIntuneWinPackage $file }
+        try
+        {
+            if ($intuneWin -and $intuneWin.SetupFile -ne 'Invoke-AppDeployToolkit.exe') { throw "The setup file of $file is '$($intuneWin.SetupFile)', expected Invoke-AppDeployToolkit.exe" }
+            foreach ($row in $selected)
+            {
+                Set-Status "$(if ($DryRun) { 'Dry run' } else { 'Updating' }): $($row.DisplayName)..."
+                # Same rule as -Apply of the update tool: only rows with Update = Yes
+                $row.Result = if ($row.Update -ne 'Yes') { "Skipped: Update = No ($($row.Errors))" }
+                else { Update-WingetFWIntuneApp -Row $row -Package $intuneWin -IntuneWinFile $file -TargetVersion $package.Version -WhatIf:$DryRun }
+                $ui.InventoryGrid.Items.Refresh()
+            }
+        }
+        finally { if ($intuneWin) { Remove-Item -LiteralPath $intuneWin.EncryptedFile -Force -ErrorAction SilentlyContinue } }
+        $ui.InventoryDetailsText.Text = if ($ui.InventoryGrid.SelectedItem) { Format-InventoryDetails $ui.InventoryGrid.SelectedItem } else { '' }
+        Set-Status "$(if ($DryRun) { 'Dry run' } else { 'Update' }) done for $($selected.Count) app(s)$(if (-not $DryRun) { '; load the apps again to see the new state' })"
+    }
+}
 #endregion
 
 #region Start values
@@ -232,6 +300,8 @@ $ui.IntentBox.SelectedIndex = 0
 $ui.AssignmentsGrid.ItemsSource = $script:assignments
 $defaultIntuneWin = Join-Path -Path $env:LOCALAPPDATA -ChildPath "WingetFW\Console\IntuneWin\$(Split-Path -Path $package.Path -Leaf)\Invoke-AppDeployToolkit.intunewin"
 if (Test-Path -LiteralPath $defaultIntuneWin) { $ui.IntuneWinText.Text = $defaultIntuneWin }
+$ui.InventoryTargetText.Text = "Target: WingetFW $($package.Version)"
+$script:inventory = @()
 #endregion
 
 #region Events
@@ -388,6 +458,45 @@ $ui.PublishButton.Add_Click({
             Set-Status $ui.PublishResultText.Text
         }
     })
+
+$ui.LoadInventoryButton.Add_Click({
+        Invoke-UiAction 'Reading the WingetFW apps in Intune...' {
+            Connect-ConsoleIntune
+            Set-Status 'Reading the WingetFW apps in Intune...'
+            $rows = @(Get-WingetFWIntuneInventory -ScriptRoot $ui.InventoryScriptRootText.Text.Trim())
+            foreach ($row in $rows) { $row | Add-Member -NotePropertyName Result -NotePropertyValue '' }
+            $script:inventory = $rows
+            $ui.InventoryGrid.ItemsSource = $rows
+            $ui.InventoryDetailsText.Text = ''
+            Set-Status "$($rows.Count) WingetFW app(s), $(@($rows | Where-Object Update -eq 'Yes').Count) with Update = Yes"
+        }
+    })
+
+$ui.InventoryGrid.Add_SelectionChanged({
+        $row = $ui.InventoryGrid.SelectedItem
+        $ui.InventoryDetailsText.Text = if ($row) { Format-InventoryDetails $row } else { '' }
+    })
+
+$ui.SelectUpdateButton.Add_Click({
+        $ui.InventoryGrid.SelectedItems.Clear()
+        foreach ($row in @($script:inventory | Where-Object Update -eq 'Yes')) { $ui.InventoryGrid.SelectedItems.Add($row) }
+        Set-Status "$($ui.InventoryGrid.SelectedItems.Count) app(s) selected"
+    })
+
+$ui.ExportInventoryButton.Add_Click({
+        if (-not $script:inventory.Count) { Set-Status 'Load the apps first'; return }
+        Invoke-UiAction '' {
+            $dialog = New-Object -TypeName Microsoft.Win32.SaveFileDialog
+            $dialog.Filter = 'CSV file (*.csv)|*.csv'
+            $dialog.FileName = "WingetFW-IntuneApps-$(Get-Date -Format 'yyyyMMdd-HHmm').csv"
+            if (-not $dialog.ShowDialog($window)) { return }
+            $script:inventory | Select-Object -Property * -ExcludeProperty Details, Result | Export-Csv -LiteralPath $dialog.FileName -NoTypeInformation -Encoding UTF8
+            Set-Status "CSV written: $($dialog.FileName)"
+        }
+    })
+
+$ui.DryRunButton.Add_Click({ Invoke-InventoryUpdate -DryRun })
+$ui.UpgradeButton.Add_Click({ Invoke-InventoryUpdate })
 #endregion
 
 Update-Commands

@@ -3,9 +3,11 @@
 [Back to README](../README.md)
 
 A window for admins that finds a winget package, builds the WingetFW install command, uninstall command
-and detection script, and creates the Win32 app in Intune. It changes nothing on the device.
+and detection script, creates the Win32 app in Intune, and upgrades existing WingetFW apps to the current
+WingetFW version. It changes nothing on the device.
 
-Version 0.2.0: search, details, commands, detection script (phase CON-1) and publish to Intune (phase CON-2).
+Version 0.3.0: search, details, commands, detection script (phase CON-1), publish to Intune (phase CON-2),
+inventory and upgrade (phase CON-3).
 
 ## REQUIREMENTS
 - Windows with PowerShell 7.4 or later.
@@ -70,6 +72,26 @@ Build the app on the **Search and build** tab first; the **Publish to Intune** t
 
 If the upload or the assignment fails, the app stays in Intune without content; the message shows its ID so you can delete it.
 
+## INVENTORY AND UPGRADE
+The **Inventory and upgrade** tab does the same as [`Tools\Update-WingetFWIntuneApps.ps1`](Upgrading-Intune-Apps.md),
+with a list and a preview. Both use the same functions, so the result is the same.
+1. **Load WingetFW apps**. It signs in with the tenant on the **Publish to Intune** tab if you are not signed in yet.
+   Every Win32 app whose install command runs WingetFW (`Deploy-Application.exe` or `Invoke-AppDeployToolkit.exe`
+   with a package parameter) is listed with:
+   - its WingetFW version (from the notes, or recognised from the parameters: 3.x, 4.0.0 - 4.0.6, 4.0.7 - 4.0.8, 5.0.0),
+   - package, action, mode, detection script and assignment intents,
+   - the mod file, when you fill in **Mod files ScriptRoot**: found or not, and its signature,
+   - **Update** Yes or No. No means: already the current version, or the command line has an error (for example `ServiceUI.exe`).
+2. Select an app to see the old and new install and uninstall commands, the changes, warnings and errors.
+3. **Export CSV** writes the same CSV as `Update-WingetFWIntuneApps.ps1 -Export`, so you can also review it and use `-Apply`.
+4. Select apps (or **Select all with Update = Yes**) and click **Dry run selected**: each app is checked again in Intune, nothing is changed.
+5. **Update selected in Intune** asks for confirmation, then for each selected app with Update = Yes:
+   uploads the `.intunewin` from the **Publish to Intune** tab as a new content version, sets the new command lines and
+   setup file, and writes `WingetFW <version>` in the notes. Assignments, detection and the app ID stay the same.
+   An app is skipped when its command lines were changed in Intune after loading.
+
+Load the apps again after an update to see the new state.
+
 ## TESTS
-- `Tests\Unit\WingetFW.Console.Tests.ps1`: builder, option rules, quoting, detection scripts, manifest data, and the Intune app and assignment body with mocked Graph calls.
+- `Tests\Unit\WingetFW.Console.Tests.ps1`: builder, option rules, quoting, detection scripts, manifest data, the Intune app and assignment body, the command line conversion, the inventory and the app update with mocked Graph calls.
 - The builder is also checked against every command of the last VM test run (`Tests\results\WingetFW-TestResults.json`): commands that passed on the VM are accepted, the validation tests (V01-V10, N01) are rejected with the same message as the WingetFW log.

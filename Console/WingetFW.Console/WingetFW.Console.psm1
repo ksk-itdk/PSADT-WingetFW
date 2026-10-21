@@ -15,15 +15,22 @@
     Intune   : Connect-WingetFWIntune (delegated sign-in), New-WingetFWIntuneWin (IntuneWinAppUtil.exe),
                Find-WingetFWGroup, New-WingetFWIntuneApp (create, upload, assign). Get-WingetFWIntuneWinPackage,
                Publish-WingetFWIntuneWinContent and Invoke-WingetFWGraph are also used by Tools\Update-WingetFWIntuneApps.ps1.
+    Inventory: Get-WingetFWIntuneInventory lists the WingetFW apps in Intune with their command lines converted to the
+               current version (Convert-WingetFWCommandLine), detection script and mod file; Update-WingetFWIntuneApp
+               updates one app (-WhatIf = dry run). Tools\Update-WingetFWIntuneApps.ps1 -Export and -Apply use the same functions.
 
     Needs PowerShell 7.4 or later. Search needs Microsoft.WinGet.Client, manifest details need powershell-yaml,
     Intune needs Microsoft.Graph.Authentication.
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 0.2.0
+    Version      : 0.3.0
 
     Release notes
+    0.3.0  - Inventory and upgrade (phase CON-3): Get-WingetFWIntuneInventory, Update-WingetFWIntuneApp,
+             Get-WingetFWModFileInfo. The conversion and app list functions of Tools\Update-WingetFWIntuneApps.ps1
+             moved here (Convert-WingetFWCommandLine, Get-WingetFWIntuneAppList, Get-WingetFWDetectionInfo,
+             Get-WingetFWNotesVersion, Set-WingetFWNotesVersion).
     0.2.0  - Intune publish (phase CON-2): sign-in, .intunewin with IntuneWinAppUtil.exe (Microsoft signature checked),
              group search, Win32 app with detection script, return codes (69002 = retry), requirements and assignments.
            - The Graph and upload functions of Tools\Update-WingetFWIntuneApps.ps1 moved here.
@@ -1024,6 +1031,656 @@ function New-WingetFWIntuneApp
         }
     }
     finally { Remove-Item -LiteralPath $package.EncryptedFile -Force -ErrorAction SilentlyContinue }
+}
+
+#endregion
+
+#region Inventory and upgrade (also used by Tools\Update-WingetFWIntuneApps.ps1)
+
+$Script:IntuneAppsUri = "$Script:GraphBase/deviceAppManagement/mobileApps"
+$Script:KnownDetectionScripts = @{}
+
+function Get-WingetFWMapName
+{
+    # The key with its original casing, $null if not found
+    param ([System.Collections.IDictionary]$Table, [string]$Name)
+    foreach ($key in $Table.Keys) { if ($key -ieq $Name) { return $key } }
+    $null
+}
+
+function Get-WingetFWAstValue
+{
+    param ($Ast)
+    switch ($Ast.GetType().Name)
+    {
+        'StringConstantExpressionAst' { return $Ast.Value }
+        'ExpandableStringExpressionAst' { return $Ast.Value }
+        'ConstantExpressionAst' { return [string]$Ast.Value }
+        # Unquoted {GUID}
+        default { return $Ast.Extent.Text }
+    }
+}
+
+function Format-WingetFWConvertedArgument
+{
+    param ($Item)
+    if ($Item.IsSwitch)
+    {
+        if ($Item.SwitchArgument) { return "-$($Item.Name):$($Item.SwitchArgument)" }
+        return "-$($Item.Name)"
+    }
+    "-$($Item.Name) '$(([string]$Item.Value) -replace "'", "''")'"
+}
+
+function ConvertFrom-WingetFWText
+{
+    # Splits raw winget arguments (3.x -WingetCM / -WingetScope) into WingetFW parameters
+    param ([string]$Text, [System.Collections.IDictionary]$Map, $Result)
+
+    $tokens = @([regex]::Matches($Text, '"[^"]*"|''[^'']*''|\S+') | ForEach-Object { $_.Value })
+    $items = @()
+    $i = 0
+    while ($i -lt $tokens.Count)
+    {
+        $token = $tokens[$i]
+        $key = Get-WingetFWMapName $Map.WingetOptions $token
+        if (-not $key)
+        {
+            $Result.Errors.Add("Unknown winget argument '$token' in '$Text'")
+            $i++
+            # Skip the value of the unknown option
+            while ($i -lt $tokens.Count -and -not (Get-WingetFWMapName $Map.WingetOptions $tokens[$i]) -and $tokens[$i] -notmatch '^-') { $i++ }
+            continue
+        }
+        $option = $Map.WingetOptions[$key]
+        $value = $null
+        if ($option.Value)
+        {
+            # Values with spaces were often not quoted in 3.x, so take everything up to the next winget option
+            $parts = @()
+            $i++
+            while ($i -lt $tokens.Count -and -not (Get-WingetFWMapName $Map.WingetOptions $tokens[$i]))
+            {
+                $parts += $tokens[$i].Trim('"').Trim("'")
+                $i++
+            }
+            if ($parts.Count -eq 0)
+            {
+                $Result.Errors.Add("winget argument '$token' has no value in '$Text'")
+                continue
+            }
+            $value = $parts -join ' '
+        }
+        else
+        {
+            $i++
+        }
+        if (-not $option.Parameter)
+        {
+            $Result.Changes.Add("'$token' dropped (WingetFW adds it itself)")
+            continue
+        }
+        if ($option.Parameter -eq 'scope') { $value = (Get-Culture).TextInfo.ToTitleCase($value.ToLower()) }
+        $items += [pscustomobject]@{ Name = $option.Parameter; Value = $value; IsSwitch = -not $option.Value; SwitchArgument = $null; FromOld = $true }
+    }
+    $items
+}
+
+function Convert-WingetFWCommandLine
+{
+    <#
+    .SYNOPSIS
+        Converts a WingetFW command line of any version (3.x, 4.x, 5.x) to the current version and checks it.
+    .OUTPUTS
+        Original, New, DetectedVersion, Package, Parameters (of the new command), Changes, Warnings, Errors.
+    .PARAMETER KnownVersion
+        WingetFW version from the app notes, if known.
+    #>
+    [CmdletBinding()]
+    param
+    (
+        [Parameter()]
+        [string]$CommandLine,
+
+        [Parameter()]
+        [System.Collections.IDictionary]$Map = (Get-WingetFWParameterMap),
+
+        [Parameter()]
+        [string]$KnownVersion
+    )
+
+    $result = [pscustomobject]@{
+        Original        = $CommandLine
+        New             = $CommandLine
+        DetectedVersion = ''
+        Package         = ''
+        Parameters      = [ordered]@{}
+        Changes         = [System.Collections.Generic.List[string]]::new()
+        Warnings        = [System.Collections.Generic.List[string]]::new()
+        Errors          = [System.Collections.Generic.List[string]]::new()
+    }
+    if ([string]::IsNullOrWhiteSpace($CommandLine)) { return $result }
+
+    $match = [regex]::Match($CommandLine, '(?i)"?(Deploy-Application|Invoke-AppDeployToolkit)(\.exe)?"?')
+    if (-not $match.Success)
+    {
+        $result.Errors.Add('Deploy-Application.exe or Invoke-AppDeployToolkit.exe not found in the command line')
+        return $result
+    }
+    # Text before the exe (for example ServiceUI.exe -process:explorer.exe) is kept as it is
+    $prefix = $CommandLine.Substring(0, $match.Index)
+    $exe = $match.Value
+    $argText = $CommandLine.Substring($match.Index + $match.Length)
+    $isOldExe = $match.Groups[1].Value -ieq 'Deploy-Application'
+    if ($isOldExe)
+    {
+        $exe = $Map.ExeName
+        $result.Changes.Add("$($match.Value.Trim('"')) replaced by $($Map.ExeName) (WingetFW 5.0.0, PSAppDeployToolkit 4)")
+    }
+    if ($prefix -match '(?i)ServiceUI')
+    {
+        $result.Errors.Add('ServiceUI.exe is not in the WingetFW 5.0.0 package; remove it from the command line or add it to the package')
+    }
+
+    # Both exes pass the arguments to powershell.exe -Command, so the PowerShell parser reads them the same way
+    $parseErrors = $null
+    $ast = [System.Management.Automation.Language.Parser]::ParseInput("x $argText", [ref]$null, [ref]$parseErrors)
+    if ($parseErrors)
+    {
+        $result.Errors.Add("Command line could not be parsed: $($parseErrors[0].Message)")
+        return $result
+    }
+    $command = $ast.Find({ param ($a) $a -is [System.Management.Automation.Language.CommandAst] }, $true)
+    $elements = @($command.CommandElements | Select-Object -Skip 1)
+
+    $items = @()
+    for ($i = 0; $i -lt $elements.Count; $i++)
+    {
+        $element = $elements[$i]
+        if ($element -isnot [System.Management.Automation.Language.CommandParameterAst])
+        {
+            $result.Errors.Add("Value without parameter name: $($element.Extent.Text)")
+            continue
+        }
+        $name = Get-WingetFWMapName $Map.Parameters $element.ParameterName
+        $type = if ($name) { $Map.Parameters[$name] } else { $name = Get-WingetFWMapName $Map.OldParameters $element.ParameterName; if ($name) { $Map.OldParameters[$name] } }
+        if (-not $name)
+        {
+            $result.Errors.Add("Unknown parameter -$($element.ParameterName)")
+            $name = $element.ParameterName
+            $type = 'String'
+        }
+        $item = [pscustomobject]@{ Name = $name; Value = $null; IsSwitch = ($type -eq 'Switch'); SwitchArgument = $null; FromOld = $false }
+        if ($element.Argument)
+        {
+            if ($item.IsSwitch) { $item.SwitchArgument = $element.Argument.Extent.Text } else { $item.Value = Get-WingetFWAstValue $element.Argument }
+        }
+        elseif (-not $item.IsSwitch)
+        {
+            if ($i + 1 -lt $elements.Count -and $elements[$i + 1] -isnot [System.Management.Automation.Language.CommandParameterAst])
+            {
+                $i++
+                $item.Value = Get-WingetFWAstValue $elements[$i]
+            }
+            else
+            {
+                $result.Errors.Add("Parameter -$name has no value")
+            }
+        }
+        $items += $item
+    }
+
+    $names = @($items | ForEach-Object { $_.Name })
+    $isV3 = [bool]($names | Where-Object { $_ -in $Map.V3Parameters })
+    $isOld4 = [bool]($names | Where-Object { $_ -in @('testverbose', 'wait') }) -or [bool]($items | Where-Object { $_.Name -eq 'scope' -and $_.Value -in $Map.RemovedScopeValues })
+    $isNew4 = [bool]($names | Where-Object { $_ -in $Map.V407Parameters })
+    $result.DetectedVersion = if ($KnownVersion) { $KnownVersion } elseif (-not $isOldExe) { '5.0.0 or later' } elseif ($isV3) { '3.x' } elseif ($isOld4) { '4.0.0 - 4.0.6' } elseif ($isNew4) { '4.0.7 - 4.0.8' } else { '4.x' }
+
+    # Convert old parameters
+    $converted = @()
+    foreach ($item in $items)
+    {
+        if ($Map.RenamedParameters.ContainsKey($item.Name))
+        {
+            $newName = $Map.RenamedParameters[$item.Name]
+            $result.Changes.Add("-$($item.Name) renamed to -$newName")
+            $item.Name = $newName
+            $item.FromOld = $true
+            $converted += $item
+        }
+        elseif ($Map.RemovedParameters.ContainsKey($item.Name))
+        {
+            $result.Changes.Add("-$($item.Name) removed: $($Map.RemovedParameters[$item.Name])")
+        }
+        elseif ($item.Name -in $Map.WingetTextParameters)
+        {
+            $newItems = @(ConvertFrom-WingetFWText -Text $item.Value -Map $Map -Result $result)
+            $result.Changes.Add("-$($item.Name) '$($item.Value)' converted to: $(($newItems | ForEach-Object { Format-WingetFWConvertedArgument $_ }) -join ' ')")
+            $converted += $newItems
+        }
+        elseif ($item.Name -eq 'scope' -and $item.Value -in $Map.RemovedScopeValues)
+        {
+            $result.Changes.Add("-scope '$($item.Value)' removed (no longer supported; it was not passed to winget)")
+        }
+        else
+        {
+            $converted += $item
+        }
+    }
+
+    # The same parameter twice (for example -WingetScope and --scope in -WingetCM): keep the first
+    $unique = @()
+    foreach ($item in $converted)
+    {
+        if ($unique | Where-Object { $_.Name -eq $item.Name })
+        {
+            $result.Warnings.Add("-$($item.Name) was set more than once; the first value is kept")
+            continue
+        }
+        $unique += $item
+    }
+    $converted = $unique
+
+    $get = { param ($n) $converted | Where-Object { $_.Name -eq $n -and (-not $_.IsSwitch -or $_.SwitchArgument -notmatch '\$false') } | Select-Object -First 1 }
+    $deploymentType = if (& $get 'DeploymentType') { (& $get 'DeploymentType').Value } else { 'Install' }
+
+    # 3.x always ran winget with --silent
+    $deploymentAction = if (& $get 'Action') { (& $get 'Action').Value } else { $deploymentType }
+    $overrideKept = (& $get 'override') -and $Map.ActionOptions[$deploymentAction.ToLower()] -contains 'override'
+    if ($isV3 -and -not (& $get 'silent'))
+    {
+        if ($overrideKept) { $result.Changes.Add('-silent not added: 3.x sent --silent, but -override cannot be combined with -silent') }
+        elseif (& $get 'interactive') { $result.Changes.Add('-silent not added because -interactive is used') }
+        else
+        {
+            $converted += [pscustomobject]@{ Name = 'silent'; Value = $null; IsSwitch = $true; SwitchArgument = $null; FromOld = $true }
+            $result.Changes.Add('-silent added (3.x always ran winget with --silent)')
+        }
+    }
+
+    # Before 4.0.7 Repair always uninstalled and installed again
+    $knownNew = $false
+    if ($KnownVersion) { try { $knownNew = [version]$KnownVersion -ge [version]'4.0.7' } catch { $knownNew = $false } }
+    if ($deploymentType -ieq 'Repair' -and -not $isNew4 -and -not $knownNew -and -not (& $get $Map.OldRepairParameter))
+    {
+        $converted += [pscustomobject]@{ Name = $Map.OldRepairParameter; Value = $null; IsSwitch = $true; SwitchArgument = $null; FromOld = $true }
+        $result.Changes.Add("-$($Map.OldRepairParameter) added (Repair before 4.0.7 always uninstalled and installed again)")
+    }
+
+    # Validate against the rules of the new version
+    $forceRepair = [bool](& $get 'ForceRepair')
+    $action = if (& $get 'Action') { (& $get 'Action').Value } else { $deploymentType }
+    if ($forceRepair)
+    {
+        if ($deploymentType -ieq 'Repair') { $action = 'install' } else { $result.Warnings.Add('-ForceRepair is ignored unless -DeploymentType is Repair') }
+    }
+    $action = $action.ToLower()
+    $allowed = $Map.ActionOptions[$action]
+    if (-not $allowed)
+    {
+        $result.Errors.Add("Unknown action '$action'")
+        $allowed = @()
+    }
+    $used = @($converted | Where-Object { $_.Name -notin $Map.FrameworkParameters -and $_.Name -in $Map.Parameters.Keys -and (-not $_.IsSwitch -or $_.SwitchArgument -notmatch '\$false') })
+    $kept = @()
+    foreach ($item in $converted)
+    {
+        if ($item -in $used -and $item.Name -notin $allowed)
+        {
+            if ($item.FromOld)
+            {
+                # Older versions passed it to winget anyway, where it had no effect or failed
+                $result.Changes.Add("-$($item.Name) removed: winget $action does not support it")
+                continue
+            }
+            $result.Errors.Add("-$($item.Name) is not supported with winget $action")
+        }
+        $kept += $item
+    }
+    $converted = $kept
+    $usedNames = @($converted | Where-Object { $_ -in $used } | ForEach-Object { $_.Name })
+    foreach ($group in $Map.ConflictGroups)
+    {
+        $conflict = @($usedNames | Where-Object { $_ -in $group })
+        if ($conflict.Count -gt 1) { $result.Errors.Add("-$($conflict -join ' and -') cannot be used together") }
+    }
+    foreach ($key in $Map.Requires.Keys)
+    {
+        if ($key -in $usedNames -and $Map.Requires[$key] -notin $usedNames) { $result.Errors.Add("-$key requires -$($Map.Requires[$key])") }
+    }
+    $package = @($converted | Where-Object { $_.Name -in $Map.PackageParameters -and $_.Value } | Select-Object -First 1)
+    if ($package) { $result.Package = $package[0].Value } else { $result.Errors.Add('No package parameter (id, name, moniker, wingetmanifest, productcode or importfile)') }
+    if ($isOldExe -and 'AllowRebootPassThru' -notin $names)
+    {
+        $result.Changes.Add('Reboot exit codes (3010, 1641) are now passed to Intune; add -SuppressRebootPassThru to keep the old behaviour')
+    }
+
+    foreach ($item in $converted) { $result.Parameters[$item.Name] = if ($item.IsSwitch) { $item.SwitchArgument -notmatch '\$false' } else { $item.Value } }
+    $result.New = ("$prefix$exe " + (($converted | ForEach-Object { Format-WingetFWConvertedArgument $_ }) -join ' ')).TrimEnd()
+    if ($result.New -ne $CommandLine -and $result.Changes.Count -eq 0) { $result.Changes.Add('Values written in single quotes (the exe fails on double-quoted values with spaces)') }
+    $result
+}
+
+function Get-WingetFWNotesVersion
+{
+    <#
+    .SYNOPSIS
+        The WingetFW version in the app notes ("WingetFW x.y.z"), empty when there is none.
+    #>
+    [CmdletBinding()]
+    param ([Parameter(Position = 0)][string]$Notes)
+    [regex]::Match([string]$Notes, 'WingetFW (\d+\.\d+\.\d+)').Groups[1].Value
+}
+
+function Set-WingetFWNotesVersion
+{
+    <#
+    .SYNOPSIS
+        Returns the app notes with "WingetFW <Version>" replaced or added. Changes nothing in Intune.
+    #>
+    [CmdletBinding()]
+    param ([Parameter(Position = 0)][string]$Notes, [Parameter(Position = 1)][string]$Version)
+    if ($Notes -match 'WingetFW \d+\.\d+\.\d+') { return [regex]::Replace($Notes, 'WingetFW \d+\.\d+\.\d+', "WingetFW $Version") }
+    if ([string]::IsNullOrWhiteSpace($Notes)) { return "WingetFW $Version" }
+    "$Notes`nWingetFW $Version"
+}
+
+function Get-WingetFWNormalizedScriptHash
+{
+    # App-specific lines ($app = "...", $AppName/$AppVersion) are ignored, so the same script version matches for every app
+    param ([string]$Text)
+    $lines = $Text -split "`r?`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ -and $_ -notmatch '^\$(app|AppName|AppVersion)\s*=' }
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes(($lines -join "`n"))
+    [Convert]::ToHexString([System.Security.Cryptography.SHA256]::HashData($bytes))
+}
+
+function Get-WingetFWDetectionInfo
+{
+    <#
+    .SYNOPSIS
+        Detection rule of an Intune Win32 app: which Toolkit\Detection script it uses and the package ID in it.
+    .OUTPUTS
+        Rule (for example "Script wingetv2.0.2", "Script (custom)", "Registry", "None") and AppId.
+    #>
+    [CmdletBinding()]
+    param
+    (
+        [Parameter(Mandatory = $true, Position = 0)]
+        [object]$App,
+
+        [Parameter()]
+        [string]$DetectionScriptPath = (Join-Path -Path $Script:RepoRoot -ChildPath 'Toolkit\Detection')
+    )
+
+    if (-not $Script:KnownDetectionScripts.ContainsKey($DetectionScriptPath))
+    {
+        $known = @{}
+        if (Test-Path -LiteralPath $DetectionScriptPath)
+        {
+            Get-ChildItem -LiteralPath $DetectionScriptPath -Filter '*.ps1' | ForEach-Object { $known[(Get-WingetFWNormalizedScriptHash (Get-Content -LiteralPath $_.FullName -Raw))] = $_.BaseName }
+        }
+        $Script:KnownDetectionScripts[$DetectionScriptPath] = $known
+    }
+    $knownScripts = $Script:KnownDetectionScripts[$DetectionScriptPath]
+
+    $rules = @($App.rules | Where-Object { $_.ruleType -eq 'detection' }) + @($App.detectionRules)
+    $rules = @($rules | Where-Object { $_ })
+    if (-not $rules) { return [pscustomobject]@{ Rule = 'None'; AppId = '' } }
+    $script = $rules | Where-Object { $_.'@odata.type' -match 'PowerShellScript' } | Select-Object -First 1
+    if (-not $script) { return [pscustomobject]@{ Rule = (($rules | ForEach-Object { $_.'@odata.type' -replace '#microsoft.graph.win32LobApp', '' -replace 'Rule$|Detection$', '' }) -join ', '); AppId = '' } }
+    $text = [System.Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($script.scriptContent)).TrimStart([char]0xFEFF)
+    $name = $knownScripts[(Get-WingetFWNormalizedScriptHash $text)]
+    # The parser skips the help block, which has an example $app line
+    $parseErrors = $null
+    $ast = [System.Management.Automation.Language.Parser]::ParseInput($text, [ref]$null, [ref]$parseErrors)
+    $assignment = $ast.Find({ param ($a) $a -is [System.Management.Automation.Language.AssignmentStatementAst] -and $a.Left -is [System.Management.Automation.Language.VariableExpressionAst] -and $a.Left.VariablePath.UserPath -eq 'app' -and $a.Right.Expression -is [System.Management.Automation.Language.StringConstantExpressionAst] }, $true)
+    $appId = if ($assignment) { $assignment.Right.Expression.Value } elseif ($parseErrors) { [regex]::Match($text, '(?m)^\$app\s*=\s*["'']([^"'']+)["'']').Groups[1].Value } else { '' }
+    [pscustomobject]@{
+        Rule  = if ($name) { "Script $name" } else { 'Script (custom)' }
+        AppId = $appId
+    }
+}
+
+function Get-WingetFWIntuneAppList
+{
+    <#
+    .SYNOPSIS
+        Lists the Win32 apps in Intune whose install command runs WingetFW (Deploy-Application.exe or Invoke-AppDeployToolkit.exe with a package parameter).
+    #>
+    [CmdletBinding()]
+    param
+    (
+        [Parameter()]
+        [System.Collections.IDictionary]$Map = (Get-WingetFWParameterMap)
+    )
+
+    $uri = "$Script:IntuneAppsUri`?`$filter=isof('microsoft.graph.win32LobApp')"
+    $apps = @()
+    do
+    {
+        try
+        {
+            $page = Invoke-WingetFWGraph GET $uri
+        }
+        catch
+        {
+            if ($_.Exception.Message -match 'Forbidden|403')
+            {
+                $context = Get-MgContext
+                $fix = if ($context.Account) { "The account $($context.Account) needs an Intune role that can read apps, for example Intune Administrator or Application Manager (activate it first if it is a PIM role)." } else { "The app registration $($context.ClientId) needs DeviceManagementApps.Read.All as an application permission with admin consent." }
+                throw "Intune refused the request (Forbidden). $fix Details: $($_.Exception.Message)"
+            }
+            throw
+        }
+        $apps += @($page.value)
+        $uri = $page.'@odata.nextLink'
+    } while ($uri)
+    Write-Verbose -Message "$($apps.Count) Win32 apps in Intune"
+    $pattern = '(?i)(^|\s)-(' + (@($Map.PackageParameters) + @($Map.V3Parameters | Where-Object { $_ -eq 'WingetID' }) -join '|') + ')\b'
+    @($apps | Where-Object { $_.installCommandLine -match '(?i)Deploy-Application|Invoke-AppDeployToolkit' -and $_.installCommandLine -match $pattern })
+}
+
+function Get-WingetFWModFileInfo
+{
+    <#
+    .SYNOPSIS
+        Looks for the app mod file <ScriptRoot>\<Source>\<Id>.ps1 (local folder, UNC share or Azure blob URL with SAS) and checks its signature.
+    .OUTPUTS
+        Location (SAS signature hidden), Status (Found, NotFound, Unreachable), Signature (Valid, NotSigned, ...) and Signer.
+    #>
+    [CmdletBinding()]
+    param
+    (
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptRoot,
+
+        [Parameter()]
+        [string]$Source = 'winget',
+
+        [Parameter(Mandatory = $true)]
+        [string]$Id
+    )
+
+    $result = [pscustomobject]@{ Location = ''; Status = 'NotFound'; Signature = ''; Signer = '' }
+    if ($ScriptRoot -match '^https?://')
+    {
+        $uri = [Uri]$ScriptRoot
+        $relative = '{0}/{1}' -f [Uri]::EscapeDataString($Source), [Uri]::EscapeDataString("$Id.ps1")
+        $fileUri = '{0}/{1}{2}' -f $uri.GetLeftPart([UriPartial]::Path).TrimEnd('/'), $relative, $uri.Query
+        $result.Location = $fileUri -replace '(?i)(sig=)[^&]+', '$1***'
+        $file = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ('WingetFW-{0}.ps1' -f [guid]::NewGuid().ToString('N'))
+        try
+        {
+            $null = Invoke-WebRequest -Uri $fileUri -OutFile $file -UseBasicParsing
+            $result.Status = 'Found'
+        }
+        catch
+        {
+            $status = 0
+            if ($_.Exception.PSObject.Properties['Response'] -and $_.Exception.Response) { $status = [int]$_.Exception.Response.StatusCode }
+            $result.Status = if ($status -eq 404) { 'NotFound' } else { 'Unreachable' }
+        }
+    }
+    else
+    {
+        $file = Join-Path -Path $ScriptRoot -ChildPath "$Source\$Id.ps1"
+        $result.Location = $file
+        if (-not (Test-Path -LiteralPath $ScriptRoot)) { $result.Status = 'Unreachable' }
+        elseif (Test-Path -LiteralPath $file -PathType Leaf) { $result.Status = 'Found' }
+    }
+    if ($result.Status -eq 'Found')
+    {
+        $signature = Get-AuthenticodeSignature -LiteralPath $file
+        $result.Signature = [string]$signature.Status
+        if ($signature.SignerCertificate) { $result.Signer = $signature.SignerCertificate.Subject }
+    }
+    if ($ScriptRoot -match '^https?://') { Remove-Item -LiteralPath $file -Force -ErrorAction SilentlyContinue }
+    $result
+}
+
+function Get-WingetFWIntuneInventory
+{
+    <#
+    .SYNOPSIS
+        Reads all WingetFW apps in Intune and converts their command lines to the target WingetFW version (nothing is changed).
+    .DESCRIPTION
+        The rows are the -Export CSV of Tools\Update-WingetFWIntuneApps.ps1. The Console adds Details (package, action,
+        assignment intents, mod file); export without it: Select-Object -Property * -ExcludeProperty Details.
+    .PARAMETER ScriptRoot
+        Optional ScriptRoot of the mod files, to look for each app's mod file.
+    #>
+    [CmdletBinding()]
+    param
+    (
+        [Parameter()]
+        [string]$TargetVersion = (Get-WingetFWPackageInfo).Version,
+
+        [Parameter()]
+        [System.Collections.IDictionary]$Map = (Get-WingetFWParameterMap),
+
+        [Parameter()]
+        [string]$DetectionScriptPath = (Join-Path -Path $Script:RepoRoot -ChildPath 'Toolkit\Detection'),
+
+        [Parameter()]
+        [string]$ScriptRoot
+    )
+
+    $rows = foreach ($listed in (Get-WingetFWIntuneAppList -Map $Map))
+    {
+        $app = Invoke-WingetFWGraph GET "$Script:IntuneAppsUri/$($listed.id)?`$expand=assignments"
+        $notesVersion = Get-WingetFWNotesVersion $app.notes
+        $install = Convert-WingetFWCommandLine -CommandLine $app.installCommandLine -Map $Map -KnownVersion $notesVersion
+        $uninstall = Convert-WingetFWCommandLine -CommandLine $app.uninstallCommandLine -Map $Map -KnownVersion $notesVersion
+        $detection = Get-WingetFWDetectionInfo $app -DetectionScriptPath $DetectionScriptPath
+        $warnings = @($install.Warnings) + @($uninstall.Warnings | ForEach-Object { "Uninstall: $_" })
+        if ($detection.AppId -and $install.Package -and $detection.AppId -ine $install.Package) { $warnings += "Detection script checks '$($detection.AppId)' but the install command uses '$($install.Package)'" }
+        $errors = @($install.Errors) + @($uninstall.Errors | ForEach-Object { "Uninstall: $_" })
+        $upToDate = $notesVersion -eq $TargetVersion -and $install.New -eq $install.Original -and $uninstall.New -eq $uninstall.Original
+
+        $source = if ($install.Parameters['source']) { [string]$install.Parameters['source'] } else { 'winget' }
+        $id = [string]$install.Parameters['id']
+        $mod = if ($ScriptRoot -and $id) { Get-WingetFWModFileInfo -ScriptRoot $ScriptRoot -Source $source -Id $id }
+        $deploymentType = if ($install.Parameters['DeploymentType']) { $install.Parameters['DeploymentType'] } else { 'Install' }
+
+        [pscustomobject]@{
+            Update                 = if ($errors -or $upToDate) { 'No' } else { 'Yes' }
+            AppId                  = $app.id
+            DisplayName            = $app.displayName
+            Publisher              = $app.publisher
+            Assignments            = @($app.assignments).Count
+            CurrentWingetFWVersion = $install.DetectedVersion
+            TargetWingetFWVersion  = $TargetVersion
+            DetectionRule          = $detection.Rule
+            DetectionAppId         = $detection.AppId
+            InstallCommandOld      = $app.installCommandLine
+            InstallCommandNew      = $install.New
+            InstallChanges         = $install.Changes -join ' | '
+            UninstallCommandOld    = $app.uninstallCommandLine
+            UninstallCommandNew    = $uninstall.New
+            UninstallChanges       = $uninstall.Changes -join ' | '
+            Warnings               = $warnings -join ' | '
+            Errors                 = if ($upToDate -and -not $errors) { "Already WingetFW $TargetVersion" } else { $errors -join ' | ' }
+            Details                = [pscustomobject]@{
+                Package     = $install.Package
+                Action      = if ($install.Parameters['Action']) { "$deploymentType ($($install.Parameters['Action']))" } else { $deploymentType }
+                Mode        = if ($install.Parameters['Mode']) { $install.Parameters['Mode'] } else { 'Admin' }
+                Intents     = (@($app.assignments | Group-Object -Property intent | Sort-Object -Property Name | ForEach-Object { "$($_.Name) $($_.Count)" }) -join ', ')
+                ModSource   = $source
+                ModStatus   = if ($mod) { $mod.Status } elseif (-not $ScriptRoot) { '' } else { 'No -id' }
+                ModLocation = if ($mod) { $mod.Location } else { '' }
+                ModSigned   = if ($mod) { (@($mod.Signature, $mod.Signer) | Where-Object { $_ }) -join ', ' } else { '' }
+            }
+        }
+    }
+    @($rows | Sort-Object -Property DisplayName)
+}
+
+function Update-WingetFWIntuneApp
+{
+    <#
+    .SYNOPSIS
+        Updates one WingetFW app in Intune from an inventory row: new content version, new command lines, notes "WingetFW <version>".
+    .DESCRIPTION
+        Skipped when the command lines in Intune differ from InstallCommandOld/UninstallCommandOld (changed after the
+        inventory) or when the new command lines have errors. With -WhatIf nothing is changed (dry run).
+        Returns the result text.
+    .PARAMETER Row
+        Object with AppId, InstallCommandOld, UninstallCommandOld, InstallCommandNew, UninstallCommandNew
+        (a Get-WingetFWIntuneInventory row or a CSV row).
+    .PARAMETER Package
+        Result of Get-WingetFWIntuneWinPackage. Not needed with -WhatIf.
+    #>
+    [CmdletBinding(SupportsShouldProcess)]
+    param
+    (
+        [Parameter(Mandatory = $true)]
+        [object]$Row,
+
+        [Parameter()]
+        [object]$Package,
+
+        [Parameter()]
+        [string]$IntuneWinFile,
+
+        [Parameter()]
+        [string]$TargetVersion = (Get-WingetFWPackageInfo).Version,
+
+        [Parameter()]
+        [System.Collections.IDictionary]$Map = (Get-WingetFWParameterMap)
+    )
+
+    try
+    {
+        $app = Invoke-WingetFWGraph GET "$Script:IntuneAppsUri/$($Row.AppId)"
+        if ($app.installCommandLine -ne $Row.InstallCommandOld -or [string]$app.uninstallCommandLine -ne [string]$Row.UninstallCommandOld)
+        {
+            return 'Skipped: command lines were changed in Intune after the export'
+        }
+        # The CSV values may have been edited, so they are validated again
+        $install = Convert-WingetFWCommandLine -CommandLine $Row.InstallCommandNew -Map $Map -KnownVersion $TargetVersion
+        $uninstall = Convert-WingetFWCommandLine -CommandLine $Row.UninstallCommandNew -Map $Map -KnownVersion $TargetVersion
+        $errors = @($install.Errors) + @($uninstall.Errors | ForEach-Object { "Uninstall: $_" })
+        if ($errors) { return "Skipped: $($errors -join ' | ')" }
+        if (-not $PSCmdlet.ShouldProcess("$($app.displayName) ($($app.id))", "Upload WingetFW $TargetVersion and set the new command lines")) { return 'WhatIf: would be updated' }
+        if (-not $Package -or -not $IntuneWinFile) { return 'Failed: no .intunewin package given' }
+
+        $contentVersion = Publish-WingetFWIntuneWinContent $app.id $Package
+        $null = Invoke-WingetFWGraph PATCH "$Script:IntuneAppsUri/$($app.id)" @{ '@odata.type' = '#microsoft.graph.win32LobApp'; committedContentVersion = $contentVersion }
+        # Intune ignores the other properties when they come in the same PATCH as committedContentVersion
+        $null = Invoke-WingetFWGraph PATCH "$Script:IntuneAppsUri/$($app.id)" @{
+            '@odata.type'        = '#microsoft.graph.win32LobApp'
+            fileName             = [System.IO.Path]::GetFileName($IntuneWinFile)
+            setupFilePath        = $Package.SetupFile
+            installCommandLine   = $install.New
+            uninstallCommandLine = if ($Row.UninstallCommandOld) { $uninstall.New } else { $app.uninstallCommandLine }
+            notes                = Set-WingetFWNotesVersion $app.notes $TargetVersion
+        }
+        "Updated to WingetFW $TargetVersion (content version $contentVersion)"
+    }
+    catch
+    {
+        "Failed: $($_.Exception.Message)"
+    }
 }
 
 #endregion

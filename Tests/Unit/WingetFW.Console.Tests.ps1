@@ -9,9 +9,10 @@
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 1.1.0
+    Version      : 1.2.0
 
     Release notes
+    1.2.0  - Command line conversion, inventory, mod file check and app update with mocked Graph calls (phase CON-3).
     1.1.0  - Intune publish tests with mocked Graph calls (phase CON-2).
     1.0.1  - The VM command tests are not created when the list is empty (Windows PowerShell 5.1 failed in
              Pester discovery on an empty -ForEach).
@@ -405,5 +406,166 @@ Describe 'Intune publish (Graph mocked)' -Skip:$skip {
         $groups = @(Find-WingetFWGroup -Name "O'Brien")
         $groups[0].DisplayName | Should -Be "O'Brien team"
         [uri]::UnescapeDataString($script:groupUri) | Should -Match "startswith\(displayName,'O''Brien'\)"
+    }
+}
+
+Describe 'Convert-WingetFWCommandLine' -Skip:$skip {
+    It 'converts a 3.x command line' {
+        $result = Convert-WingetFWCommandLine -CommandLine 'Deploy-Application.exe -DeploymentType "Install" -WingetID "Postman.Postman" -WingetScope "--scope user" -Mode User'
+        $result.New | Should -Be "Invoke-AppDeployToolkit.exe -DeploymentType 'Install' -id 'Postman.Postman' -scope 'User' -Mode 'User' -silent"
+        $result.DetectedVersion | Should -Be '3.x'
+        $result.Package | Should -Be 'Postman.Postman'
+        $result.Parameters['scope'] | Should -Be 'User'
+        $result.Parameters['silent'] | Should -BeTrue
+        $result.Errors | Should -BeNullOrEmpty
+    }
+
+    It 'adds -ForceRepair to a Repair before 4.0.7, not when the notes say 4.0.7 or later' {
+        $line = 'Deploy-Application.exe -DeploymentType Repair -id 7zip.7zip -exact -silent'
+        (Convert-WingetFWCommandLine -CommandLine $line).New | Should -Match '-ForceRepair$'
+        (Convert-WingetFWCommandLine -CommandLine $line -KnownVersion '4.0.8').New | Should -Not -Match 'ForceRepair'
+    }
+
+    It 'drops 4.0.0 - 4.0.6 parameters' {
+        $result = Convert-WingetFWCommandLine -CommandLine 'Deploy-Application.exe -DeploymentType Install -id Neovim.Neovim -scope Any -testverbose -wait'
+        $result.DetectedVersion | Should -Be '4.0.0 - 4.0.6'
+        $result.New | Should -Be "Invoke-AppDeployToolkit.exe -DeploymentType 'Install' -id 'Neovim.Neovim' -enableverbose"
+    }
+
+    It 'reports ServiceUI.exe and leaves a 5.0.0 command line as it is' {
+        (Convert-WingetFWCommandLine -CommandLine 'ServiceUI.exe -process:explorer.exe Deploy-Application.exe -DeploymentType Install -id x.y').Errors -join "`n" | Should -Match 'ServiceUI'
+        $current = "Invoke-AppDeployToolkit.exe -DeploymentType 'Install' -id '7zip.7zip' -exact -silent"
+        $result = Convert-WingetFWCommandLine -CommandLine $current
+        $result.New | Should -BeExactly $current
+        $result.Changes | Should -BeNullOrEmpty
+    }
+
+    It 'reads and sets the version in the notes' {
+        Get-WingetFWNotesVersion "Owner: IT`nWingetFW 4.0.8" | Should -Be '4.0.8'
+        Get-WingetFWNotesVersion 'nothing' | Should -Be ''
+        Set-WingetFWNotesVersion "Owner: IT`nWingetFW 4.0.8" '5.0.0' | Should -Be "Owner: IT`nWingetFW 5.0.0"
+        Set-WingetFWNotesVersion 'Owner: IT' '5.0.0' | Should -Be "Owner: IT`nWingetFW 5.0.0"
+        Set-WingetFWNotesVersion '' '5.0.0' | Should -Be 'WingetFW 5.0.0'
+    }
+}
+
+Describe 'Inventory and upgrade (Graph mocked)' -Skip:$skip {
+    BeforeAll {
+        $template = Get-ChildItem -Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..\Toolkit\Detection\wingetv*.ps1') | Sort-Object -Property { [version]($_.BaseName -replace '^wingetv', '') } | Select-Object -Last 1
+        $detectionText = (New-WingetFWDetectionScript -Type Winget -Id '7zip.7zip').Text
+        $script:apps = @{
+            a1 = [pscustomobject]@{
+                id = 'a1'; displayName = 'Old 7-Zip'; publisher = 'Igor Pavlov'; notes = ''
+                installCommandLine = 'Deploy-Application.exe -DeploymentType "Install" -WingetID "7zip.7zip" -WingetCM "--exact"'
+                uninstallCommandLine = 'Deploy-Application.exe -DeploymentType "Uninstall" -WingetID "7zip.7zip"'
+                assignments = @([pscustomobject]@{ intent = 'required' }, [pscustomobject]@{ intent = 'available' }, [pscustomobject]@{ intent = 'required' })
+                rules = @([pscustomobject]@{ '@odata.type' = '#microsoft.graph.win32LobAppPowerShellScriptRule'; ruleType = 'detection'; scriptContent = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($detectionText)) })
+            }
+            a2 = [pscustomobject]@{
+                id = 'a2'; displayName = 'Postman'; publisher = 'Postman'; notes = 'WingetFW 5.0.0'
+                installCommandLine = "Invoke-AppDeployToolkit.exe -DeploymentType 'Install' -id 'Postman.Postman' -Mode 'User'"
+                uninstallCommandLine = "Invoke-AppDeployToolkit.exe -DeploymentType 'Uninstall' -id 'Postman.Postman' -Mode 'User'"
+                assignments = @(); rules = @()
+            }
+            a3 = [pscustomobject]@{ id = 'a3'; displayName = 'Not WingetFW'; installCommandLine = 'setup.exe /S'; uninstallCommandLine = 'setup.exe /U' }
+            a4 = [pscustomobject]@{
+                id = 'a4'; displayName = 'ServiceUI app'; publisher = 'x'; notes = ''
+                installCommandLine = 'ServiceUI.exe -process:explorer.exe Deploy-Application.exe -DeploymentType Install -id x.y'
+                uninstallCommandLine = ''; assignments = @(); rules = @()
+            }
+        }
+        $modRoot = Join-Path -Path $TestDrive -ChildPath 'mods'
+        $null = New-Item -Path (Join-Path -Path $modRoot -ChildPath 'winget') -ItemType Directory -Force
+        Set-Content -LiteralPath (Join-Path -Path $modRoot -ChildPath 'winget\7zip.7zip.ps1') -Value 'function PreInstall { }'
+    }
+
+    BeforeEach {
+        $script:calls = [System.Collections.Generic.List[object]]::new()
+        Mock -ModuleName 'WingetFW.Console' Invoke-WingetFWGraph {
+            $script:calls.Add([pscustomobject]@{ Method = $Method; Uri = $Uri; Body = $Body })
+            if ($Uri -match 'isof\(') { return [pscustomobject]@{ value = @($script:apps.a2, $script:apps.a1, $script:apps.a3, $script:apps.a4) } }
+            $id = [regex]::Match($Uri, '/mobileApps/(\w+)').Groups[1].Value
+            if ($Method -eq 'GET') { return $script:apps[$id] }
+        }
+        Mock -ModuleName 'WingetFW.Console' Publish-WingetFWIntuneWinContent { '7' }
+    }
+
+    It 'lists only WingetFW apps, sorted, with the converted command lines' {
+        $rows = @(Get-WingetFWIntuneInventory -TargetVersion '5.0.0')
+        @($rows.DisplayName) | Should -Be @('Old 7-Zip', 'Postman', 'ServiceUI app')
+        $old, $postman, $serviceUi = $rows
+
+        $old.Update | Should -Be 'Yes'
+        $old.CurrentWingetFWVersion | Should -Be '3.x'
+        $old.InstallCommandNew | Should -Be "Invoke-AppDeployToolkit.exe -DeploymentType 'Install' -id '7zip.7zip' -exact -silent"
+        $old.Assignments | Should -Be 3
+        $old.DetectionRule | Should -Be "Script $($template.BaseName)"
+        $old.DetectionAppId | Should -Be '7zip.7zip'
+        $old.Details.Package | Should -Be '7zip.7zip'
+        $old.Details.Intents | Should -Be 'available 1, required 2'
+        $old.Details.ModStatus | Should -Be ''
+
+        $postman.Update | Should -Be 'No'
+        $postman.Errors | Should -Be 'Already WingetFW 5.0.0'
+        $postman.Details.Mode | Should -Be 'User'
+        $postman.DetectionRule | Should -Be 'None'
+
+        $serviceUi.Update | Should -Be 'No'
+        $serviceUi.Errors | Should -Match 'ServiceUI'
+    }
+
+    It 'has the CSV columns of the update tool plus Details' {
+        $row = @(Get-WingetFWIntuneInventory -TargetVersion '5.0.0')[0]
+        @($row.PSObject.Properties.Name) | Should -Be @('Update', 'AppId', 'DisplayName', 'Publisher', 'Assignments', 'CurrentWingetFWVersion', 'TargetWingetFWVersion', 'DetectionRule', 'DetectionAppId', 'InstallCommandOld', 'InstallCommandNew', 'InstallChanges', 'UninstallCommandOld', 'UninstallCommandNew', 'UninstallChanges', 'Warnings', 'Errors', 'Details')
+    }
+
+    It 'looks for the app mod file in the ScriptRoot' {
+        $rows = @(Get-WingetFWIntuneInventory -TargetVersion '5.0.0' -ScriptRoot $modRoot)
+        $rows[0].Details.ModStatus | Should -Be 'Found'
+        $rows[0].Details.ModSigned | Should -Be 'NotSigned'
+        $rows[0].Details.ModLocation | Should -Be (Join-Path -Path $modRoot -ChildPath 'winget\7zip.7zip.ps1')
+        $rows[1].Details.ModStatus | Should -Be 'NotFound'
+        (Get-WingetFWModFileInfo -ScriptRoot (Join-Path -Path $TestDrive -ChildPath 'missing') -Id 'a.b').Status | Should -Be 'Unreachable'
+    }
+
+    It 'dry run (-WhatIf) checks the app but changes nothing' {
+        $row = @(Get-WingetFWIntuneInventory -TargetVersion '5.0.0')[0]
+        $script:calls.Clear()
+        Update-WingetFWIntuneApp -Row $row -TargetVersion '5.0.0' -WhatIf | Should -Be 'WhatIf: would be updated'
+        @($script:calls | Where-Object Method -ne 'GET').Count | Should -Be 0
+        Should -Invoke -ModuleName 'WingetFW.Console' Publish-WingetFWIntuneWinContent -Times 0 -Exactly
+    }
+
+    It 'updates the app: new content, command lines and notes' {
+        $row = @(Get-WingetFWIntuneInventory -TargetVersion '5.0.0')[0]
+        $package = [pscustomobject]@{ SetupFile = 'Invoke-AppDeployToolkit.exe' }
+        Update-WingetFWIntuneApp -Row $row -Package $package -IntuneWinFile 'C:\fake\Invoke-AppDeployToolkit.intunewin' -TargetVersion '5.0.0' | Should -Be 'Updated to WingetFW 5.0.0 (content version 7)'
+        $patch = @($script:calls | Where-Object Method -eq 'PATCH')
+        # Commit first, then the properties: Intune ignores properties sent together with the commit
+        $patch.Count | Should -Be 2
+        $patch[0].Uri | Should -Match '/mobileApps/a1$'
+        @($patch[0].Body.Keys | Sort-Object) | Should -Be @('@odata.type', 'committedContentVersion')
+        $patch[0].Body.committedContentVersion | Should -Be '7'
+        $patch[1].Body.installCommandLine | Should -Be $row.InstallCommandNew
+        $patch[1].Body.uninstallCommandLine | Should -Be $row.UninstallCommandNew
+        $patch[1].Body.notes | Should -Be 'WingetFW 5.0.0'
+        $patch[1].Body.fileName | Should -Be 'Invoke-AppDeployToolkit.intunewin'
+        $patch[1].Body.setupFilePath | Should -Be 'Invoke-AppDeployToolkit.exe'
+    }
+
+    It 'skips an app whose command lines changed in Intune, or whose new command line has errors' {
+        $row = @(Get-WingetFWIntuneInventory -TargetVersion '5.0.0')[0]
+        $changed = $row.PSObject.Copy()
+        $changed.InstallCommandOld = 'something else'
+        Update-WingetFWIntuneApp -Row $changed -TargetVersion '5.0.0' | Should -Be 'Skipped: command lines were changed in Intune after the export'
+        $broken = $row.PSObject.Copy()
+        $broken.InstallCommandNew = "Invoke-AppDeployToolkit.exe -DeploymentType 'Install' -id 'a' -name 'b'"
+        Update-WingetFWIntuneApp -Row $broken -TargetVersion '5.0.0' | Should -Match '^Skipped: .*cannot be used together'
+        Should -Invoke -ModuleName 'WingetFW.Console' Publish-WingetFWIntuneWinContent -Times 0 -Exactly
+    }
+
+    It 'fails without a package when it is not a dry run' {
+        $row = @(Get-WingetFWIntuneInventory -TargetVersion '5.0.0')[0]
+        Update-WingetFWIntuneApp -Row $row -TargetVersion '5.0.0' | Should -Be 'Failed: no .intunewin package given'
     }
 }
