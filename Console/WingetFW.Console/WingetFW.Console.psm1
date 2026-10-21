@@ -12,14 +12,21 @@
                Parameter names and accepted values come from Invoke-AppDeployToolkit.ps1 of the newest
                Toolkit\WinGetFW<version> folder, the option rules from Tools\WingetFW-ParameterMap.psd1.
     Detection: New-WingetFWDetectionScript fills in the newest template from Toolkit\Detection.
+    Intune   : Connect-WingetFWIntune (delegated sign-in), New-WingetFWIntuneWin (IntuneWinAppUtil.exe),
+               Find-WingetFWGroup, New-WingetFWIntuneApp (create, upload, assign). Get-WingetFWIntuneWinPackage,
+               Publish-WingetFWIntuneWinContent and Invoke-WingetFWGraph are also used by Tools\Update-WingetFWIntuneApps.ps1.
 
-    Needs PowerShell 7.4 or later. Search needs Microsoft.WinGet.Client, manifest details need powershell-yaml.
+    Needs PowerShell 7.4 or later. Search needs Microsoft.WinGet.Client, manifest details need powershell-yaml,
+    Intune needs Microsoft.Graph.Authentication.
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 0.1.0
+    Version      : 0.2.0
 
     Release notes
+    0.2.0  - Intune publish (phase CON-2): sign-in, .intunewin with IntuneWinAppUtil.exe (Microsoft signature checked),
+             group search, Win32 app with detection script, return codes (69002 = retry), requirements and assignments.
+           - The Graph and upload functions of Tools\Update-WingetFWIntuneApps.ps1 moved here.
     0.1.0  - First version (phase CON-1): search, manifest details, command line builder, detection scripts.
 
 .LINK
@@ -583,6 +590,440 @@ function New-WingetFWDetectionScript
         Template = $template.Name
         Text     = $text
     }
+}
+
+#endregion
+
+#region Intune (Microsoft Graph beta)
+
+$Script:GraphBase = 'https://graph.microsoft.com/beta'
+$Script:IntuneWinAppUtilUri = 'https://raw.githubusercontent.com/microsoft/Microsoft-Win32-Content-Prep-Tool/master/IntuneWinAppUtil.exe'
+$Script:IntuneScopes = @('DeviceManagementApps.ReadWrite.All', 'Group.Read.All')
+
+# Return codes of every WingetFW app: the Intune defaults, and 69002 (skipped by a mod file) is retried
+$Script:IntuneReturnCodes = @(
+    @{ returnCode = 0; type = 'success' }
+    @{ returnCode = 1707; type = 'success' }
+    @{ returnCode = 3010; type = 'softReboot' }
+    @{ returnCode = 1641; type = 'hardReboot' }
+    @{ returnCode = 1618; type = 'retry' }
+    @{ returnCode = 69002; type = 'retry' }
+)
+
+function Wait-WingetFWContentFile
+{
+    param ([string]$Uri, [string]$Stage)
+
+    for ($i = 0; $i -lt 60; $i++)
+    {
+        $file = Invoke-WingetFWGraph GET $Uri
+        if ($file.uploadState -eq "${Stage}Success") { return $file }
+        if ($file.uploadState -match "^${Stage}(Failed|TimedOut)$") { throw "Content file state $($file.uploadState)" }
+        Start-Sleep -Seconds 5
+    }
+    throw "Content file did not reach ${Stage}Success within 5 minutes (state $($file.uploadState))"
+}
+
+function Send-WingetFWAzureBlob
+{
+    param ([string]$SasUri, [string]$Path)
+
+    $chunkSize = 6MB
+    $blockIds = [System.Collections.Generic.List[string]]::new()
+    $stream = [System.IO.File]::OpenRead($Path)
+    try
+    {
+        $buffer = [byte[]]::new($chunkSize)
+        while (($read = $stream.Read($buffer, 0, $chunkSize)) -gt 0)
+        {
+            $chunk = [byte[]]::new($read)
+            [Array]::Copy($buffer, $chunk, $read)
+            $blockId = [Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($blockIds.Count.ToString('0000')))
+            $null = Invoke-WebRequest -Method Put -Uri "$SasUri&comp=block&blockid=$([uri]::EscapeDataString($blockId))" -Headers @{ 'x-ms-blob-type' = 'BlockBlob' } -Body $chunk -ContentType 'application/octet-stream'
+            $blockIds.Add($blockId)
+        }
+    }
+    finally { $stream.Dispose() }
+    $blockList = '<?xml version="1.0" encoding="utf-8"?><BlockList>' + (($blockIds | ForEach-Object { "<Latest>$_</Latest>" }) -join '') + '</BlockList>'
+    $null = Invoke-WebRequest -Method Put -Uri "$SasUri&comp=blocklist" -Body $blockList -ContentType 'application/xml'
+}
+
+function New-WingetFWIntuneAppBody
+{
+    param
+    (
+        [string]$DisplayName, [string]$Publisher, [string]$Description, [string]$InformationUrl, [string]$Notes,
+        [string]$FileName, [string]$SetupFile, [string]$InstallCommandLine, [string]$UninstallCommandLine,
+        [string]$RunAsAccount, [string]$DetectionScript, [string]$AllowedArchitectures, [string]$MinimumWindowsRelease
+    )
+
+    # Intune runs detection scripts in Windows PowerShell 5.1, which needs the BOM to read UTF-8
+    $scriptBytes = [System.Text.Encoding]::UTF8.GetPreamble() + [System.Text.Encoding]::UTF8.GetBytes($DetectionScript)
+    [ordered]@{
+        '@odata.type'                  = '#microsoft.graph.win32LobApp'
+        displayName                    = $DisplayName
+        description                    = $(if ($Description) { $Description } else { $DisplayName })
+        publisher                      = $Publisher
+        informationUrl                 = $(if ($InformationUrl) { $InformationUrl } else { $null })
+        notes                          = $Notes
+        isFeatured                     = $false
+        fileName                       = $FileName
+        setupFilePath                  = $SetupFile
+        installCommandLine             = $InstallCommandLine
+        uninstallCommandLine           = $UninstallCommandLine
+        installExperience              = [ordered]@{
+            '@odata.type'         = '#microsoft.graph.win32LobAppInstallExperience'
+            runAsAccount          = $RunAsAccount
+            deviceRestartBehavior = 'basedOnReturnCode'
+            maxRunTimeInMinutes   = 60
+        }
+        returnCodes                    = @($Script:IntuneReturnCodes | ForEach-Object { [ordered]@{ '@odata.type' = '#microsoft.graph.win32LobAppReturnCode'; returnCode = $_.returnCode; type = $_.type } })
+        rules                          = @(
+            [ordered]@{
+                '@odata.type'         = '#microsoft.graph.win32LobAppPowerShellScriptRule'
+                ruleType              = 'detection'
+                enforceSignatureCheck = $false
+                runAs32Bit            = $false
+                scriptContent         = [Convert]::ToBase64String($scriptBytes)
+                operationType         = 'notConfigured'
+                operator              = 'notConfigured'
+                comparisonValue       = $null
+            }
+        )
+        allowedArchitectures           = $AllowedArchitectures
+        applicableArchitectures        = 'none'
+        minimumSupportedWindowsRelease = $MinimumWindowsRelease
+    }
+}
+
+function New-WingetFWAssignmentBody
+{
+    param ([object[]]$Assignments)
+
+    @{
+        mobileAppAssignments = @(foreach ($assignment in $Assignments)
+            {
+                [ordered]@{
+                    '@odata.type' = '#microsoft.graph.mobileAppAssignment'
+                    intent        = $assignment.Intent
+                    target        = [ordered]@{ '@odata.type' = '#microsoft.graph.groupAssignmentTarget'; groupId = $assignment.GroupId }
+                    settings      = [ordered]@{
+                        '@odata.type'                = '#microsoft.graph.win32LobAppAssignmentSettings'
+                        notifications                = 'showAll'
+                        deliveryOptimizationPriority = 'notConfigured'
+                        restartSettings              = $null
+                        installTimeSettings          = $null
+                    }
+                }
+            })
+    }
+}
+
+function Invoke-WingetFWGraph
+{
+    <#
+    .SYNOPSIS
+        Calls Microsoft Graph with the current Connect-MgGraph session; the body is sent as JSON.
+    #>
+    [CmdletBinding()]
+    param
+    (
+        [Parameter(Mandatory = $true, Position = 0)]
+        [string]$Method,
+
+        [Parameter(Mandatory = $true, Position = 1)]
+        [string]$Uri,
+
+        [Parameter(Position = 2)]
+        [object]$Body
+    )
+
+    $request = @{ Method = $Method; Uri = $Uri; OutputType = 'PSObject' }
+    if ($null -ne $Body)
+    {
+        $request.Body = $Body | ConvertTo-Json -Depth 10
+        $request.ContentType = 'application/json'
+    }
+    Invoke-MgGraphRequest @request
+}
+
+function Connect-WingetFWIntune
+{
+    <#
+    .SYNOPSIS
+        Signs in to Microsoft Graph as the admin (delegated) with the permissions the Console needs.
+    #>
+    [CmdletBinding()]
+    param
+    (
+        [Parameter()]
+        [string]$TenantId
+    )
+
+    Import-WingetFWRequiredModule -Name 'Microsoft.Graph.Authentication' -Purpose 'Publishing to Intune'
+    $connect = @{ Scopes = $Script:IntuneScopes; NoWelcome = $true }
+    if ($TenantId) { $connect.TenantId = $TenantId }
+    Connect-MgGraph @connect
+    $context = Get-MgContext
+    $missing = @($Script:IntuneScopes | Where-Object { $_ -notin $context.Scopes })
+    if ($missing)
+    {
+        throw "The sign-in does not have $($missing -join ', '). Run Disconnect-MgGraph, sign in again and consent to the permissions."
+    }
+    $context
+}
+
+function Get-WingetFWIntuneWinPackage
+{
+    <#
+    .SYNOPSIS
+        Reads a .intunewin file: setup file, sizes, encryption info. The encrypted content is extracted to a temp file (EncryptedFile).
+    #>
+    [CmdletBinding()]
+    param
+    (
+        [Parameter(Mandatory = $true, Position = 0)]
+        [string]$Path
+    )
+
+    $zip = [System.IO.Compression.ZipFile]::OpenRead($Path)
+    try
+    {
+        $entry = $zip.Entries | Where-Object { $_.FullName -eq 'IntuneWinPackage/Metadata/Detection.xml' }
+        if (-not $entry) { throw "$Path is not a .intunewin file (Detection.xml missing)" }
+        $reader = [System.IO.StreamReader]::new($entry.Open())
+        [xml]$detection = $reader.ReadToEnd()
+        $reader.Close()
+        $info = $detection.ApplicationInfo
+        $content = $zip.Entries | Where-Object { $_.FullName -eq "IntuneWinPackage/Contents/$($info.FileName)" }
+        $encryptedFile = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ('WingetFW-{0}.bin' -f [guid]::NewGuid().ToString('N'))
+        [System.IO.Compression.ZipFileExtensions]::ExtractToFile($content, $encryptedFile, $true)
+        [pscustomobject]@{
+            FileName        = $info.FileName
+            SetupFile       = $info.SetupFile
+            UnencryptedSize = [int64]$info.UnencryptedContentSize
+            EncryptedFile   = $encryptedFile
+            EncryptedSize   = (Get-Item -LiteralPath $encryptedFile).Length
+            EncryptionInfo  = @{
+                encryptionKey        = $info.EncryptionInfo.EncryptionKey
+                macKey               = $info.EncryptionInfo.MacKey
+                initializationVector = $info.EncryptionInfo.InitializationVector
+                mac                  = $info.EncryptionInfo.Mac
+                profileIdentifier    = $info.EncryptionInfo.ProfileIdentifier
+                fileDigest           = $info.EncryptionInfo.FileDigest
+                fileDigestAlgorithm  = $info.EncryptionInfo.FileDigestAlgorithm
+            }
+        }
+    }
+    finally { $zip.Dispose() }
+}
+
+function Publish-WingetFWIntuneWinContent
+{
+    <#
+    .SYNOPSIS
+        Uploads a .intunewin (from Get-WingetFWIntuneWinPackage) as a new content version of a Win32 app and returns the content version ID.
+    #>
+    [CmdletBinding()]
+    param
+    (
+        [Parameter(Mandatory = $true, Position = 0)]
+        [string]$AppId,
+
+        [Parameter(Mandatory = $true, Position = 1)]
+        [object]$Package
+    )
+
+    $base = "$Script:GraphBase/deviceAppManagement/mobileApps/$AppId/microsoft.graph.win32LobApp"
+    $contentVersion = Invoke-WingetFWGraph POST "$base/contentVersions" @{}
+    $file = Invoke-WingetFWGraph POST "$base/contentVersions/$($contentVersion.id)/files" @{
+        '@odata.type' = '#microsoft.graph.mobileAppContentFile'
+        name          = $Package.FileName
+        size          = $Package.UnencryptedSize
+        sizeEncrypted = $Package.EncryptedSize
+        manifest      = $null
+        isDependency  = $false
+    }
+    $fileUri = "$base/contentVersions/$($contentVersion.id)/files/$($file.id)"
+    $file = Wait-WingetFWContentFile $fileUri 'azureStorageUriRequest'
+    Send-WingetFWAzureBlob $file.azureStorageUri $Package.EncryptedFile
+    $null = Invoke-WingetFWGraph POST "$fileUri/commit" @{ fileEncryptionInfo = $Package.EncryptionInfo }
+    $null = Wait-WingetFWContentFile $fileUri 'commitFile'
+    $contentVersion.id
+}
+
+function New-WingetFWIntuneWin
+{
+    <#
+    .SYNOPSIS
+        Creates the .intunewin of a WingetFW package with IntuneWinAppUtil.exe and returns its path.
+    .DESCRIPTION
+        IntuneWinAppUtil.exe is downloaded from github.com/microsoft/Microsoft-Win32-Content-Prep-Tool to
+        LOCALAPPDATA\WingetFW\Console when it is not there yet. It only runs with a valid Microsoft signature.
+    .PARAMETER PackagePath
+        WingetFW package folder. Default: the newest Toolkit\WinGetFW<version>.
+    .PARAMETER OutputFolder
+        Default: LOCALAPPDATA\WingetFW\Console\IntuneWin\<package folder name>.
+    #>
+    [CmdletBinding(SupportsShouldProcess)]
+    param
+    (
+        [Parameter()]
+        [string]$PackagePath = (Get-WingetFWPackageInfo).Path,
+
+        [Parameter()]
+        [string]$OutputFolder
+    )
+
+    $toolFolder = Join-Path -Path $env:LOCALAPPDATA -ChildPath 'WingetFW\Console'
+    if (-not $OutputFolder) { $OutputFolder = Join-Path -Path $toolFolder -ChildPath "IntuneWin\$(Split-Path -Path $PackagePath -Leaf)" }
+    $tool = Join-Path -Path $toolFolder -ChildPath 'IntuneWinAppUtil.exe'
+    $setupFile = (Get-WingetFWParameterMap).ExeName
+    $output = Join-Path -Path $OutputFolder -ChildPath ([System.IO.Path]::ChangeExtension($setupFile, '.intunewin'))
+    if (-not $PSCmdlet.ShouldProcess($output, "Create from $PackagePath")) { return }
+
+    if (-not (Test-Path -LiteralPath $tool))
+    {
+        $null = New-Item -Path $toolFolder -ItemType Directory -Force
+        Invoke-WebRequest -Uri $Script:IntuneWinAppUtilUri -OutFile $tool -UseBasicParsing
+    }
+    $signature = Get-AuthenticodeSignature -LiteralPath $tool
+    if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch '\bO=Microsoft Corporation\b')
+    {
+        Remove-Item -LiteralPath $tool -Force
+        throw "IntuneWinAppUtil.exe is not signed by Microsoft (status $($signature.Status)); it was deleted."
+    }
+
+    $null = New-Item -Path $OutputFolder -ItemType Directory -Force
+    if (Test-Path -LiteralPath $output) { Remove-Item -LiteralPath $output -Force }
+    $text = & $tool -c $PackagePath -s $setupFile -o $OutputFolder -q 2>&1 | Out-String
+    if (-not (Test-Path -LiteralPath $output)) { throw "IntuneWinAppUtil.exe did not create $output (exit code $LASTEXITCODE): $($text.Trim())" }
+    $output
+}
+
+function Find-WingetFWGroup
+{
+    <#
+    .SYNOPSIS
+        Finds Entra ID groups whose display name starts with the given text (at most 25).
+    #>
+    [CmdletBinding()]
+    param
+    (
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    $filter = "startswith(displayName,'$($Name -replace "'", "''")')"
+    $uri = "$Script:GraphBase/groups?`$filter=$([uri]::EscapeDataString($filter))&`$select=id,displayName,description&`$top=25"
+    foreach ($group in @((Invoke-WingetFWGraph GET $uri).value))
+    {
+        [pscustomobject]@{ Id = $group.id; DisplayName = $group.displayName; Description = $group.description }
+    }
+}
+
+function New-WingetFWIntuneApp
+{
+    <#
+    .SYNOPSIS
+        Creates a WingetFW Win32 app in Intune: app, .intunewin upload, detection script, return codes, requirements, assignments.
+    .DESCRIPTION
+        Needs a Connect-WingetFWIntune session. Return codes: Intune defaults plus 69002 (skipped by a mod file) as retry.
+        When the upload fails, the app is left in Intune without content; the error has its ID.
+    .PARAMETER RunAsAccount
+        system (WingetFW -Mode Admin) or user (-Mode User).
+    .PARAMETER AllowedArchitectures
+        Intune requirement, for example x64 or x64,arm64.
+    .PARAMETER MinimumWindowsRelease
+        Intune requirement, for example 1809, Windows10_22H2 or Windows11_23H2.
+    .PARAMETER Assignments
+        Objects with GroupId and Intent (required, available, uninstall).
+    #>
+    [CmdletBinding(SupportsShouldProcess)]
+    param
+    (
+        [Parameter(Mandatory = $true)]
+        [string]$DisplayName,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Publisher,
+
+        [Parameter()]
+        [string]$Description,
+
+        [Parameter()]
+        [string]$InformationUrl,
+
+        [Parameter(Mandatory = $true)]
+        [string]$InstallCommandLine,
+
+        [Parameter(Mandatory = $true)]
+        [string]$UninstallCommandLine,
+
+        [Parameter()]
+        [ValidateSet('system', 'user')]
+        [string]$RunAsAccount = 'system',
+
+        [Parameter(Mandatory = $true)]
+        [string]$DetectionScript,
+
+        [Parameter(Mandatory = $true)]
+        [string]$IntuneWinFile,
+
+        [Parameter()]
+        [string]$AllowedArchitectures = 'x64',
+
+        [Parameter()]
+        [string]$MinimumWindowsRelease = '1809',
+
+        [Parameter()]
+        [string]$WingetFWVersion = (Get-WingetFWPackageInfo).Version,
+
+        [Parameter()]
+        [object[]]$Assignments = @()
+    )
+
+    foreach ($assignment in $Assignments)
+    {
+        if ($assignment.Intent -notin 'required', 'available', 'uninstall') { throw "Assignment intent '$($assignment.Intent)' must be required, available or uninstall" }
+        if ($assignment.GroupId -notmatch '^[0-9a-fA-F-]{36}$') { throw "Assignment group ID '$($assignment.GroupId)' is not a GUID" }
+    }
+    $package = Get-WingetFWIntuneWinPackage $IntuneWinFile
+    try
+    {
+        $exeName = (Get-WingetFWParameterMap).ExeName
+        if ($package.SetupFile -ne $exeName) { throw "The setup file of $IntuneWinFile is '$($package.SetupFile)', expected $exeName" }
+        $body = New-WingetFWIntuneAppBody -DisplayName $DisplayName -Publisher $Publisher -Description $Description -InformationUrl $InformationUrl `
+            -Notes "WingetFW $WingetFWVersion" -FileName ([System.IO.Path]::GetFileName($IntuneWinFile)) -SetupFile $package.SetupFile `
+            -InstallCommandLine $InstallCommandLine -UninstallCommandLine $UninstallCommandLine -RunAsAccount $RunAsAccount `
+            -DetectionScript $DetectionScript -AllowedArchitectures $AllowedArchitectures -MinimumWindowsRelease $MinimumWindowsRelease
+        if (-not $PSCmdlet.ShouldProcess($DisplayName, 'Create Win32 app in Intune')) { return }
+
+        $appsUri = "$Script:GraphBase/deviceAppManagement/mobileApps"
+        $app = Invoke-WingetFWGraph POST $appsUri $body
+        try
+        {
+            $contentVersion = Publish-WingetFWIntuneWinContent $app.id $package
+            $null = Invoke-WingetFWGraph PATCH "$appsUri/$($app.id)" @{ '@odata.type' = '#microsoft.graph.win32LobApp'; committedContentVersion = $contentVersion }
+            if ($Assignments.Count)
+            {
+                # An app can only be assigned when it is published
+                for ($i = 0; $i -lt 24 -and (Invoke-WingetFWGraph GET "$appsUri/$($app.id)").publishingState -ne 'published'; $i++) { Start-Sleep -Seconds 5 }
+                $null = Invoke-WingetFWGraph POST "$appsUri/$($app.id)/assign" (New-WingetFWAssignmentBody -Assignments $Assignments)
+            }
+        }
+        catch
+        {
+            throw "The app '$DisplayName' was created in Intune (ID $($app.id)), but the upload or assignment failed: $($_.Exception.Message)"
+        }
+        [pscustomobject]@{
+            Id             = $app.id
+            DisplayName    = $DisplayName
+            ContentVersion = $contentVersion
+            Assignments    = $Assignments.Count
+        }
+    }
+    finally { Remove-Item -LiteralPath $package.EncryptedFile -Force -ErrorAction SilentlyContinue }
 }
 
 #endregion

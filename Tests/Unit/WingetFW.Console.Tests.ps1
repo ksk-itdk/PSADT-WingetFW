@@ -9,9 +9,10 @@
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 1.0.1
+    Version      : 1.1.0
 
     Release notes
+    1.1.0  - Intune publish tests with mocked Graph calls (phase CON-2).
     1.0.1  - The VM command tests are not created when the list is empty (Windows PowerShell 5.1 failed in
              Pester discovery on an empty -ForEach).
     1.0.0  - First version (phase CON-1).
@@ -286,5 +287,123 @@ Describe 'Manifest data' -Skip:$skip {
             $x86.ProductCode | Should -Be '{P}'
             $x86.DisplayName | Should -Be 'Contoso App (x86)'
         }
+    }
+}
+
+Describe 'Intune publish (Graph mocked)' -Skip:$skip {
+    It 'builds the Win32 app body with return codes, detection script and requirements' {
+        InModuleScope -ModuleName 'WingetFW.Console' {
+            $script = "`$app = `"B$([char]0xFC)ro`""
+            $body = New-WingetFWIntuneAppBody -DisplayName '7-Zip' -Publisher 'Igor Pavlov' -Notes 'WingetFW 5.0.0' -FileName 'x.intunewin' -SetupFile 'Invoke-AppDeployToolkit.exe' `
+                -InstallCommandLine 'i' -UninstallCommandLine 'u' -RunAsAccount 'user' -DetectionScript $script -AllowedArchitectures 'x64' -MinimumWindowsRelease '1809'
+            $body['@odata.type'] | Should -Be '#microsoft.graph.win32LobApp'
+            $body.description | Should -Be '7-Zip'
+            $body.informationUrl | Should -BeNullOrEmpty
+            $body.installExperience.runAsAccount | Should -Be 'user'
+            $body.applicableArchitectures | Should -Be 'none'
+            $body.allowedArchitectures | Should -Be 'x64'
+            @($body.returnCodes | Where-Object { $_.returnCode -eq 69002 }).type | Should -Be 'retry'
+            @($body.returnCodes).returnCode | Should -Be @(0, 1707, 3010, 1641, 1618, 69002)
+            $bytes = [Convert]::FromBase64String($body.rules[0].scriptContent)
+            $bytes[0..2] | Should -Be @(0xEF, 0xBB, 0xBF)
+            [System.Text.Encoding]::UTF8.GetString($bytes, 3, $bytes.Length - 3) | Should -BeExactly $script
+            $body.rules[0].ruleType | Should -Be 'detection'
+        }
+    }
+
+    It 'builds group assignments' {
+        InModuleScope -ModuleName 'WingetFW.Console' {
+            $body = New-WingetFWAssignmentBody -Assignments @([pscustomobject]@{ GroupId = 'g1'; Intent = 'available' })
+            $body.mobileAppAssignments.Count | Should -Be 1
+            $body.mobileAppAssignments[0].intent | Should -Be 'available'
+            $body.mobileAppAssignments[0].target['@odata.type'] | Should -Be '#microsoft.graph.groupAssignmentTarget'
+            $body.mobileAppAssignments[0].target.groupId | Should -Be 'g1'
+        }
+    }
+
+    It 'reads a .intunewin file' {
+        $file = Join-Path -Path $TestDrive -ChildPath 'test.intunewin'
+        $zip = [System.IO.Compression.ZipFile]::Open($file, 'Create')
+        $xml = '<ApplicationInfo><FileName>IntunePackage.intunewin</FileName><SetupFile>Invoke-AppDeployToolkit.exe</SetupFile><UnencryptedContentSize>5</UnencryptedContentSize>' +
+            '<EncryptionInfo><EncryptionKey>k</EncryptionKey><MacKey>m</MacKey><InitializationVector>iv</InitializationVector><Mac>mac</Mac><ProfileIdentifier>ProfileVersion1</ProfileIdentifier><FileDigest>d</FileDigest><FileDigestAlgorithm>SHA256</FileDigestAlgorithm></EncryptionInfo></ApplicationInfo>'
+        foreach ($entry in @(@{ Name = 'IntuneWinPackage/Metadata/Detection.xml'; Text = $xml }, @{ Name = 'IntuneWinPackage/Contents/IntunePackage.intunewin'; Text = '1234567' }))
+        {
+            $writer = [System.IO.StreamWriter]::new($zip.CreateEntry($entry.Name).Open())
+            $writer.Write($entry.Text)
+            $writer.Close()
+        }
+        $zip.Dispose()
+
+        $package = Get-WingetFWIntuneWinPackage $file
+        try
+        {
+            $package.SetupFile | Should -Be 'Invoke-AppDeployToolkit.exe'
+            $package.UnencryptedSize | Should -Be 5
+            $package.EncryptedSize | Should -Be 7
+            $package.EncryptionInfo.fileDigestAlgorithm | Should -Be 'SHA256'
+        }
+        finally { Remove-Item -LiteralPath $package.EncryptedFile }
+    }
+
+    Context 'New-WingetFWIntuneApp' {
+        BeforeAll {
+            $assignment = [pscustomobject]@{ GroupId = '11111111-2222-3333-4444-555555555555'; Intent = 'required' }
+            $appParams = @{
+                DisplayName = '7-Zip'; Publisher = 'Igor Pavlov'; InstallCommandLine = 'i'; UninstallCommandLine = 'u'
+                DetectionScript = 'x'; IntuneWinFile = 'C:\fake\Invoke-AppDeployToolkit.intunewin'
+            }
+        }
+
+        BeforeEach {
+            $script:calls = [System.Collections.Generic.List[object]]::new()
+            Mock -ModuleName 'WingetFW.Console' Get-WingetFWIntuneWinPackage { [pscustomobject]@{ SetupFile = 'Invoke-AppDeployToolkit.exe'; EncryptedFile = 'C:\fake\none.bin' } }
+            Mock -ModuleName 'WingetFW.Console' Publish-WingetFWIntuneWinContent { '1' }
+            Mock -ModuleName 'WingetFW.Console' Start-Sleep { }
+            Mock -ModuleName 'WingetFW.Console' Invoke-WingetFWGraph {
+                $script:calls.Add([pscustomobject]@{ Method = $Method; Uri = $Uri; Body = $Body })
+                if ($Method -eq 'POST' -and $Uri -match '/mobileApps$') { return [pscustomobject]@{ id = 'app-1' } }
+                if ($Method -eq 'GET') { return [pscustomobject]@{ publishingState = 'published' } }
+            }
+        }
+
+        It 'creates the app, commits the content and assigns it' {
+            $result = New-WingetFWIntuneApp @appParams -Assignments @($assignment) -WingetFWVersion '5.0.0'
+            $result.Id | Should -Be 'app-1'
+            $result.ContentVersion | Should -Be '1'
+            @($script:calls | ForEach-Object { "$($_.Method) $($_.Uri -replace '^.*/mobileApps', '')" }) | Should -Be @('POST ', 'PATCH /app-1', 'GET /app-1', 'POST /app-1/assign')
+            $script:calls[0].Body.notes | Should -Be 'WingetFW 5.0.0'
+            $script:calls[0].Body.fileName | Should -Be 'Invoke-AppDeployToolkit.intunewin'
+            $script:calls[1].Body.committedContentVersion | Should -Be '1'
+            $script:calls[3].Body.mobileAppAssignments[0].target.groupId | Should -Be $assignment.GroupId
+        }
+
+        It 'does not assign without assignments' {
+            $null = New-WingetFWIntuneApp @appParams
+            @($script:calls | Where-Object { $_.Uri -like '*/assign' }).Count | Should -Be 0
+        }
+
+        It 'names the created app when the upload fails' {
+            Mock -ModuleName 'WingetFW.Console' Publish-WingetFWIntuneWinContent { throw 'upload broke' }
+            { New-WingetFWIntuneApp @appParams } | Should -Throw '*(ID app-1)*upload broke*'
+        }
+
+        It 'rejects a package with another setup file before calling Graph' {
+            Mock -ModuleName 'WingetFW.Console' Get-WingetFWIntuneWinPackage { [pscustomobject]@{ SetupFile = 'Deploy-Application.exe'; EncryptedFile = 'C:\fake\none.bin' } }
+            { New-WingetFWIntuneApp @appParams } | Should -Throw '*expected Invoke-AppDeployToolkit.exe*'
+            $script:calls.Count | Should -Be 0
+        }
+
+        It 'rejects a wrong intent or group ID' {
+            { New-WingetFWIntuneApp @appParams -Assignments @([pscustomobject]@{ GroupId = $assignment.GroupId; Intent = 'optional' }) } | Should -Throw '*must be required, available or uninstall*'
+            { New-WingetFWIntuneApp @appParams -Assignments @([pscustomobject]@{ GroupId = 'x'; Intent = 'required' }) } | Should -Throw '*is not a GUID*'
+            $script:calls.Count | Should -Be 0
+        }
+    }
+
+    It 'escapes quotes in the group search' {
+        Mock -ModuleName 'WingetFW.Console' Invoke-WingetFWGraph { $script:groupUri = $Uri; [pscustomobject]@{ value = @([pscustomobject]@{ id = 'g'; displayName = "O'Brien team"; description = '' }) } }
+        $groups = @(Find-WingetFWGroup -Name "O'Brien")
+        $groups[0].DisplayName | Should -Be "O'Brien team"
+        [uri]::UnescapeDataString($script:groupUri) | Should -Match "startswith\(displayName,'O''Brien'\)"
     }
 }

@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+#Requires -Version 7.4
 #Requires -Modules @{ ModuleName = 'Microsoft.Graph.Authentication'; ModuleVersion = '2.0.0' }
 
 <#
@@ -85,9 +85,11 @@
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 0.2.0 (beta)
+    Version      : 0.3.0 (beta)
 
     Release notes
+    0.3.0  - The Graph and upload functions moved to the WingetFW.Console module (..\Console\WingetFW.Console),
+             which this script imports. Needs PowerShell 7.4 or later (was 7.0).
     0.2.0  - WingetFW 5.0.0 (PSAppDeployToolkit 4): Deploy-Application.exe is replaced by Invoke-AppDeployToolkit.exe,
              apps with Invoke-AppDeployToolkit.exe are found too, and the .intunewin setup file must be
              Invoke-AppDeployToolkit.exe.
@@ -143,6 +145,7 @@ Param (
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 $graphBase = 'https://graph.microsoft.com/beta/deviceAppManagement/mobileApps'
+Import-Module -Name (Join-Path $PSScriptRoot '..\Console\WingetFW.Console\WingetFW.Console.psd1') -Force
 
 #region Conversion
 Function Get-MapName([Hashtable]$Table, [String]$Name) {
@@ -483,21 +486,12 @@ Function Connect-Intune([String]$Scope) {
     }
 }
 
-Function Invoke-Graph([String]$Method, [String]$Uri, $Body) {
-    $request = @{ Method = $Method; Uri = $Uri; OutputType = 'PSObject' }
-    If ($null -ne $Body) {
-        $request.Body = $Body | ConvertTo-Json -Depth 10
-        $request.ContentType = 'application/json'
-    }
-    Return Invoke-MgGraphRequest @request
-}
-
 Function Get-WingetFWApps {
     $uri = "$graphBase`?`$filter=isof('microsoft.graph.win32LobApp')"
     $apps = @()
     Do {
         Try {
-            $page = Invoke-Graph GET $uri
+            $page = Invoke-WingetFWGraph GET $uri
         }
         Catch {
             If ($_.Exception.Message -match 'Forbidden|403') {
@@ -514,89 +508,6 @@ Function Get-WingetFWApps {
     Return @($apps | Where-Object { $_.installCommandLine -match '(?i)Deploy-Application|Invoke-AppDeployToolkit' -and $_.installCommandLine -match $pattern })
 }
 
-Function Get-IntuneWinPackage([String]$Path) {
-    $zip = [IO.Compression.ZipFile]::OpenRead($Path)
-    Try {
-        $entry = $zip.Entries | Where-Object { $_.FullName -eq 'IntuneWinPackage/Metadata/Detection.xml' }
-        If (-not $entry) { Throw "$Path is not a .intunewin file (Detection.xml missing)" }
-        $reader = [IO.StreamReader]::new($entry.Open())
-        [Xml]$detection = $reader.ReadToEnd()
-        $reader.Close()
-        $info = $detection.ApplicationInfo
-        $content = $zip.Entries | Where-Object { $_.FullName -eq "IntuneWinPackage/Contents/$($info.FileName)" }
-        $encryptedFile = Join-Path ([IO.Path]::GetTempPath()) ("WingetFW-{0}.bin" -f [guid]::NewGuid().ToString('N'))
-        [IO.Compression.ZipFileExtensions]::ExtractToFile($content, $encryptedFile, $true)
-        Return [PSCustomObject]@{
-            FileName         = $info.FileName
-            SetupFile        = $info.SetupFile
-            UnencryptedSize  = [Int64]$info.UnencryptedContentSize
-            EncryptedFile    = $encryptedFile
-            EncryptedSize    = (Get-Item -LiteralPath $encryptedFile).Length
-            EncryptionInfo   = @{
-                encryptionKey        = $info.EncryptionInfo.EncryptionKey
-                macKey               = $info.EncryptionInfo.MacKey
-                initializationVector = $info.EncryptionInfo.InitializationVector
-                mac                  = $info.EncryptionInfo.Mac
-                profileIdentifier    = $info.EncryptionInfo.ProfileIdentifier
-                fileDigest           = $info.EncryptionInfo.FileDigest
-                fileDigestAlgorithm  = $info.EncryptionInfo.FileDigestAlgorithm
-            }
-        }
-    }
-    Finally {
-        $zip.Dispose()
-    }
-}
-
-Function Wait-ContentFile([String]$Uri, [String]$Stage) {
-    For ($i = 0; $i -lt 60; $i++) {
-        $file = Invoke-Graph GET $Uri
-        If ($file.uploadState -eq "${Stage}Success") { Return $file }
-        If ($file.uploadState -match "^${Stage}(Failed|TimedOut)$") { Throw "Content file state $($file.uploadState)" }
-        Start-Sleep -Seconds 5
-    }
-    Throw "Content file did not reach ${Stage}Success within 5 minutes (state $($file.uploadState))"
-}
-
-Function Send-AzureBlob([String]$SasUri, [String]$Path) {
-    $chunkSize = 6MB
-    $blockIds = @()
-    $stream = [IO.File]::OpenRead($Path)
-    Try {
-        $buffer = [Byte[]]::new($chunkSize)
-        While (($read = $stream.Read($buffer, 0, $chunkSize)) -gt 0) {
-            $chunk = [Byte[]]::new($read)
-            [Array]::Copy($buffer, $chunk, $read)
-            $blockId = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes($blockIds.Count.ToString('0000')))
-            Invoke-WebRequest -Method Put -Uri "$SasUri&comp=block&blockid=$([uri]::EscapeDataString($blockId))" -Headers @{ 'x-ms-blob-type' = 'BlockBlob' } -Body $chunk -ContentType 'application/octet-stream' | Out-Null
-            $blockIds += $blockId
-        }
-    }
-    Finally {
-        $stream.Dispose()
-    }
-    $blockList = '<?xml version="1.0" encoding="utf-8"?><BlockList>' + (($blockIds | ForEach-Object { "<Latest>$_</Latest>" }) -join '') + '</BlockList>'
-    Invoke-WebRequest -Method Put -Uri "$SasUri&comp=blocklist" -Body $blockList -ContentType 'application/xml' | Out-Null
-}
-
-Function Publish-IntuneWinContent([String]$AppId, $Package) {
-    $base = "$graphBase/$AppId/microsoft.graph.win32LobApp"
-    $contentVersion = Invoke-Graph POST "$base/contentVersions" @{}
-    $file = Invoke-Graph POST "$base/contentVersions/$($contentVersion.id)/files" @{
-        '@odata.type' = '#microsoft.graph.mobileAppContentFile'
-        name          = $Package.FileName
-        size          = $Package.UnencryptedSize
-        sizeEncrypted = $Package.EncryptedSize
-        manifest      = $null
-        isDependency  = $false
-    }
-    $fileUri = "$base/contentVersions/$($contentVersion.id)/files/$($file.id)"
-    $file = Wait-ContentFile $fileUri 'azureStorageUriRequest'
-    Send-AzureBlob $file.azureStorageUri $Package.EncryptedFile
-    Invoke-Graph POST "$fileUri/commit" @{ fileEncryptionInfo = $Package.EncryptionInfo } | Out-Null
-    Wait-ContentFile $fileUri 'commitFile' | Out-Null
-    Return $contentVersion.id
-}
 #endregion
 
 $map = Import-PowerShellDataFile -LiteralPath $ParameterMapPath
@@ -626,7 +537,7 @@ If ($Export) {
     $found = Get-WingetFWApps
     Write-Status "$($found.Count) WingetFW apps found"
     $rows = ForEach ($listed in $found) {
-        $app = Invoke-Graph GET "$graphBase/$($listed.id)?`$expand=assignments"
+        $app = Invoke-WingetFWGraph GET "$graphBase/$($listed.id)?`$expand=assignments"
         $notesVersion = Get-NotesVersion $app.notes
         $install = Convert-WingetFWCommandLine -CommandLine $app.installCommandLine -Map $map -KnownVersion $notesVersion
         $uninstall = Convert-WingetFWCommandLine -CommandLine $app.uninstallCommandLine -Map $map -KnownVersion $notesVersion
@@ -667,14 +578,14 @@ If ($Apply) {
         Write-Status "No rows with Update = Yes in $CsvPath"
         Return
     }
-    $package = Get-IntuneWinPackage $IntuneWinFile
+    $package = Get-WingetFWIntuneWinPackage $IntuneWinFile
     Try {
         If ($package.SetupFile -ne $map.ExeName) { Throw "Setup file of $IntuneWinFile is '$($package.SetupFile)', expected $($map.ExeName)" }
         Connect-Intune 'DeviceManagementApps.ReadWrite.All'
         $results = ForEach ($row in $rows) {
             $status = ''
             Try {
-                $app = Invoke-Graph GET "$graphBase/$($row.AppId)"
+                $app = Invoke-WingetFWGraph GET "$graphBase/$($row.AppId)"
                 If ($app.installCommandLine -ne $row.InstallCommandOld -or [String]$app.uninstallCommandLine -ne $row.UninstallCommandOld) {
                     $status = 'Skipped: command lines were changed in Intune after the export'
                 }
@@ -688,8 +599,8 @@ If ($Apply) {
                     }
                     ElseIf ($PSCmdlet.ShouldProcess("$($app.displayName) ($($app.id))", "Upload WingetFW $target and set the new command lines")) {
                         Write-Status "Updating $($app.displayName)"
-                        $contentVersion = Publish-IntuneWinContent $app.id $package
-                        Invoke-Graph PATCH "$graphBase/$($app.id)" @{
+                        $contentVersion = Publish-WingetFWIntuneWinContent $app.id $package
+                        Invoke-WingetFWGraph PATCH "$graphBase/$($app.id)" @{
                             '@odata.type'           = '#microsoft.graph.win32LobApp'
                             committedContentVersion = $contentVersion
                             fileName                = [IO.Path]::GetFileName($IntuneWinFile)

@@ -179,6 +179,99 @@
                     </Grid>
                 </Grid>
             </TabItem>
+            <TabItem Header="Publish to Intune">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="4">
+                    <StackPanel MaxWidth="1000" HorizontalAlignment="Left">
+                        <GroupBox Header="Sign-in">
+                            <StackPanel Orientation="Horizontal">
+                                <Label Content="Tenant (optional)" />
+                                <TextBox x:Name="TenantText" Width="260" ToolTip="Tenant ID or domain, for example contoso.onmicrosoft.com. Empty: your home tenant" />
+                                <Button x:Name="SignInButton" Content="Sign in" />
+                                <TextBlock x:Name="SignedInText" VerticalAlignment="Center" Margin="8,0" Text="Not signed in" />
+                            </StackPanel>
+                        </GroupBox>
+                        <GroupBox Header="WingetFW package (.intunewin)">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="IntuneWinText" ToolTip="The same .intunewin is used for every WingetFW app" />
+                                <Button x:Name="BrowseIntuneWinButton" Grid.Column="1" Content="Browse..." />
+                                <Button x:Name="BuildIntuneWinButton" Grid.Column="2" Content="Build with IntuneWinAppUtil" ToolTip="Packs the newest Toolkit\WinGetFW folder; IntuneWinAppUtil.exe is downloaded from Microsoft on first use" />
+                            </Grid>
+                        </GroupBox>
+                        <GroupBox Header="App">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition />
+                                </Grid.RowDefinitions>
+                                <Label Content="Name" />
+                                <TextBox x:Name="AppNameText" Grid.Column="1" />
+                                <Label Grid.Column="2" Content="Publisher" />
+                                <TextBox x:Name="AppPublisherText" Grid.Column="3" />
+                                <Label Grid.Row="1" Content="Description" />
+                                <TextBox x:Name="AppDescriptionText" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" TextWrapping="Wrap" AcceptsReturn="True" MinHeight="44" VerticalContentAlignment="Top" />
+                                <Label Grid.Row="2" Content="Information URL" />
+                                <TextBox x:Name="AppUrlText" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" />
+                                <Label Grid.Row="3" Content="Architecture" />
+                                <ComboBox x:Name="RequirementArchBox" Grid.Row="3" Grid.Column="1" ToolTip="Intune requirement: the app only installs on these architectures" />
+                                <Label Grid.Row="3" Grid.Column="2" Content="Minimum Windows" />
+                                <ComboBox x:Name="MinWindowsBox" Grid.Row="3" Grid.Column="3" ToolTip="Intune requirement. winget needs Windows 10 1809 or later" />
+                                <Label Grid.Row="4" Content="Install behavior" />
+                                <TextBlock x:Name="InstallBehaviorText" Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="3" VerticalAlignment="Center" Margin="2" />
+                                <Label Grid.Row="5" Content="Install" />
+                                <TextBox x:Name="PublishInstallText" Grid.Row="5" Grid.Column="1" Grid.ColumnSpan="3" IsReadOnly="True" TextWrapping="Wrap" FontFamily="Consolas" />
+                                <Label Grid.Row="6" Content="Uninstall" />
+                                <TextBox x:Name="PublishUninstallText" Grid.Row="6" Grid.Column="1" Grid.ColumnSpan="3" IsReadOnly="True" TextWrapping="Wrap" FontFamily="Consolas" />
+                                <Label Grid.Row="7" Content="Detection" />
+                                <TextBlock x:Name="PublishDetectionText" Grid.Row="7" Grid.Column="1" Grid.ColumnSpan="3" VerticalAlignment="Center" Margin="2" />
+                            </Grid>
+                        </GroupBox>
+                        <GroupBox Header="Assignments (optional)">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Label Content="Group" />
+                                        <TextBox x:Name="GroupSearchText" Width="220" ToolTip="Start of the group name" />
+                                        <Button x:Name="GroupSearchButton" Content="Find" />
+                                    </StackPanel>
+                                    <ListBox x:Name="GroupsList" Height="110" Margin="2" DisplayMemberPath="DisplayName" />
+                                    <StackPanel Orientation="Horizontal">
+                                        <Label Content="Intent" />
+                                        <ComboBox x:Name="IntentBox" Width="120" ToolTip="Available only works for user groups" />
+                                        <Button x:Name="AddAssignmentButton" Content="Add" />
+                                    </StackPanel>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1">
+                                    <DataGrid x:Name="AssignmentsGrid" Height="140" Margin="2" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column" SelectionMode="Single">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="Group" Binding="{Binding Group}" Width="*" />
+                                            <DataGridTextColumn Header="Intent" Binding="{Binding Intent}" />
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                    <Button x:Name="RemoveAssignmentButton" Content="Remove" HorizontalAlignment="Right" />
+                                </StackPanel>
+                            </Grid>
+                        </GroupBox>
+                        <StackPanel Orientation="Horizontal">
+                            <Button x:Name="PublishButton" Content="Create app in Intune" FontWeight="Bold" />
+                            <TextBlock x:Name="PublishResultText" VerticalAlignment="Center" Margin="8,0" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
         </TabControl>
     </DockPanel>
 </Window>

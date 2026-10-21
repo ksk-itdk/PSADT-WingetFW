@@ -15,10 +15,12 @@
        checked with the WingetFW option rules (the cases where WingetFW stops with 60001 or 69001).
     4. Copy or save the detection script (winget list or uninstall registry key).
 
-    Nothing is changed in Intune or on this device. Publishing comes in a later version.
+    Tab "Publish to Intune" (phase CON-2): sign in (delegated), select or build the .intunewin, and create
+    the Win32 app with the commands and detection script of the first tab, requirements, return codes and
+    optional group assignments. Nothing is changed in Intune before you confirm.
 
-    Needs PowerShell 7.4 or later and the modules Microsoft.WinGet.Client (search) and powershell-yaml
-    (manifest details). Runs from the repository folder: it reads Toolkit\WinGetFW<version>,
+    Needs PowerShell 7.4 or later and the modules Microsoft.WinGet.Client (search), powershell-yaml
+    (manifest details) and Microsoft.Graph.Authentication (Intune). Runs from the repository folder: it reads Toolkit\WinGetFW<version>,
     Toolkit\Detection and Tools\WingetFW-ParameterMap.psd1.
 
 .EXAMPLE
@@ -26,9 +28,11 @@
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 0.1.0
+    Version      : 0.2.0
 
     Release notes
+    0.2.0  - Tab "Publish to Intune" (phase CON-2): sign-in, .intunewin (browse or build), app details,
+             requirements, group assignments, create the Win32 app.
     0.1.0  - First version (phase CON-1): search, manifest details, install and uninstall commands,
              detection script.
 
@@ -57,6 +61,7 @@ $templates = @{
     Registry = (New-WingetFWDetectionScript -Type Registry -AppName 'x').Template
 }
 $script:filling = $false
+$script:assignments = [System.Collections.ObjectModel.ObservableCollection[object]]::new()
 
 #region Helpers
 function Set-Status([string]$Text)
@@ -167,6 +172,11 @@ function Update-Commands
     $ui.DetectTemplateText.Text = "Template: $(if ($ui.DetectRegistryRadio.IsChecked) { $templates.Registry } else { $templates.Winget })"
     $ui.DetectNameText.IsEnabled = [bool]$ui.DetectRegistryRadio.IsChecked
     $ui.DetectVersionText.IsEnabled = [bool]$ui.DetectRegistryRadio.IsChecked
+
+    $ui.PublishInstallText.Text = $install.CommandLine
+    $ui.PublishUninstallText.Text = $uninstall.CommandLine
+    $ui.InstallBehaviorText.Text = if ($install.Parameters['Mode'] -eq 'User') { 'User (-Mode User)' } else { 'System (-Mode Admin)' }
+    $ui.PublishDetectionText.Text = if ($ui.DetectRegistryRadio.IsChecked) { "$($templates.Registry): $($ui.DetectNameText.Text) >= $($ui.DetectVersionText.Text)" } else { "$($templates.Winget): $($ui.IdText.Text)" }
 }
 
 function Get-DetectionScript([string]$Path)
@@ -207,6 +217,16 @@ $ui.ArchitectureBox.ItemsSource = @($notSet) + $package.Parameters['architecture
 $ui.InstallerTypeBox.ItemsSource = @($notSet) + $package.Parameters['installertype'].Values
 $ui.InstallModeBox.ItemsSource = @($notSet, 'silent', 'interactive')
 foreach ($combo in $ui.ScopeBox, $ui.ArchitectureBox, $ui.InstallerTypeBox, $ui.InstallModeBox) { $combo.SelectedIndex = 0 }
+
+$ui.RequirementArchBox.ItemsSource = @('x64', 'x64,arm64', 'x86,x64', 'x86,x64,arm64', 'arm64')
+$ui.RequirementArchBox.SelectedIndex = 0
+$ui.MinWindowsBox.ItemsSource = @('1809', '1903', '1909', '2004', '2H20', '21H1', 'Windows10_21H2', 'Windows10_22H2', 'Windows11_21H2', 'Windows11_22H2', 'Windows11_23H2')
+$ui.MinWindowsBox.SelectedIndex = 0
+$ui.IntentBox.ItemsSource = @('required', 'available', 'uninstall')
+$ui.IntentBox.SelectedIndex = 0
+$ui.AssignmentsGrid.ItemsSource = $script:assignments
+$defaultIntuneWin = Join-Path -Path $env:LOCALAPPDATA -ChildPath "WingetFW\Console\IntuneWin\$(Split-Path -Path $package.Path -Leaf)\Invoke-AppDeployToolkit.intunewin"
+if (Test-Path -LiteralPath $defaultIntuneWin) { $ui.IntuneWinText.Text = $defaultIntuneWin }
 #endregion
 
 #region Events
@@ -243,6 +263,10 @@ $ui.VersionBox.Add_SelectionChanged({
             $ui.DetailsText.Text = Format-ManifestDetails $manifest
             $ui.InstallersGrid.ItemsSource = @($manifest.Installers)
             $ui.DetectNameText.Text = "$(if ($manifest.Name) { $manifest.Name } else { $selected.Name })*"
+            $ui.AppNameText.Text = if ($manifest.Name) { $manifest.Name } else { $selected.Name }
+            $ui.AppPublisherText.Text = $manifest.Publisher
+            $ui.AppDescriptionText.Text = $manifest.ShortDescription
+            $ui.AppUrlText.Text = $manifest.PackageUrl
             Set-Status "$($selected.Id) $version - $($manifest.Installers.Count) installer(s)"
         }
     })
@@ -261,7 +285,7 @@ $ui.InstallersGrid.Add_SelectionChanged({
         Update-Commands
     })
 
-foreach ($name in 'IdText', 'SourceText', 'PinVersionText', 'CustomText', 'OverrideText', 'LogText', 'OtherText') { $ui[$name].Add_TextChanged({ Update-Commands }) }
+foreach ($name in 'IdText', 'SourceText', 'PinVersionText', 'CustomText', 'OverrideText', 'LogText', 'OtherText', 'DetectNameText', 'DetectVersionText') { $ui[$name].Add_TextChanged({ Update-Commands }) }
 foreach ($name in 'ActionBox', 'ModeBox', 'ScopeBox', 'ArchitectureBox', 'InstallerTypeBox', 'InstallModeBox') { $ui[$name].Add_SelectionChanged({ Update-Commands }) }
 foreach ($name in 'ExactCheck', 'SourceCheck', 'DetectWingetRadio', 'DetectRegistryRadio')
 {
@@ -286,6 +310,77 @@ $ui.SaveDetectionButton.Add_Click({
             if (-not $dialog.ShowDialog($window)) { return }
             $detection = Get-DetectionScript -Path $dialog.FileName
             Set-Status "Detection script saved to $($dialog.FileName) ($($detection.Template))"
+        }
+    })
+
+$ui.SignInButton.Add_Click({
+        Invoke-UiAction 'Signing in (see the browser window)...' {
+            $context = Connect-WingetFWIntune -TenantId $ui.TenantText.Text.Trim()
+            $ui.SignedInText.Text = "$($context.Account) - tenant $($context.TenantId)"
+            Set-Status "Signed in as $($context.Account)"
+        }
+    })
+
+$ui.BrowseIntuneWinButton.Add_Click({
+        $dialog = New-Object -TypeName Microsoft.Win32.OpenFileDialog
+        $dialog.Filter = 'Intune package (*.intunewin)|*.intunewin'
+        if ($dialog.ShowDialog($window)) { $ui.IntuneWinText.Text = $dialog.FileName }
+    })
+
+$ui.BuildIntuneWinButton.Add_Click({
+        Invoke-UiAction "Building the .intunewin of WingetFW $($package.Version)..." {
+            $ui.IntuneWinText.Text = New-WingetFWIntuneWin
+            Set-Status "Built $($ui.IntuneWinText.Text)"
+        }
+    })
+
+$ui.GroupSearchButton.Add_Click({
+        $name = $ui.GroupSearchText.Text.Trim()
+        if (-not $name) { Set-Status 'Type the start of a group name'; return }
+        Invoke-UiAction "Finding groups '$name'..." {
+            $groups = @(Find-WingetFWGroup -Name $name)
+            $ui.GroupsList.ItemsSource = $groups
+            Set-Status "$($groups.Count) group(s) found"
+        }
+    })
+
+$ui.AddAssignmentButton.Add_Click({
+        $group = $ui.GroupsList.SelectedItem
+        if (-not $group) { Set-Status 'Select a group first'; return }
+        if (@($script:assignments | Where-Object { $_.GroupId -eq $group.Id }).Count) { Set-Status "$($group.DisplayName) is already in the list"; return }
+        $script:assignments.Add([pscustomobject]@{ Group = $group.DisplayName; GroupId = $group.Id; Intent = [string]$ui.IntentBox.SelectedItem })
+    })
+
+$ui.RemoveAssignmentButton.Add_Click({
+        if ($ui.AssignmentsGrid.SelectedItem) { $null = $script:assignments.Remove($ui.AssignmentsGrid.SelectedItem) }
+    })
+
+$ui.PublishButton.Add_Click({
+        $install = New-WingetFWCommandLine -Parameters (Get-BuildParameters).Parameters
+        $uninstall = New-WingetFWCommandLine -Parameters $install.Parameters -Uninstall
+        $problems = @($install.Errors) + @($uninstall.Errors | ForEach-Object { "Uninstall: $_" })
+        if (-not $ui.AppNameText.Text.Trim()) { $problems += 'Name is empty' }
+        if (-not $ui.AppPublisherText.Text.Trim()) { $problems += 'Publisher is empty' }
+        if (-not (Test-Path -LiteralPath $ui.IntuneWinText.Text -PathType Leaf)) { $problems += 'Select or build the .intunewin' }
+        if (-not (Get-Command -Name Get-MgContext -ErrorAction SilentlyContinue) -or -not (Get-MgContext)) { $problems += 'Sign in first' }
+        if ($problems)
+        {
+            $null = [System.Windows.MessageBox]::Show($window, ($problems -join "`n"), 'WingetFW Console', 'OK', 'Warning')
+            return
+        }
+        $question = "Create the app '$($ui.AppNameText.Text.Trim())' in tenant $((Get-MgContext).TenantId) with $($script:assignments.Count) assignment(s)?"
+        if ([System.Windows.MessageBox]::Show($window, $question, 'WingetFW Console', 'YesNo', 'Question') -ne 'Yes') { return }
+
+        Invoke-UiAction "Creating '$($ui.AppNameText.Text.Trim())' in Intune and uploading the package..." {
+            $app = New-WingetFWIntuneApp -DisplayName $ui.AppNameText.Text.Trim() -Publisher $ui.AppPublisherText.Text.Trim() `
+                -Description $ui.AppDescriptionText.Text.Trim() -InformationUrl $ui.AppUrlText.Text.Trim() `
+                -InstallCommandLine $install.CommandLine -UninstallCommandLine $uninstall.CommandLine `
+                -RunAsAccount $(if ($install.Parameters['Mode'] -eq 'User') { 'user' } else { 'system' }) `
+                -DetectionScript (Get-DetectionScript).Text -IntuneWinFile $ui.IntuneWinText.Text `
+                -AllowedArchitectures $ui.RequirementArchBox.SelectedItem -MinimumWindowsRelease $ui.MinWindowsBox.SelectedItem `
+                -Assignments @($script:assignments)
+            $ui.PublishResultText.Text = "Created '$($app.DisplayName)' (ID $($app.Id)) with $($app.Assignments) assignment(s)"
+            Set-Status $ui.PublishResultText.Text
         }
     })
 #endregion

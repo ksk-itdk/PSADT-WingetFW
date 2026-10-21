@@ -2,10 +2,10 @@
 
 [Back to README](../README.md)
 
-A window for admins that finds a winget package and builds the WingetFW install command, uninstall command
-and detection script for an Intune app. It changes nothing in Intune or on the device.
+A window for admins that finds a winget package, builds the WingetFW install command, uninstall command
+and detection script, and creates the Win32 app in Intune. It changes nothing on the device.
 
-Version 0.1.0 (phase CON-1): search, details, commands, detection script. Publishing to Intune comes in a later version.
+Version 0.2.0: search, details, commands, detection script (phase CON-1) and publish to Intune (phase CON-2).
 
 ## REQUIREMENTS
 - Windows with PowerShell 7.4 or later.
@@ -14,6 +14,8 @@ Version 0.1.0 (phase CON-1): search, details, commands, detection script. Publis
   Install-PSResource -Name Microsoft.WinGet.Client, powershell-yaml -Scope CurrentUser
   ```
 - Internet access to GitHub (`raw.githubusercontent.com`) for the manifest details of the `winget` source.
+- For publishing: the module `Microsoft.Graph.Authentication`, and an admin account that may create Intune apps.
+  The Console signs in as you (delegated) with `DeviceManagementApps.ReadWrite.All` and `Group.Read.All`. It stores no secrets.
 - Run it from the repository folder. It reads `Toolkit\WinGetFW<version>` (the newest one), `Toolkit\Detection` and `Tools\WingetFW-ParameterMap.psd1`.
 
 ## START
@@ -45,6 +47,29 @@ pwsh -File .\Console\Start-WingetFWConsole.ps1
 
 Only the `$app` line (or the `$AppName` and `$AppVersion` lines) of the template is changed, so `Tools\Update-WingetFWIntuneApps.ps1` recognizes the script version.
 
+## PUBLISH TO INTUNE
+Build the app on the **Search and build** tab first; the **Publish to Intune** tab uses those commands and that detection script.
+1. **Sign in**. Tenant is optional (tenant ID or domain); empty uses your home tenant.
+2. **WingetFW package**: browse to an `Invoke-AppDeployToolkit.intunewin`, or click **Build with IntuneWinAppUtil**.
+   This packs the newest `Toolkit\WinGetFW<version>` folder. `IntuneWinAppUtil.exe` is downloaded from
+   [microsoft/Microsoft-Win32-Content-Prep-Tool](https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool) to
+   `%LOCALAPPDATA%\WingetFW\Console` and only runs with a valid Microsoft signature.
+   The same `.intunewin` is used for every WingetFW app.
+3. **App**: name, publisher, description and URL are filled in from the manifest. Requirements: architecture and minimum Windows version.
+   The install behavior follows the mode: Admin = System, User = User.
+4. **Assignments** (optional): find a group, pick the intent (required, available, uninstall) and add it.
+5. **Create app in Intune**. You confirm first. The app gets:
+
+| Setting | Value |
+|---|---|
+| Install and uninstall command | From the **Search and build** tab |
+| Detection | The detection script (PowerShell, 64-bit, no signature check) |
+| Return codes | 0 and 1707 success, 3010 soft reboot, 1641 hard reboot, 1618 retry, **69002 retry** (skipped by a [mod file](Mods.md)) |
+| Restart behavior | Based on return codes |
+| Notes | `WingetFW <version>`, used by `Tools\Update-WingetFWIntuneApps.ps1` |
+
+If the upload or the assignment fails, the app stays in Intune without content; the message shows its ID so you can delete it.
+
 ## TESTS
-- `Tests\Unit\WingetFW.Console.Tests.ps1`: builder, option rules, quoting, detection scripts, manifest data.
+- `Tests\Unit\WingetFW.Console.Tests.ps1`: builder, option rules, quoting, detection scripts, manifest data, and the Intune app and assignment body with mocked Graph calls.
 - The builder is also checked against every command of the last VM test run (`Tests\results\WingetFW-TestResults.json`): commands that passed on the VM are accepted, the validation tests (V01-V10, N01) are rejected with the same message as the WingetFW log.
