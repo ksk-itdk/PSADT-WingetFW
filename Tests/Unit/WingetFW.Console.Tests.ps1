@@ -12,12 +12,12 @@
     Version      : 1.3.0
 
     Release notes
-    1.3.0  - Mod files (template, load check, save below AllowedScriptSources, signature) and effective settings (phase CON-4).
-    1.2.0  - Command line conversion, inventory, mod file check and app update with mocked Graph calls (phase CON-3).
-    1.1.0  - Intune publish tests with mocked Graph calls (phase CON-2).
+    1.3.0  - Mod files (template, load check, save below AllowedScriptSources, signature) and effective settings.
+    1.2.0  - Command line conversion, inventory, mod file check and app update with mocked Graph calls.
+    1.1.0  - Intune publish tests with mocked Graph calls.
     1.0.1  - The VM command tests are not created when the list is empty (Windows PowerShell 5.1 failed in
              Pester discovery on an empty -ForEach).
-    1.0.0  - First version (phase CON-1).
+    1.0.0  - First version.
 
 .LINK
     https://github.com/ksk-itdk/PSADT-WingetFW

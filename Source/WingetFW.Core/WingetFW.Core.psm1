@@ -27,13 +27,13 @@
     Version      : 1.2.0
 
     Release notes
-    1.2.0  - Import-WingetFWMod and Invoke-WingetFWModSection (phase FW-3): ScriptRoot (local, UNC, Azure blob),
+    1.2.0  - Import-WingetFWMod and Invoke-WingetFWModSection: ScriptRoot (local, UNC, Azure blob),
              ScriptSyncMode OnDemand/Mirror, UseCachedScriptsWhenOffline, AllowedScriptSources,
              RequireSignedScripts/TrustedSigners, load check (only functions and $Settings at the top level).
     1.1.0  - Get-WingetFWSetting reads ADMX list keys: a subkey with values 1, 2, 3 ... is returned as an
              ordered array, a subkey with named values as an ordered name/value table.
            - Get-WingetFWSetting -AsBoolean converts 1/0, true/false and DWORD values to $true/$false.
-    1.0.0  - First version (phase FW-1): settings reader, logging, event log and state files.
+    1.0.0  - First version: settings reader, logging, event log and state files.
 
 .LINK
     https://github.com/ksk-itdk/PSADT-WingetFW

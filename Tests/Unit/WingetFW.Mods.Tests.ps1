@@ -11,7 +11,7 @@
     Version      : 1.0.0
 
     Release notes
-    1.0.0  - First version (phase FW-3).
+    1.0.0  - First version.
 
 .LINK
     https://github.com/ksk-itdk/PSADT-WingetFW

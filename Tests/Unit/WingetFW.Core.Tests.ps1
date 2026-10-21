@@ -14,7 +14,7 @@
 
     Release notes
     1.1.0  - ADMX list keys (ordered list, name/value table), empty list key, -AsBoolean.
-    1.0.0  - First version (phase FW-1).
+    1.0.0  - First version.
 
 .LINK
     https://github.com/ksk-itdk/PSADT-WingetFW
