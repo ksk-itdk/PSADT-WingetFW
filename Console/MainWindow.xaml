@@ -199,7 +199,7 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBox x:Name="IntuneWinText" ToolTip="The same .intunewin is used for every WingetFW app" />
                                 <Button x:Name="BrowseIntuneWinButton" Grid.Column="1" Content="Browse..." />
-                                <Button x:Name="BuildIntuneWinButton" Grid.Column="2" Content="Build with IntuneWinAppUtil" ToolTip="Packs the newest Toolkit\WinGetFW folder; IntuneWinAppUtil.exe is downloaded from Microsoft on first use" />
+                                <Button x:Name="BuildIntuneWinButton" Grid.Column="2" Content="Build with IntuneWinAppUtil" ToolTip="Packs the Toolkit\WinGetFW folder; IntuneWinAppUtil.exe is downloaded from Microsoft on first use" />
                             </Grid>
                         </GroupBox>
                         <GroupBox Header="App">

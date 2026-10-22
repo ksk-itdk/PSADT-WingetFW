@@ -19,7 +19,7 @@ inventory and upgrade; mod files and settings.
 - For publishing: the module `Microsoft.Graph.Authentication`, and an admin account that may create Intune apps.
   The Console signs in as you (delegated) with `DeviceManagementApps.ReadWrite.All` and `Group.Read.All`. It stores no secrets.
 - For ConfigMgr: the ConfigMgr console on this PC (its `ConfigurationManager` module), and an account that may create applications.
-- Run it from the repository folder. It reads `Toolkit\WinGetFW<version>` (the newest one), `Toolkit\Detection` and `Tools\WingetFW-ParameterMap.psd1`.
+- Run it from the repository folder. It reads `Toolkit\WinGetFW`, `Toolkit\Detection` and `Tools\WingetFW-ParameterMap.psd1`.
 
 ## START
 ```
@@ -54,7 +54,7 @@ Only the `$app` line (or the `$AppName` and `$AppVersion` lines) of the template
 Build the app on the **Search and build** tab first; the **Publish to Intune** tab uses those commands and that detection script.
 1. **Sign in**. Tenant is optional (tenant ID or domain); empty uses your home tenant.
 2. **WingetFW package**: browse to an `Invoke-AppDeployToolkit.intunewin`, or click **Build with IntuneWinAppUtil**.
-   This packs the newest `Toolkit\WinGetFW<version>` folder. `IntuneWinAppUtil.exe` is downloaded from
+   This packs the `Toolkit\WinGetFW` folder. `IntuneWinAppUtil.exe` is downloaded from
    [microsoft/Microsoft-Win32-Content-Prep-Tool](https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool) to
    `%LOCALAPPDATA%\WingetFW\Console` and only runs with a valid Microsoft signature.
    The same `.intunewin` is used for every WingetFW app.
@@ -78,7 +78,7 @@ Build the app on the **Search and build** tab first; the **Publish to ConfigMgr*
 1. **Site**: site code and the site server with the SMS Provider, then **Connect**. The Console uses the `ConfigurationManager`
    module of the ConfigMgr console on this PC, with your own account.
 2. **Content share**: a UNC path the site server can read, for example `\\cm01\Sources\Apps`. **Copy package to share** copies
-   the newest `Toolkit\WinGetFW<version>` folder to `<share>\WingetFW <version>`. Every WingetFW application uses this folder.
+   the `Toolkit\WinGetFW` folder to `<share>\WingetFW <version>`. Every WingetFW application uses this folder.
    A folder that is already there is not overwritten: applications use it, and a change needs a content update on the
    distribution points. Put mod files for the package `Mods` folder there before the first copy, or use a `ScriptRoot` share.
 3. **Application**: name, publisher, description and software version are filled in from the manifest.

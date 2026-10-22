@@ -1,3 +1,8 @@
+**Version 5.0.1 [22/10/2026]**
+- Changed the package folder to Toolkit\WinGetFW (no version in the folder name). WingetFW 4.0.8 is removed from the repository; it is in the 4.0.8 release zip
+- Added -PassThru to Invoke-WinGetActionFM: returns ExitCode, Success and Skipped instead of ending the PSADT session, so one session can run several actions (used by WingetFW-Update). Without -PassThru nothing changes
+- Updated the Console (0.5.1), Build\New-WingetFWRelease.ps1 (1.1.0) and the test scripts to use Toolkit\WinGetFW
+
 **Version 5.0.0 [14/10/2026]**
 - Added WingetFW 5.0.0 on PSAppDeployToolkit 4.1.8 in Toolkit\WinGetFW5.0.0. The setup file is Invoke-AppDeployToolkit.exe instead of Deploy-Application.exe. WingetFW 4.0.8 stays in Toolkit\WinGetFW
 - Changed the WingetFW functions (Install-WinGetFM, Get-WinGetVersionFM, Start-WinGetPackageFM, Resolve-WingetPath) into the extension module PSAppDeployToolkit.Extensions. The WingetFW logic is unchanged

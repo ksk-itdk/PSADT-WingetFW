@@ -1,4 +1,4 @@
-# WingetFW 5.0.0 - Parameters
+# WingetFW 5 - Parameters
 
 [Back to README](../README.md)
 

@@ -28,9 +28,10 @@
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 1.1.0
+    Version      : 1.1.1
 
     Release notes
+    1.1.1  - The package is in Toolkit\WinGetFW (no version in the folder name).
     1.1.0  - PSScriptAnalyzer also checks the Console folder.
     1.0.0  - First version.
 
@@ -57,8 +58,8 @@ if (-not $SkipAnalyzer)
     $analyzePaths = @(
         'Source'
         'Build'
-        'Toolkit\WinGetFW5.0.0\PSAppDeployToolkit.Extensions'
-        'Toolkit\WinGetFW5.0.0\Invoke-AppDeployToolkit.ps1'
+        'Toolkit\WinGetFW\PSAppDeployToolkit.Extensions'
+        'Toolkit\WinGetFW\Invoke-AppDeployToolkit.ps1'
         'Toolkit\Detection'
         'Tools'
         'Console'

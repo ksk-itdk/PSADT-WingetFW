@@ -8,8 +8,7 @@ These notes are for anyone who changes the code. How to use WingetFW is in [READ
 
 | Path | Content |
 |---|---|
-| `Toolkit\WinGetFW5.0.0\` | Current package (PSAppDeployToolkit 4.1.8) |
-| `Toolkit\WinGetFW\` | WingetFW 4.0.8 (PSAppDeployToolkit 3.9.3) |
+| `Toolkit\WinGetFW\` | The package (PSAppDeployToolkit 4.1.8). Older versions are in the GitHub releases |
 | `Toolkit\Detection\` | Intune detection scripts, one file per version |
 | `Source\WingetFW.Core\` | Shared module for WingetFW, WingetFW Console and WingetFW-Update |
 | `Build\` | Release script used by the release workflow |
@@ -23,8 +22,8 @@ These notes are for anyone who changes the code. How to use WingetFW is in [READ
 ## Branches and releases
 
 - `main` holds the released version. Work in a branch per version (`wingetfw-<version>`) and merge with a pull request.
-- A package version that changes the PSAppDeployToolkit base gets a new folder (`Toolkit\WinGetFW<version>`).
-  The older folder stays, so existing Intune apps can still be rebuilt.
+- There is one package folder, `Toolkit\WinGetFW`. The version is `AppVersion` in `Invoke-AppDeployToolkit.ps1`.
+  Older versions are in the release zips on GitHub, so existing Intune apps can still be rebuilt.
 - Before a release:
   1. CHANGELOG entry (see format below).
   2. Docs updated: the page in `Docs\` for the change (parameters, exit codes, configuration ...).

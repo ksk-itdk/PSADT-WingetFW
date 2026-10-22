@@ -29,20 +29,21 @@
     (SYSTEM must be able to read it).
 
 .PARAMETER PackageFolder
-    Name of the package folder in -Root. WinGetFW5.0.0 (Invoke-AppDeployToolkit.exe, PSADT 4) or
-    WinGetFW (Deploy-Application.exe, PSADT 3). The package type is detected from the exe.
+    Name of the package folder in -Root. Default WinGetFW. Works with Invoke-AppDeployToolkit.exe (PSADT 4) and
+    Deploy-Application.exe (PSADT 3, WingetFW 4.0.8). The package type is detected from the exe.
 
 .PARAMETER PsExecPath
     Path to PsExec64.exe on the VM.
 
 .EXAMPLE
-    powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\temp\wingetfw-vmtest\Invoke-WingetFWTestSuite.ps1 -PackageFolder WinGetFW5.0.0
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\temp\wingetfw-vmtest\Invoke-WingetFWTestSuite.ps1 -PackageFolder WinGetFW
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 1.7.0
+    Version      : 1.7.1
 
     Release notes
+    1.7.1  - Default -PackageFolder is WinGetFW (no version in the folder name).
     1.7.0  - C01-C04: conflicting apps removed in PreInstall with Uninstall-ADTApplication (product code, name,
              not installed, failed uninstall stops the deployment).
     1.6.0  - M09 uses a real read-only SMB share (\\localhost\WingetFWMods). The blob simulator runs on HTTPS
@@ -76,7 +77,7 @@ Param (
     [String]$Root = 'C:\temp\wingetfw-vmtest',
 
     [Parameter()]
-    [String]$PackageFolder = 'WinGetFW5.0.0',
+    [String]$PackageFolder = 'WinGetFW',
 
     [Parameter()]
     [String]$PsExecPath = 'C:\temp\PSTools\PsExec64.exe'

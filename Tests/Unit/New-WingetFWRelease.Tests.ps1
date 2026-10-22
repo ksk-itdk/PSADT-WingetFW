@@ -4,9 +4,10 @@
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 1.0.0
+    Version      : 1.1.0
 
     Release notes
+    1.1.0  - The fake repository uses Toolkit\WinGetFW (no version in the folder name).
     1.0.0  - First version.
 
 .LINK
@@ -18,8 +19,8 @@ BeforeAll {
 
     function New-FakeRepo
     {
-        param ([string]$Path, [string]$PackageVersion, [string]$AppVersion)
-        $package = Join-Path -Path $Path -ChildPath "Toolkit\WinGetFW$PackageVersion"
+        param ([string]$Path, [string]$AppVersion)
+        $package = Join-Path -Path $Path -ChildPath 'Toolkit\WinGetFW'
         $null = New-Item -Path $package, (Join-Path -Path $Path -ChildPath 'Toolkit\Detection') -ItemType Directory -Force
         Set-Content -LiteralPath (Join-Path -Path $package -ChildPath 'Invoke-AppDeployToolkit.ps1') -Value @('$adtSession = @{', "    AppVersion = '$AppVersion'", '}')
         Set-Content -LiteralPath (Join-Path -Path $Path -ChildPath 'Toolkit\Detection\wingetv9.9.9.ps1') -Value '# detection'
@@ -37,13 +38,13 @@ BeforeAll {
 Describe 'New-WingetFWRelease.ps1' {
     It 'Stages the package and detection scripts and writes only the matching CHANGELOG entry' {
         $repo = Join-Path -Path $TestDrive -ChildPath 'ok'
-        New-FakeRepo -Path $repo -PackageVersion '9.9.9' -AppVersion '9.9.9'
+        New-FakeRepo -Path $repo -AppVersion '9.9.9'
         $out = Join-Path -Path $TestDrive -ChildPath 'out'
 
         $stage = & $script -Version '9.9.9' -OutputPath $out -RepoRoot $repo
 
         $stage | Should -Be (Join-Path -Path $out -ChildPath 'WingetFW-9.9.9')
-        Join-Path -Path $stage -ChildPath 'WinGetFW9.9.9\Invoke-AppDeployToolkit.ps1' | Should -Exist
+        Join-Path -Path $stage -ChildPath 'WinGetFW\Invoke-AppDeployToolkit.ps1' | Should -Exist
         Join-Path -Path $stage -ChildPath 'Detection\wingetv9.9.9.ps1' | Should -Exist
         $notes = Get-Content -LiteralPath (Join-Path -Path $out -ChildPath 'release-notes.md') -Raw
         $notes | Should -Match 'Added something new'
@@ -54,19 +55,20 @@ Describe 'New-WingetFWRelease.ps1' {
 
     It 'Fails when the package AppVersion does not match' {
         $repo = Join-Path -Path $TestDrive -ChildPath 'mismatch'
-        New-FakeRepo -Path $repo -PackageVersion '9.9.9' -AppVersion '9.9.8'
+        New-FakeRepo -Path $repo -AppVersion '9.9.8'
         { & $script -Version '9.9.9' -OutputPath (Join-Path -Path $TestDrive -ChildPath 'out2') -RepoRoot $repo } | Should -Throw '*AppVersion*'
     }
 
-    It 'Fails when there is no package folder for the version' {
+    It 'Fails when there is no package folder' {
         $repo = Join-Path -Path $TestDrive -ChildPath 'nopackage'
-        New-FakeRepo -Path $repo -PackageVersion '9.9.9' -AppVersion '9.9.9'
-        { & $script -Version '9.9.7' -OutputPath (Join-Path -Path $TestDrive -ChildPath 'out3') -RepoRoot $repo } | Should -Throw '*Package not found*'
+        New-FakeRepo -Path $repo -AppVersion '9.9.9'
+        Remove-Item -LiteralPath (Join-Path -Path $repo -ChildPath 'Toolkit\WinGetFW') -Recurse -Force
+        { & $script -Version '9.9.9' -OutputPath (Join-Path -Path $TestDrive -ChildPath 'out3') -RepoRoot $repo } | Should -Throw '*Package not found*'
     }
 
     It 'Fails when CHANGELOG.txt has no entry for the version' {
         $repo = Join-Path -Path $TestDrive -ChildPath 'nochangelog'
-        New-FakeRepo -Path $repo -PackageVersion '9.9.7' -AppVersion '9.9.7'
+        New-FakeRepo -Path $repo -AppVersion '9.9.7'
         { & $script -Version '9.9.7' -OutputPath (Join-Path -Path $TestDrive -ChildPath 'out4') -RepoRoot $repo } | Should -Throw '*no entry*'
     }
 }

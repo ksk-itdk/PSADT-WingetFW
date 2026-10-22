@@ -1,4 +1,4 @@
-# WingetFW 5.0.0 - Configuration
+# WingetFW 5 - Configuration
 
 [Back to README](../README.md)
 
@@ -11,7 +11,7 @@ WingetFW takes each setting from the first level that has a value:
 | 2. Command line | Parameters of the Intune/ConfigMgr command, for example `-proxy` | One app that needs something else |
 | 3. Mod file | `$Settings` in the app's mod file, see [Mod files](Mods.md) | Settings for one app, all its deployments |
 | 4. Local key | `HKLM\SOFTWARE\WingetFW`, for example from a script or remediation | Device settings that are not enforced |
-| 5. Config file | `Toolkit\WinGetFW5.0.0\PSAppDeployToolkit.Extensions\Config\WingetFW.psd1` | Defaults that ship with your package |
+| 5. Config file | `Toolkit\WinGetFW\PSAppDeployToolkit.Extensions\Config\WingetFW.psd1` | Defaults that ship with your package |
 | 6. Built-in default | WingetFW | |
 
 Every setting and the level it came from is written to the toolkit log, for example `Setting [Proxy] = [http://proxy.contoso.com:8080] from [Policy]`.
@@ -122,7 +122,7 @@ The value is `<enabled/>` or `<disabled/>`, and for policies with a field one `<
   Event Viewer > Applications and Services Logs > Microsoft > Windows > DeviceManagement-Enterprise-Diagnostics-Provider > Admin.
 
 ## CONFIG FILE
-`Toolkit\WinGetFW5.0.0\PSAppDeployToolkit.Extensions\Config\WingetFW.psd1` is in the package. It sets `TlsCheck` and `VCRedistCheck` to `$false`. Other settings can be added, for example:
+`Toolkit\WinGetFW\PSAppDeployToolkit.Extensions\Config\WingetFW.psd1` is in the package. It sets `TlsCheck` and `VCRedistCheck` to `$false`. Other settings can be added, for example:
 
 ```powershell
 @{
@@ -136,4 +136,4 @@ The value is `<enabled/>` or `<disabled/>`, and for policies with a field one `<
 }
 ```
 
-PSAppDeployToolkit's own settings (log folder, company name, logo) are in `Toolkit\WinGetFW5.0.0\Config\config.psd1`.
+PSAppDeployToolkit's own settings (log folder, company name, logo) are in `Toolkit\WinGetFW\Config\config.psd1`.

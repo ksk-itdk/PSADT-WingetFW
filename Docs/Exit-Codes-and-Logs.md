@@ -1,4 +1,4 @@
-# WingetFW 5.0.0 - Exit codes and logs
+# WingetFW 5 - Exit codes and logs
 
 [Back to README](../README.md)
 

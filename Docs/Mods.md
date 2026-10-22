@@ -1,4 +1,4 @@
-# WingetFW 5.0.0 - Mod files
+# WingetFW 5 - Mod files
 
 [Back to README](../README.md)
 
@@ -11,7 +11,7 @@ adds what the app needs, for example closing a process, setting a registry value
 |---|---|
 | `<ScriptRoot>\<source>\<package id>.ps1` | One app, for example `winget\7zip.7zip.ps1` |
 | `<ScriptRoot>\_WingetFW.ps1` | Every app (global mod) |
-| `Toolkit\WinGetFW5.0.0\Mods\_Template.ps1` | Template with all sections |
+| `Toolkit\WinGetFW\Mods\_Template.ps1` | Template with all sections |
 
 The [WingetFW Console](Console.md#mod-files-and-settings) creates mod files from the template, checks them like WingetFW, saves and signs them.
 
