@@ -67,6 +67,60 @@ The ADMX files are in the `Policies` folder of the repository: `WingetFW.admx` a
 
 The local key `HKLM\SOFTWARE\WingetFW` uses the same layout. A list can also be a REG_MULTI_SZ value.
 
+### INTUNE CUSTOM PROFILE (OMA-URI)
+Instead of **Import ADMX**, the policies can be set with a **Custom** profile (Devices > Configuration > Create > Windows 10 and later >
+Templates > **Custom**). It uses the Policy CSP with ADMX ingestion: the device gets the ADMX in the profile, then the policies.
+Use either Import ADMX or a custom profile on a device, not both.
+
+Every row in the profile: **Data type** `String`.
+
+**1. The ADMX** (once, in the same profile as the policies or in a profile for the same devices):
+
+| Name | OMA-URI | Value |
+|---|---|---|
+| WingetFW ADMX | `./Device/Vendor/MSFT/Policy/ConfigOperations/ADMXInstall/WingetFW/Policy/WingetFWAdmx` | The whole content of `Policies\WingetFW.admx` |
+
+**2. The policies.** The path is `./Device/Vendor/MSFT/Policy/Config/WingetFW~Policy~<category>/<policy>`, with category
+`WingetFW` or, for the mod file policies, `WingetFW~Mods`:
+
+| Policy | OMA-URI |
+|---|---|
+| Add -silent by default | `./Device/Vendor/MSFT/Policy/Config/WingetFW~Policy~WingetFW/DefaultSilent` |
+| Default winget source | `./Device/Vendor/MSFT/Policy/Config/WingetFW~Policy~WingetFW/DefaultSource` |
+| Allowed winget sources | `./Device/Vendor/MSFT/Policy/Config/WingetFW~Policy~WingetFW/AllowedSources` |
+| Internal REST sources | `./Device/Vendor/MSFT/Policy/Config/WingetFW~Policy~WingetFW/Sources` |
+| Proxy | `./Device/Vendor/MSFT/Policy/Config/WingetFW~Policy~WingetFW/Proxy` |
+| Check TLS 1.2 before downloads | `./Device/Vendor/MSFT/Policy/Config/WingetFW~Policy~WingetFW/TlsCheck` |
+| Install the VC++ runtime for winget | `./Device/Vendor/MSFT/Policy/Config/WingetFW~Policy~WingetFW/VCRedistCheck` |
+| Mod file locations | `./Device/Vendor/MSFT/Policy/Config/WingetFW~Policy~WingetFW~Mods/ScriptRoot` |
+| Mod file download mode | `./Device/Vendor/MSFT/Policy/Config/WingetFW~Policy~WingetFW~Mods/ScriptSyncMode` |
+| Use cached mod files when a location can't be reached | `./Device/Vendor/MSFT/Policy/Config/WingetFW~Policy~WingetFW~Mods/UseCachedScriptsWhenOffline` |
+| Allowed mod file locations | `./Device/Vendor/MSFT/Policy/Config/WingetFW~Policy~WingetFW~Mods/AllowedScriptSources` |
+| Require signed mod files | `./Device/Vendor/MSFT/Policy/Config/WingetFW~Policy~WingetFW~Mods/RequireSignedScripts` |
+| Trusted signers | `./Device/Vendor/MSFT/Policy/Config/WingetFW~Policy~WingetFW~Mods/TrustedSigners` |
+
+The value is `<enabled/>` or `<disabled/>`, and for policies with a field one `<data>` per field. Examples:
+
+| Kind | Example policy | Value |
+|---|---|---|
+| On/off | Add -silent by default off | `<disabled/>` |
+| On/off | Check TLS 1.2 on | `<enabled/>` |
+| Text | Default winget source | `<enabled/><data id="DefaultSource" value="winget"/>` |
+| Two texts | Proxy and bypass list | `<enabled/><data id="Proxy" value="http://proxy.contoso.com:8080"/><data id="ProxyBypass" value="*.contoso.com;localhost"/>` |
+| List | Allowed winget sources | `<enabled/><data id="AllowedSources" value="winget&#xF000;msstore"/>` |
+| List of name = value | Internal REST sources | `<enabled/><data id="Sources" value="ContosoRest&#xF000;https://winget.contoso.com/api"/>` |
+| Choice | Require signed mod files | `<enabled/><data id="RequireSignedScripts" value="TrustedSigners"/>` |
+| Choice | Mod file download mode | `<enabled/><data id="ScriptSyncMode" value="Mirror"/>` |
+| List | Trusted signers | `<enabled/><data id="TrustedSigners" value="0123456789ABCDEF0123456789ABCDEF01234567"/>` |
+| List | Mod file locations, a share and a blob container | `<enabled/><data id="ScriptRoot" value="\\fs01\WingetFW\Mods&#xF000;https://contoso.blob.core.windows.net/mods?sv=2024-11-04&amp;sp=r&amp;sig=..."/>` |
+| List | Allowed mod file locations | `<enabled/><data id="AllowedScriptSources" value="\\fs01\WingetFW\&#xF000;https://contoso.blob.core.windows.net/mods"/>` |
+
+- `&#xF000;` separates the items of a list. In a name = value list the items are name, value, name, value ...
+- The value is XML: write `&` as `&amp;` (for example in a SAS), `<` as `&lt;` and `"` as `&quot;`.
+- `<disabled/>` on a policy with a field (for example Proxy) removes the value, the same as Disabled in Import ADMX.
+- After a sync the values are in `HKLM\SOFTWARE\Policies\WingetFW`, with the same layout as the table above. Errors show in
+  Event Viewer > Applications and Services Logs > Microsoft > Windows > DeviceManagement-Enterprise-Diagnostics-Provider > Admin.
+
 ## CONFIG FILE
 `Toolkit\WinGetFW5.0.0\PSAppDeployToolkit.Extensions\Config\WingetFW.psd1` is in the package. It sets `TlsCheck` and `VCRedistCheck` to `$false`. Other settings can be added, for example:
 
