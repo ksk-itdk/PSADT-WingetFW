@@ -1,12 +1,13 @@
 <#
 .SYNOPSIS
-    Pester tests for the WingetFW 5.0.0 package files (no PSADT session needed).
+    Pester tests for the WingetFW package files in Toolkit\WinGetFW (no PSADT session needed).
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 1.0.0
+    Version      : 1.0.1
 
     Release notes
+    1.0.1  - The package is in Toolkit\WinGetFW (no version in the folder name).
     1.0.0  - First version: WingetFW.Core copy in the package equals Source\WingetFW.Core.
 
 .LINK
@@ -20,7 +21,7 @@ BeforeDiscovery {
 
 BeforeAll {
     $sourceDir = Join-Path -Path $PSScriptRoot -ChildPath '..\..\Source\WingetFW.Core'
-    $extensionsDir = Join-Path -Path $PSScriptRoot -ChildPath '..\..\Toolkit\WinGetFW5.0.0\PSAppDeployToolkit.Extensions'
+    $extensionsDir = Join-Path -Path $PSScriptRoot -ChildPath '..\..\Toolkit\WinGetFW\PSAppDeployToolkit.Extensions'
     $packageCoreDir = Join-Path -Path $extensionsDir -ChildPath 'WingetFW.Core'
 }
 

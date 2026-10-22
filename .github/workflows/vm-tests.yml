@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       package:
-        description: 'Package folder in Toolkit, for example WinGetFW5.0.0 (empty = script default)'
+        description: 'Package folder in Toolkit (empty = WinGetFW)'
         required: false
         default: ''
   workflow_call:

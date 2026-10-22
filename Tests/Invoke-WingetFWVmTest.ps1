@@ -25,7 +25,7 @@
     Folder on the VM used for the test run (outside user profiles, SYSTEM must read it).
 
 .PARAMETER Package
-    Package folder in Toolkit to test: WinGetFW5.0.0 (WingetFW 5.0.0, PSADT 4) or WinGetFW (WingetFW 4.0.8, PSADT 3).
+    Package folder in Toolkit to test. Default WinGetFW.
 
 .PARAMETER ReportOnly
     Skip the VM run, only rebuild TEST-RESULTS.md from Tests\results\WingetFW-TestResults.json.
@@ -34,18 +34,14 @@
     .\Invoke-WingetFWVmTest.ps1
 
 .EXAMPLE
-    .\Invoke-WingetFWVmTest.ps1 -Package WinGetFW
-
-    Tests WingetFW 4.0.8 (Deploy-Application.exe).
-
-.EXAMPLE
     .\Invoke-WingetFWVmTest.ps1 -ReportOnly
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 1.2.0
+    Version      : 1.2.1
 
     Release notes
+    1.2.1  - Default -Package is WinGetFW (no version in the folder name). Default -ComputerName is 192.168.58.136.
     1.2.0  - -Package selects the package folder to test; default WinGetFW5.0.0 (Invoke-AppDeployToolkit.exe).
            - The report shows the package exe and PSADT version.
     1.1.1  - Maintainer set to KSKITDK, GitHub link added.
@@ -58,7 +54,7 @@
 [CmdletBinding()]
 Param (
     [Parameter()]
-    [String]$ComputerName = '192.168.58.129',
+    [String]$ComputerName = '192.168.58.136',
 
     [Parameter()]
     [String]$UserName = 'TEST',
@@ -70,7 +66,7 @@ Param (
     [String]$RemoteRoot = 'C:\temp\wingetfw-vmtest',
 
     [Parameter()]
-    [String]$Package = 'WinGetFW5.0.0',
+    [String]$Package = 'WinGetFW',
 
     [Parameter()]
     [Switch]$ReportOnly

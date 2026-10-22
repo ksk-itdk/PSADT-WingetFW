@@ -8,9 +8,10 @@
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 1.0.0
+    Version      : 1.0.1
 
     Release notes
+    1.0.1  - The template is read from Toolkit\WinGetFW (no version in the folder name).
     1.0.0  - First version.
 
 .LINK
@@ -89,7 +90,7 @@ Describe 'Import-WingetFWMod' {
     }
 
     It 'Accepts the shipped template (Mods\_Template.ps1) with all 16 sections' {
-        $template = Get-Content -LiteralPath (Join-Path -Path $PSScriptRoot -ChildPath '..\..\Toolkit\WinGetFW5.0.0\Mods\_Template.ps1') -Raw
+        $template = Get-Content -LiteralPath (Join-Path -Path $PSScriptRoot -ChildPath '..\..\Toolkit\WinGetFW\Mods\_Template.ps1') -Raw
         New-ModFile -Path "$package\Mods\winget\7zip.7zip.ps1" -Content $template
         $mods = Import-WingetFWMod -Id '7zip.7zip' @common
         $mods.App.Functions.Count | Should -Be 16

@@ -6,7 +6,7 @@
 
 .DESCRIPTION
     Used by .github\workflows\release.yml, and can be run locally.
-    1. Checks that Toolkit\WinGetFW<Version> exists and its AppVersion is <Version>.
+    1. Checks that Toolkit\WinGetFW exists and its AppVersion is <Version>.
     2. Checks that CHANGELOG.txt has an entry for <Version>.
     3. Copies the package folder and Toolkit\Detection to <OutputPath>\WingetFW-<Version>.
     4. Writes the CHANGELOG entry to <OutputPath>\release-notes.md.
@@ -25,9 +25,10 @@
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 1.0.0
+    Version      : 1.1.0
 
     Release notes
+    1.1.0  - The package is in Toolkit\WinGetFW (no version in the folder name).
     1.0.0  - First version.
 
 .LINK
@@ -49,7 +50,7 @@ param
 
 $ErrorActionPreference = 'Stop'
 
-$packageDir = Join-Path -Path $RepoRoot -ChildPath "Toolkit\WinGetFW$Version"
+$packageDir = Join-Path -Path $RepoRoot -ChildPath 'Toolkit\WinGetFW'
 $scriptFile = Join-Path -Path $packageDir -ChildPath 'Invoke-AppDeployToolkit.ps1'
 if (-not (Test-Path -LiteralPath $scriptFile -PathType Leaf)) { throw "Package not found: $scriptFile" }
 $appVersion = [regex]::Match((Get-Content -LiteralPath $scriptFile -Raw), "(?m)^\s*AppVersion\s*=\s*'([^']*)'").Groups[1].Value

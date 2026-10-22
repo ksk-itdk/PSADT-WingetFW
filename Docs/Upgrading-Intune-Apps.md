@@ -1,4 +1,4 @@
-# WingetFW 5.0.0 - Upgrading Intune apps
+# WingetFW 5 - Upgrading Intune apps
 
 [Back to README](../README.md)
 

@@ -1,4 +1,4 @@
-# WingetFW 5.0.0 - Signing mod files
+# WingetFW 5 - Signing mod files
 
 [Back to README](../README.md)
 

@@ -13,9 +13,11 @@
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 5.0.0
+    Version      : 5.0.1
 
     Release notes
+    5.0.1  - Invoke-WinGetActionFM -PassThru returns ExitCode, Success and Skipped instead of ending the
+             PSADT session, so one session can run several actions (used by WingetFW-Update).
     5.0.0  - First version as a PSAppDeployToolkit 4.1 extension module (was AppDeployToolkitExtensions.ps1
              in WingetFW 4.0.8). The WingetFW logic is unchanged.
            - Settings moved from AppDeployToolkitExtensionsConfig.xml to Config\WingetFW.psd1.
@@ -1290,6 +1292,12 @@ Function Invoke-WinGetActionFM {
 
     With Repair: uninstall and install instead of winget repair.
 
+.PARAMETER PassThru
+
+    Returns ExitCode, Success and Skipped (a Pre section returned $false, exit code 69002) and leaves the
+    PSADT session open. Without it a failure or a skip ends the session with the exit code, and 1641/3010
+    is set as the session exit code.
+
 .EXAMPLE
 
     Invoke-WinGetActionFM -UserMode 'Admin' -Action 'Install' -WinGetParameters @{ id = '7zip.7zip'; exact = $true }
@@ -1313,7 +1321,10 @@ Function Invoke-WinGetActionFM {
         [Hashtable]$WinGetParameters,
 
         [Parameter()]
-        [Switch]$ForceRepair
+        [Switch]$ForceRepair,
+
+        [Parameter()]
+        [Switch]$PassThru
     )
 
     Begin {
@@ -1345,6 +1356,7 @@ Function Invoke-WinGetActionFM {
         ForEach ($mod in $preOrder) {
             If ((Invoke-WingetFWModSection -Mod $mod -Section $preSection -Context $context) -eq $false) {
                 Write-ADTLogEntry -Message "[$preSection] in the $($mod.Name.ToLower()) mod returned `$false, skipping winget $Action (exit code 69002)" -Source 'Invoke-WinGetActionFM' -Severity 2
+                If ($PassThru) { Return [PSCustomObject]@{ ExitCode = 69002; Success = $false; Skipped = $true } }
                 Close-ADTSession -ExitCode 69002
                 Return
             }
@@ -1371,6 +1383,7 @@ Function Invoke-WinGetActionFM {
             ForEach ($mod in $afterOrder) { $null = Invoke-WingetFWModSection -Mod $mod -Section $resultSection -Context $context }
         }
 
+        If ($PassThru) { Return [PSCustomObject]@{ ExitCode = $result.ExitCode; Success = $result.Success; Skipped = $false } }
         # PSADT ignores -ExitOnProcessFailure for PSAppDeployToolkit.* modules, so the exit code is passed on here
         If ($result.ExitCode -in @(1641, 3010)) {
             (Get-ADTSession).SetExitCode($result.ExitCode)

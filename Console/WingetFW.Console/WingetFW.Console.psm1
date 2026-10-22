@@ -9,8 +9,8 @@
     Build    : New-WingetFWCommandLine builds the Invoke-AppDeployToolkit.exe command line and checks it with
                the same option rules as WingetFW (exit code 60001 / 69001). ConvertFrom-WingetFWCommandLine
                reads a command line back into parameters.
-               Parameter names and accepted values come from Invoke-AppDeployToolkit.ps1 of the newest
-               Toolkit\WinGetFW<version> folder, the option rules from Tools\WingetFW-ParameterMap.psd1.
+               Parameter names and accepted values come from Invoke-AppDeployToolkit.ps1 of the
+               Toolkit\WinGetFW folder, the option rules from Tools\WingetFW-ParameterMap.psd1.
     Detection: New-WingetFWDetectionScript fills in the newest template from Toolkit\Detection.
     Intune   : Connect-WingetFWIntune (delegated sign-in), New-WingetFWIntuneWin (IntuneWinAppUtil.exe),
                Find-WingetFWGroup, New-WingetFWIntuneApp (create, upload, assign). Get-WingetFWIntuneWinPackage,
@@ -30,9 +30,11 @@
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 0.5.0
+    Version      : 0.5.1
 
     Release notes
+    0.5.1  - The package is read from Toolkit\WinGetFW (no version in the folder name). The version comes from
+             AppVersion in Invoke-AppDeployToolkit.ps1.
     0.5.0  - ConfigMgr publish: Connect-WingetFWConfigMgr, Get-WingetFWConfigMgrDistributionPointGroup,
              Copy-WingetFWConfigMgrContent, New-WingetFWConfigMgrApp.
     0.4.0  - Mod files and settings: New-WingetFWModFile, Test-WingetFWModFile, Save-WingetFWModFile,
@@ -172,7 +174,7 @@ function Get-WingetFWPackageInfo
     .SYNOPSIS
         Reads the parameters (name, type, accepted values) and the version of a WingetFW package.
     .PARAMETER Path
-        Package folder. Default: the newest Toolkit\WinGetFW<version> folder.
+        Package folder. Default: Toolkit\WinGetFW.
     #>
     [CmdletBinding()]
     param
@@ -185,11 +187,8 @@ function Get-WingetFWPackageInfo
     $cache = $false
     if (-not $Path)
     {
-        $Path = Get-ChildItem -LiteralPath (Join-Path -Path $Script:RepoRoot -ChildPath 'Toolkit') -Directory |
-            Where-Object { $_.Name -match '^WinGetFW(\d+\.\d+\.\d+)$' } |
-            Sort-Object -Property { [version]($_.Name -replace '^WinGetFW', '') } |
-            Select-Object -Last 1 -ExpandProperty FullName
-        if (-not $Path) { throw "No Toolkit\WinGetFW<version> folder found in $Script:RepoRoot" }
+        $Path = Join-Path -Path $Script:RepoRoot -ChildPath 'Toolkit\WinGetFW'
+        if (-not (Test-Path -LiteralPath $Path -PathType Container)) { throw "No Toolkit\WinGetFW folder found in $Script:RepoRoot" }
         $cache = $true
     }
     $scriptFile = Join-Path -Path $Path -ChildPath 'Invoke-AppDeployToolkit.ps1'
@@ -878,7 +877,7 @@ function New-WingetFWIntuneWin
         IntuneWinAppUtil.exe is downloaded from github.com/microsoft/Microsoft-Win32-Content-Prep-Tool to
         LOCALAPPDATA\WingetFW\Console when it is not there yet. It only runs with a valid Microsoft signature.
     .PARAMETER PackagePath
-        WingetFW package folder. Default: the newest Toolkit\WinGetFW<version>.
+        WingetFW package folder. Default: Toolkit\WinGetFW.
     .PARAMETER OutputFolder
         Default: LOCALAPPDATA\WingetFW\Console\IntuneWin\<package folder name>.
     #>
@@ -1725,7 +1724,7 @@ function Get-WingetFWEffectiveSetting
     .PARAMETER ModSettings
         One action of a mod file's $Settings, for example $settings.Install.
     .PARAMETER PackagePath
-        Package folder for the config file and the defaults that use it. Default: the newest Toolkit\WinGetFW<version>.
+        Package folder for the config file and the defaults that use it. Default: Toolkit\WinGetFW.
     #>
     [CmdletBinding()]
     param

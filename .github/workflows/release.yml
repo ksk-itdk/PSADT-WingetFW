@@ -15,8 +15,6 @@ jobs:
 
   vm:
     uses: ./.github/workflows/vm-tests.yml
-    with:
-      package: WinGetFW${{ github.ref_name }}
 
   release:
     name: Build and publish

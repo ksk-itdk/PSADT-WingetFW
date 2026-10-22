@@ -242,7 +242,7 @@ $adtSession = @{
     # App variables.
     AppVendor = $(If(-NOT([string]::IsNullOrEmpty($OverrideAPPName))){$OverrideAPPName}elseif(-NOT([string]::IsNullOrEmpty($id))){$id}elseif(-NOT([string]::IsNullOrEmpty($name))){$name})
     AppName = 'WingetFW'
-    AppVersion = '5.0.0'
+    AppVersion = '5.0.1'
     AppArch = ''
     AppLang = 'EN'
     AppRevision = '01'
@@ -250,7 +250,7 @@ $adtSession = @{
     AppRebootExitCodes = @(1641, 3010)
     AppProcessesToClose = @()  # Example: @('excel', @{ Name = 'winword'; Description = 'Microsoft Word' })
     AppScriptVersion = '1.0.0'
-    AppScriptDate = '2026-10-14'
+    AppScriptDate = '2026-10-22'
     AppScriptAuthor = 'Kris Spangenberg'
     RequireAdmin = $false
 

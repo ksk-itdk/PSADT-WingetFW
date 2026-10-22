@@ -31,7 +31,7 @@
     WingetFW settings on this PC with the level each value comes from.
 
     Needs PowerShell 7.4 or later and the modules Microsoft.WinGet.Client (search), powershell-yaml
-    (manifest details) and Microsoft.Graph.Authentication (Intune). Runs from the repository folder: it reads Toolkit\WinGetFW<version>,
+    (manifest details) and Microsoft.Graph.Authentication (Intune). Runs from the repository folder: it reads Toolkit\WinGetFW,
     Toolkit\Detection and Tools\WingetFW-ParameterMap.psd1.
 
 .EXAMPLE
@@ -39,9 +39,10 @@
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 0.5.0
+    Version      : 0.5.1
 
     Release notes
+    0.5.1  - Reads the package from Toolkit\WinGetFW (no version in the folder name).
     0.5.0  - Tab "Publish to ConfigMgr": connect to a site, copy the WingetFW package to the content share, and create
              the application with the commands and detection script of the first tab, with optional distribution and
              deployment.

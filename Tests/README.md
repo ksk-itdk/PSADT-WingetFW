@@ -2,7 +2,7 @@
 
 Test suite for the WingetFW package. It runs every WingetFW parameter for all winget actions on a sandbox VM through `Invoke-AppDeployToolkit.exe` (5.0.0) or `Deploy-Application.exe` (4.0.8), the same way Intune runs it. Each run is then checked against the toolkit log and the state of the machine.
 
-> The suite tests **WingetFW 5.0.0** (`Toolkit/WinGetFW5.0.0`) by default. Use `-Package WinGetFW` to test **WingetFW 4.0.8** ([README-4.0.8.md](../README-4.0.8.md)).
+> The suite tests the package in `Toolkit/WinGetFW` by default. It can also run against a WingetFW 4.0.8 package (`Deploy-Application.exe`, [README-4.0.8.md](../README-4.0.8.md)) copied into `Toolkit`, with `-Package <folder name>`.
 
 Results of the last run: [TEST-RESULTS.md](TEST-RESULTS.md)
 
@@ -22,7 +22,7 @@ Results of the last run: [TEST-RESULTS.md](TEST-RESULTS.md)
 
 ```powershell
 cd PSADT-WingetFW\Tests
-.\Invoke-WingetFWVmTest.ps1                 # full run of WingetFW 5.0.0, about 25 minutes, do not interrupt
+.\Invoke-WingetFWVmTest.ps1                 # full run of Toolkit\WinGetFW, about 25 minutes, do not interrupt
 .\Invoke-WingetFWVmTest.ps1 -Package WinGetFW   # full run of WingetFW 4.0.8
 .\Invoke-WingetFWVmTest.ps1 -ReportOnly     # only rebuild TEST-RESULTS.md from results\*.json
 ```
@@ -79,7 +79,7 @@ A self-hosted GitHub Actions runner is installed on the sandbox VM for it. The w
 
 ### Start a run
 
-**Actions > VM tests > Run workflow**, optionally with a package folder (for example `WinGetFW5.0.0`).
+**Actions > VM tests > Run workflow**, optionally with a package folder (empty = `WinGetFW`).
 The job fails when a test is not `PASS`; `TEST-RESULTS.md` and `results\` are attached to the run as `vm-test-results`.
 Only one VM run can run at a time.
 

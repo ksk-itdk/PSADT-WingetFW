@@ -4,7 +4,7 @@
 
 ---
 
-> This README is for **WingetFW 4.0.8** (PSAppDeployToolkit 3.9.3, `Toolkit\WinGetFW`, `Deploy-Application.exe`). The current version is described in [README.md](README.md).
+> This README is for **WingetFW 4.0.8** (PSAppDeployToolkit 3.9.3, `Deploy-Application.exe`). The package is in the [4.0.8 release](https://github.com/ksk-itdk/PSADT-WingetFW/releases/tag/4.0.8). The current version is described in [README.md](README.md).
 
 ## What is PSADT-WingetFW
 
@@ -108,7 +108,7 @@ Some options only work when a winget admin setting is enabled on the device (`wi
 | `-proxy` | `ProxyCommandLineOptions` |
 
 ## CONFIGURATION
-`Toolkit\WinGetFW\AppDeployToolkit\AppDeployToolkitExtensionsConfig.xml`:
+`AppDeployToolkit\AppDeployToolkitExtensionsConfig.xml` in the 4.0.8 package:
 
 | Setting | Value in package | Description |
 |---|---|---|

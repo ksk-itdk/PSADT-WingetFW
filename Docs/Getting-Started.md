@@ -1,9 +1,9 @@
-# WingetFW 5.0.0 - Getting started
+# WingetFW 5 - Getting started
 
 [Back to README](../README.md)
 
 ## PACKAGE
-Create the `.intunewin` from the `Toolkit\WinGetFW5.0.0` folder with `Invoke-AppDeployToolkit.exe` as the setup file.
+Create the `.intunewin` from the `Toolkit\WinGetFW` folder with `Invoke-AppDeployToolkit.exe` as the setup file.
 
 | Path | Content |
 |---|---|
