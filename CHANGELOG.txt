@@ -4,6 +4,7 @@
 - Updated the Console (0.5.1), Build\New-WingetFWRelease.ps1 (1.1.0) and the test scripts to use Toolkit\WinGetFW
 - Fixed TlsCheck: with SecurityProtocol SystemDefault WingetFW now sets TLS 1.2 (unless TLS 1.2 is disabled in SCHANNEL). With SystemDefault, Windows PowerShell (.NET Framework) offers TLS 1.2 and 1.3 together and Azure Storage closes the connection: "The underlying connection was closed: An unexpected error occurred on a send"
 - Fixed mod files from an Azure blob ScriptRoot failing with that error: WingetFW.Core 1.2.1 uses TLS 1.2 only for its own https downloads in Windows PowerShell, also when TlsCheck is off and in user mode
+- Added Intune custom profile (OMA-URI) instructions to Docs\Configuration.md: set the WingetFW policies with a Custom profile (ADMX ingestion) instead of Import ADMX
 - Fixed the OMA-URI examples in Docs\Configuration.md: list policies need pairs of value name and value (1, item, 2, item ...)
 - Changed the GUID of the extension module to its own GUID; it had the GUID of the PSAppDeployToolkit extensions template, which clashes with the template module
 - Renamed the extension module from PSAppDeployToolkit.Extensions to PSAppDeployToolkit.WingetFW. The settings file is now PSAppDeployToolkit.WingetFW\Config\WingetFW.psd1; copy your changes from the old path when you upgrade
