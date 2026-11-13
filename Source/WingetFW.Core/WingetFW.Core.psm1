@@ -24,9 +24,13 @@
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 1.2.0
+    Version      : 1.2.1
 
     Release notes
+    1.2.1  - Mod file downloads and blob listing over https use TLS 1.2 only in Windows PowerShell. .NET Framework
+             offers TLS 1.2 and 1.3 together (SecurityProtocol SystemDefault or Tls12, Tls13), and Azure Storage
+             then closes the connection ("An unexpected error occurred on a send"). Not tied to TlsCheck, also
+             in user mode; SecurityProtocol is restored after the call.
     1.2.0  - Import-WingetFWMod and Invoke-WingetFWModSection: ScriptRoot (local, UNC, Azure blob),
              ScriptSyncMode OnDemand/Mirror, UseCachedScriptsWhenOffline, AllowedScriptSources,
              RequireSignedScripts/TrustedSigners, load check (only functions and $Settings at the top level).
@@ -614,6 +618,17 @@ function Get-WingetFWModUri
     '{0}/{1}{2}' -f $uri.GetLeftPart([UriPartial]::Path).TrimEnd('/'), $path, $uri.Query
 }
 
+function Invoke-WingetFWWebRequest
+{
+    # Windows PowerShell (.NET Framework) offers TLS 1.2 and 1.3 together and Azure Storage closes that connection: use TLS 1.2 only for this call
+    param ([hashtable]$Request)
+    $previous = [Net.ServicePointManager]::SecurityProtocol
+    $forceTls12 = $PSVersionTable.PSEdition -ne 'Core' -and ([Uri]$Request.Uri).Scheme -eq 'https' -and $previous -ne [Net.SecurityProtocolType]::Tls12
+    if ($forceTls12) { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 }
+    try { Invoke-WebRequest @Request -UseBasicParsing -ErrorAction Stop }
+    finally { if ($forceTls12) { [Net.ServicePointManager]::SecurityProtocol = $previous } }
+}
+
 function Invoke-WingetFWDownload
 {
     # Returns Found (file written to OutFile), NotFound (HTTP 404) or Unreachable.
@@ -624,7 +639,7 @@ function Invoke-WingetFWDownload
     $temp = "$OutFile.download"
     try
     {
-        $null = Invoke-WebRequest -Uri $Uri -OutFile $temp -UseBasicParsing -ErrorAction Stop
+        $null = Invoke-WingetFWWebRequest @{ Uri = $Uri; OutFile = $temp }
         Move-Item -LiteralPath $temp -Destination $OutFile -Force
         'Found'
     }
@@ -664,7 +679,7 @@ function Get-WingetFWBlobList
         if ($query) { $listUri += '&' + $query }
         try
         {
-            $response = Invoke-WebRequest -Uri $listUri -UseBasicParsing -ErrorAction Stop
+            $response = Invoke-WingetFWWebRequest @{ Uri = $listUri }
         }
         catch
         {

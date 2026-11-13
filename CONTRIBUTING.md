@@ -50,8 +50,9 @@ The PSAppDeployToolkit template stays as it is, so it can be updated to a new PS
 | `Invoke-AppDeployToolkit.exe`, `Strings\`, `Assets\` | No. |
 | `Config\config.psd1` | Only values WingetFW needs; note them in the CHANGELOG. |
 | `Invoke-AppDeployToolkit.ps1` | Only the `WingetFW parameters` block, the WingetFW calls in the Install, Uninstall and Repair sections, and lines marked `# WingetFW:`. |
-| `PSAppDeployToolkit.Extensions\` | Yes. All WingetFW code and `Config\WingetFW.psd1`. |
-| `PSAppDeployToolkit.Extensions\WingetFW.Core\` | Only as a copy of `Source\WingetFW.Core`: change the source, then copy both files. `Tests\Unit\Package.Tests.ps1` fails when they differ. |
+| `PSAppDeployToolkit.Extensions\` | No. This is the empty PSAppDeployToolkit extensions module for the admin's own functions. |
+| `PSAppDeployToolkit.WingetFW\` | Yes. All WingetFW code and `Config\WingetFW.psd1`. |
+| `PSAppDeployToolkit.WingetFW\WingetFW.Core\` | Only as a copy of `Source\WingetFW.Core`: change the source, then copy both files. `Tests\Unit\Package.Tests.ps1` fails when they differ. |
 
 ## Script header
 

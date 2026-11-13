@@ -44,6 +44,7 @@
 
     Release notes
     1.7.1  - Default -PackageFolder is WinGetFW (no version in the folder name).
+           - Config file path PSAppDeployToolkit.WingetFW\Config\WingetFW.psd1.
     1.7.0  - C01-C04: conflicting apps removed in PreInstall with Uninstall-ADTApplication (product code, name,
              not installed, failed uninstall stops the deployment).
     1.6.0  - M09 uses a real read-only SMB share (\\localhost\WingetFWMods). The blob simulator runs on HTTPS
@@ -318,7 +319,7 @@ $noPackageAgreement = @('--accept-package-agreements')
 # WingetFW settings levels used by the S tests; reset here too, in case an earlier run was aborted
 $policyKey = 'HKLM:\SOFTWARE\Policies\WingetFW'
 $localKey = 'HKLM:\SOFTWARE\WingetFW'
-$configFile = Join-Path $pkgDir 'PSAppDeployToolkit.Extensions\Config\WingetFW.psd1'
+$configFile = Join-Path $pkgDir 'PSAppDeployToolkit.WingetFW\Config\WingetFW.psd1'
 $configOriginal = If (Test-Path $configFile) { [IO.File]::ReadAllText($configFile) } Else { $null }
 Function Reset-WingetFWSettings {
     Remove-Item $policyKey, $localKey -Recurse -Force -ErrorAction SilentlyContinue

@@ -32,6 +32,7 @@
 
     Release notes
     1.1.1  - The package is in Toolkit\WinGetFW (no version in the folder name).
+           - Checks PSAppDeployToolkit.WingetFW (was PSAppDeployToolkit.Extensions).
     1.1.0  - PSScriptAnalyzer also checks the Console folder.
     1.0.0  - First version.
 
@@ -58,7 +59,7 @@ if (-not $SkipAnalyzer)
     $analyzePaths = @(
         'Source'
         'Build'
-        'Toolkit\WinGetFW\PSAppDeployToolkit.Extensions'
+        'Toolkit\WinGetFW\PSAppDeployToolkit.WingetFW'
         'Toolkit\WinGetFW\Invoke-AppDeployToolkit.ps1'
         'Toolkit\Detection'
         'Tools'

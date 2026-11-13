@@ -1,6 +1,6 @@
 # WingetFW parameter map used by Update-WingetFWIntuneApps.ps1.
 # Describes how Deploy-Application.exe command lines from older WingetFW versions are converted to the current version (5.0.0, Invoke-AppDeployToolkit.exe),
-# and the option rules the current version enforces (keep in sync with Start-WinGetPackageFM in PSAppDeployToolkit.Extensions.psm1).
+# and the option rules the current version enforces (keep in sync with Start-WinGetPackageFM in PSAppDeployToolkit.WingetFW.psm1).
 @{
     # Setup file of the current WingetFW package, and the setup file of older versions it replaces
     ExeName = 'Invoke-AppDeployToolkit.exe'

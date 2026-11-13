@@ -11,7 +11,7 @@ WingetFW takes each setting from the first level that has a value:
 | 2. Command line | Parameters of the Intune/ConfigMgr command, for example `-proxy` | One app that needs something else |
 | 3. Mod file | `$Settings` in the app's mod file, see [Mod files](Mods.md) | Settings for one app, all its deployments |
 | 4. Local key | `HKLM\SOFTWARE\WingetFW`, for example from a script or remediation | Device settings that are not enforced |
-| 5. Config file | `Toolkit\WinGetFW\PSAppDeployToolkit.Extensions\Config\WingetFW.psd1` | Defaults that ship with your package |
+| 5. Config file | `Toolkit\WinGetFW\PSAppDeployToolkit.WingetFW\Config\WingetFW.psd1` | Defaults that ship with your package |
 | 6. Built-in default | WingetFW | |
 
 Every setting and the level it came from is written to the toolkit log, for example `Setting [Proxy] = [http://proxy.contoso.com:8080] from [Policy]`.
@@ -107,22 +107,24 @@ The value is `<enabled/>` or `<disabled/>`, and for policies with a field one `<
 | On/off | Check TLS 1.2 on | `<enabled/>` |
 | Text | Default winget source | `<enabled/><data id="DefaultSource" value="winget"/>` |
 | Two texts | Proxy and bypass list | `<enabled/><data id="Proxy" value="http://proxy.contoso.com:8080"/><data id="ProxyBypass" value="*.contoso.com;localhost"/>` |
-| List | Allowed winget sources | `<enabled/><data id="AllowedSources" value="winget&#xF000;msstore"/>` |
+| List | Allowed winget sources | `<enabled/><data id="AllowedSources" value="1&#xF000;winget&#xF000;2&#xF000;msstore"/>` |
 | List of name = value | Internal REST sources | `<enabled/><data id="Sources" value="ContosoRest&#xF000;https://winget.contoso.com/api"/>` |
 | Choice | Require signed mod files | `<enabled/><data id="RequireSignedScripts" value="TrustedSigners"/>` |
 | Choice | Mod file download mode | `<enabled/><data id="ScriptSyncMode" value="Mirror"/>` |
-| List | Trusted signers | `<enabled/><data id="TrustedSigners" value="0123456789ABCDEF0123456789ABCDEF01234567"/>` |
-| List | Mod file locations, a share and a blob container | `<enabled/><data id="ScriptRoot" value="\\fs01\WingetFW\Mods&#xF000;https://contoso.blob.core.windows.net/mods?sv=2024-11-04&amp;sp=r&amp;sig=..."/>` |
-| List | Allowed mod file locations | `<enabled/><data id="AllowedScriptSources" value="\\fs01\WingetFW\&#xF000;https://contoso.blob.core.windows.net/mods"/>` |
+| List | Trusted signers | `<enabled/><data id="TrustedSigners" value="1&#xF000;0123456789ABCDEF0123456789ABCDEF01234567"/>` |
+| List | Mod file locations, a share and a blob container | `<enabled/><data id="ScriptRoot" value="1&#xF000;\\fs01\WingetFW\Mods&#xF000;2&#xF000;https://contoso.blob.core.windows.net/mods?sv=2024-11-04&amp;sp=r&amp;sig=..."/>` |
+| List | Allowed mod file locations | `<enabled/><data id="AllowedScriptSources" value="1&#xF000;\\fs01\WingetFW\&#xF000;2&#xF000;https://contoso.blob.core.windows.net/mods"/>` |
 
-- `&#xF000;` separates the items of a list. In a name = value list the items are name, value, name, value ...
+- `&#xF000;` separates the items. Every list is pairs: value name, value. For the lists the value names are `1`, `2`, `3` ...
+  (the order); for Internal REST sources the value name is the source name. With only the values, Windows rejects the
+  policy ("ADMX ingestion given payload expect True or False string").
 - The value is XML: write `&` as `&amp;` (for example in a SAS), `<` as `&lt;` and `"` as `&quot;`.
 - `<disabled/>` on a policy with a field (for example Proxy) removes the value, the same as Disabled in Import ADMX.
 - After a sync the values are in `HKLM\SOFTWARE\Policies\WingetFW`, with the same layout as the table above. Errors show in
   Event Viewer > Applications and Services Logs > Microsoft > Windows > DeviceManagement-Enterprise-Diagnostics-Provider > Admin.
 
 ## CONFIG FILE
-`Toolkit\WinGetFW\PSAppDeployToolkit.Extensions\Config\WingetFW.psd1` is in the package. It sets `TlsCheck` and `VCRedistCheck` to `$false`. Other settings can be added, for example:
+`Toolkit\WinGetFW\PSAppDeployToolkit.WingetFW\Config\WingetFW.psd1` is in the package. It sets `TlsCheck` and `VCRedistCheck` to `$false`. Other settings can be added, for example:
 
 ```powershell
 @{

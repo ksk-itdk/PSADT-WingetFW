@@ -1,6 +1,6 @@
 @{
-    # WingetFW - Configuration for the PSAppDeployToolkit.Extensions module.
-    # Loaded by PSAppDeployToolkit.Extensions.psm1 from this folder. This is setting level 5 of 6:
+    # WingetFW - Configuration for the PSAppDeployToolkit.WingetFW module.
+    # Loaded by PSAppDeployToolkit.WingetFW.psm1 from this folder. This is setting level 5 of 6:
     # policy (HKLM\SOFTWARE\Policies\WingetFW), command line, mod file, local key (HKLM\SOFTWARE\WingetFW), this file, built-in default.
     # Other settings (DefaultSilent, DefaultSource, AllowedSources, Sources, Proxy, ProxyBypass) can be added here too, see Docs\Configuration.md.
 

@@ -8,6 +8,7 @@
 
     Release notes
     1.0.1  - The package is in Toolkit\WinGetFW (no version in the folder name).
+           - Module folder PSAppDeployToolkit.WingetFW (was PSAppDeployToolkit.Extensions).
     1.0.0  - First version: WingetFW.Core copy in the package equals Source\WingetFW.Core.
 
 .LINK
@@ -21,7 +22,7 @@ BeforeDiscovery {
 
 BeforeAll {
     $sourceDir = Join-Path -Path $PSScriptRoot -ChildPath '..\..\Source\WingetFW.Core'
-    $extensionsDir = Join-Path -Path $PSScriptRoot -ChildPath '..\..\Toolkit\WinGetFW\PSAppDeployToolkit.Extensions'
+    $extensionsDir = Join-Path -Path $PSScriptRoot -ChildPath '..\..\Toolkit\WinGetFW\PSAppDeployToolkit.WingetFW'
     $packageCoreDir = Join-Path -Path $extensionsDir -ChildPath 'WingetFW.Core'
 }
 
@@ -36,8 +37,8 @@ Describe 'WingetFW.Core in the package' {
         @(Get-ChildItem -LiteralPath $packageCoreDir -File).Count | Should -Be @(Get-ChildItem -LiteralPath $sourceDir -File).Count
     }
 
-    It 'PSAppDeployToolkit.Extensions loads WingetFW.Core as a nested module' {
-        $manifest = Import-PowerShellDataFile -LiteralPath (Join-Path -Path $extensionsDir -ChildPath 'PSAppDeployToolkit.Extensions.psd1')
+    It 'PSAppDeployToolkit.WingetFW loads WingetFW.Core as a nested module' {
+        $manifest = Import-PowerShellDataFile -LiteralPath (Join-Path -Path $extensionsDir -ChildPath 'PSAppDeployToolkit.WingetFW.psd1')
         $manifest.NestedModules | Should -Contain 'WingetFW.Core\WingetFW.Core.psd1'
     }
 }

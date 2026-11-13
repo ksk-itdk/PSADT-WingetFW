@@ -35,6 +35,7 @@
     Release notes
     0.5.1  - The package is read from Toolkit\WinGetFW (no version in the folder name). The version comes from
              AppVersion in Invoke-AppDeployToolkit.ps1.
+           - Settings file read from PSAppDeployToolkit.WingetFW\Config\WingetFW.psd1.
     0.5.0  - ConfigMgr publish: Connect-WingetFWConfigMgr, Get-WingetFWConfigMgrDistributionPointGroup,
              Copy-WingetFWConfigMgrContent, New-WingetFWConfigMgrApp.
     0.4.0  - Mod files and settings: New-WingetFWModFile, Test-WingetFWModFile, Save-WingetFWModFile,
@@ -1743,9 +1744,9 @@ function Get-WingetFWEffectiveSetting
     )
 
     $core = Get-WingetFWCore
-    $configFile = Join-Path -Path $PackagePath -ChildPath 'PSAppDeployToolkit.Extensions\Config\WingetFW.psd1'
+    $configFile = Join-Path -Path $PackagePath -ChildPath 'PSAppDeployToolkit.WingetFW\Config\WingetFW.psd1'
     $config = if (Test-Path -LiteralPath $configFile) { Import-PowerShellDataFile -LiteralPath $configFile } else { @{} }
-    # Same defaults as the package (PSAppDeployToolkit.Extensions.psm1 and Import-WingetFWMod)
+    # Same defaults as the package (PSAppDeployToolkit.WingetFW.psm1 and Import-WingetFWMod)
     $defaults = [ordered]@{
         DefaultSilent               = $true
         DefaultSource               = $null
