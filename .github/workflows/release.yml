@@ -37,8 +37,8 @@ jobs:
         id: upload-unsigned
         uses: actions/upload-artifact@v4
         with:
-          name: WingetFW-${{ github.ref_name }}-unsigned
-          path: out/WingetFW-${{ github.ref_name }}/
+          name: PSADT-WingetFW_${{ github.ref_name }}-unsigned
+          path: out/PSADT-WingetFW_${{ github.ref_name }}/
 
       # Optional: set the secret SIGNPATH_API_TOKEN and the variables SIGNPATH_ORGANIZATION_ID,
       # SIGNPATH_PROJECT_SLUG and SIGNPATH_SIGNING_POLICY_SLUG. Without them the release is not signed.
@@ -57,11 +57,16 @@ jobs:
       - name: Create zip
         shell: pwsh
         run: |
-          $source = if ($env:SIGNPATH_CONFIGURED -eq 'true') { 'out/signed' } else { "out/WingetFW-$env:VERSION" }
-          Compress-Archive -Path "$source/*" -DestinationPath "out/WingetFW-$env:VERSION.zip"
+          $name = "PSADT-WingetFW_$env:VERSION"
+          if ($env:SIGNPATH_CONFIGURED -eq 'true')
+          {
+              Remove-Item -LiteralPath "out/$name" -Recurse -Force
+              Move-Item -LiteralPath 'out/signed' -Destination "out/$name"
+          }
+          Compress-Archive -Path "out/$name" -DestinationPath "out/$name.zip"
 
       - name: Create GitHub Release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create $env:VERSION "out/WingetFW-$env:VERSION.zip" --verify-tag --title "WingetFW $env:VERSION" --notes-file out/release-notes.md
+        run: gh release create $env:VERSION "out/PSADT-WingetFW_$env:VERSION.zip" --verify-tag --title "WingetFW $env:VERSION" --notes-file out/release-notes.md

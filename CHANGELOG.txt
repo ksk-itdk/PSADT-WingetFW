@@ -8,6 +8,7 @@
 - Changed the GUID of the extension module to its own GUID; it had the GUID of the PSAppDeployToolkit extensions template, which clashes with the template module
 - Renamed the extension module from PSAppDeployToolkit.Extensions to PSAppDeployToolkit.WingetFW. The settings file is now PSAppDeployToolkit.WingetFW\Config\WingetFW.psd1; copy your changes from the old path when you upgrade
 - Added the empty PSAppDeployToolkit.Extensions module from PSAppDeployToolkit 4.1.8 to the package, so you can add your own functions next to WingetFW
+- Changed Build\New-WingetFWRelease.ps1 (1.2.0) and the release workflow to build PSADT-WingetFW_<version>.zip with the same layout as 5.0.0: Toolkit\WinGetFW, the newest detection scripts, Policies (ADMX/ADML), Mods\_Template.ps1 and documentation links
 
 **Version 5.0.0 [14/10/2026]**
 - Added WingetFW 5.0.0 on PSAppDeployToolkit 4.1.8 in Toolkit\WinGetFW5.0.0. The setup file is Invoke-AppDeployToolkit.exe instead of Deploy-Application.exe. WingetFW 4.0.8 stays in Toolkit\WinGetFW

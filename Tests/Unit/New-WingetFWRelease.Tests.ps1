@@ -4,9 +4,10 @@
 
 .NOTES
     Maintained by: KSKITDK
-    Version      : 1.1.0
+    Version      : 1.2.0
 
     Release notes
+    1.2.0  - Checks the 5.0.0 zip layout: Toolkit, newest detection scripts only, Policies, Mods and Console links.
     1.1.0  - The fake repository uses Toolkit\WinGetFW (no version in the folder name).
     1.0.0  - First version.
 
@@ -21,9 +22,15 @@ BeforeAll {
     {
         param ([string]$Path, [string]$AppVersion)
         $package = Join-Path -Path $Path -ChildPath 'Toolkit\WinGetFW'
-        $null = New-Item -Path $package, (Join-Path -Path $Path -ChildPath 'Toolkit\Detection') -ItemType Directory -Force
+        $null = New-Item -Path (Join-Path -Path $package -ChildPath 'Mods'), (Join-Path -Path $Path -ChildPath 'Toolkit\Detection'), (Join-Path -Path $Path -ChildPath 'Policies\en-US') -ItemType Directory -Force
         Set-Content -LiteralPath (Join-Path -Path $package -ChildPath 'Invoke-AppDeployToolkit.ps1') -Value @('$adtSession = @{', "    AppVersion = '$AppVersion'", '}')
-        Set-Content -LiteralPath (Join-Path -Path $Path -ChildPath 'Toolkit\Detection\wingetv9.9.9.ps1') -Value '# detection'
+        Set-Content -LiteralPath (Join-Path -Path $package -ChildPath 'Mods\_Template.ps1') -Value '# template'
+        foreach ($name in 'wingetv2.0.9.ps1', 'wingetv2.0.10.ps1', 'registryversionregexv.1.0.2.ps1', 'registryversionregexv.1.0.3.ps1')
+        {
+            Set-Content -LiteralPath (Join-Path -Path $Path -ChildPath "Toolkit\Detection\$name") -Value '# detection'
+        }
+        Set-Content -LiteralPath (Join-Path -Path $Path -ChildPath 'Policies\WingetFW.admx') -Value '<admx/>'
+        Set-Content -LiteralPath (Join-Path -Path $Path -ChildPath 'Policies\en-US\WingetFW.adml') -Value '<adml/>'
         Set-Content -LiteralPath (Join-Path -Path $Path -ChildPath 'CHANGELOG.txt') -Encoding UTF8 -Value @(
             '**Version 9.9.9 [01/01/2030]**'
             '- Added something new'
@@ -43,9 +50,14 @@ Describe 'New-WingetFWRelease.ps1' {
 
         $stage = & $script -Version '9.9.9' -OutputPath $out -RepoRoot $repo
 
-        $stage | Should -Be (Join-Path -Path $out -ChildPath 'WingetFW-9.9.9')
-        Join-Path -Path $stage -ChildPath 'WinGetFW\Invoke-AppDeployToolkit.ps1' | Should -Exist
-        Join-Path -Path $stage -ChildPath 'Detection\wingetv9.9.9.ps1' | Should -Exist
+        $stage | Should -Be (Join-Path -Path $out -ChildPath 'PSADT-WingetFW_9.9.9')
+        Join-Path -Path $stage -ChildPath 'Toolkit\WinGetFW\Invoke-AppDeployToolkit.ps1' | Should -Exist
+        @(Get-ChildItem -LiteralPath (Join-Path -Path $stage -ChildPath 'Toolkit\Detection')).Name | Sort-Object | Should -Be @('registryversionregexv.1.0.3.ps1', 'wingetv2.0.10.ps1')
+        Join-Path -Path $stage -ChildPath 'Policies\WingetFW.admx' | Should -Exist
+        Join-Path -Path $stage -ChildPath 'Policies\en-US\WingetFW.adml' | Should -Exist
+        Join-Path -Path $stage -ChildPath 'Mods\_Template.ps1' | Should -Exist
+        Get-Content -LiteralPath (Join-Path -Path $stage -ChildPath 'Mods\WingetFW mod files documentation.url') | Should -Contain 'URL=https://github.com/ksk-itdk/PSADT-WingetFW/blob/main/Docs/Mods.md'
+        Get-Content -LiteralPath (Join-Path -Path $stage -ChildPath 'Console\WingetFW Console documentation.url') | Should -Contain 'URL=https://github.com/ksk-itdk/PSADT-WingetFW/blob/main/Docs/Console.md'
         $notes = Get-Content -LiteralPath (Join-Path -Path $out -ChildPath 'release-notes.md') -Raw
         $notes | Should -Match 'Added something new'
         $notes | Should -Match 'Fixed something old'
